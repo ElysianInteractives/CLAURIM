@@ -53,15 +53,15 @@ blocks, clusters in cleaves, and rarely revives) against the boss:
 | party | runs | kills | avg kill time | wipes | max phase |
 |---|---|---|---|---|---|
 | 1 | 3 | 0 | - | 9 (limit 3/run) | 1 |
-| 3 | 3 | 3 | 25 s | 0 | 2 |
-| 5 | 3 | 3 | 33 s | 1 | 2 |
+| 3 | 3 | 2 | 25 s | 3 | 2 |
+| 5 | 3 | 2 | 23 s | 3 | 2 |
 
 Reading: the boss reliably defeats solo players; clumsy parties of 3 and 5
-can win, although the 5-player sample still wiped once. Plan 2 removed player
-melee friendly fire, which explains the improvement from the earlier 1/3 and
-2/3 group results. The bots' biggest killer remains standing in cleaves
-(mechanics matter). Real players who block, interrupt, spread, and revive
-should outperform these floors.
+can win. Plan 3's physically swept navigation and accurate prop footprints
+replace the earlier coarse-world baseline, so enemies and bots take different
+routes without any D-024 combat-number change. The bots' biggest killer
+remains standing in cleaves (mechanics matter). Real players who block,
+interrupt, spread, and revive should outperform these floors.
 Remaining uncertainty: bot quality bounds the estimate from below; a
 blocking/interrupting bot policy is an Opus benchmark ticket (OB-M6).
 

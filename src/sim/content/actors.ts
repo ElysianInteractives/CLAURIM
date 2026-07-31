@@ -311,7 +311,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     dialogueId: 'maera_dialogue',
     merchant: { buys: ['weapon', 'armor', 'misc', 'ingredient', 'consumable'], stockTable: 'merchant_stock', gold: 500 },
     schedule: [
-      { fromHour: 7, toHour: 21, spaceId: 'fenharrow_inn', x: 4, z: 3, activity: 'work' },
+      { fromHour: 7, toHour: 21, spaceId: 'fenharrow_inn', x: 4, z: 4, activity: 'work' },
       { fromHour: 21, toHour: 24, spaceId: 'fenharrow_inn', x: -5, z: 7, activity: 'sleep' },
       { fromHour: 0, toHour: 7, spaceId: 'fenharrow_inn', x: -5, z: 7, activity: 'sleep' },
     ],
@@ -333,7 +333,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     factionId: 'fenharrow',
     dialogueId: 'bronn_dialogue',
     schedule: [
-      { fromHour: 6, toHour: 20, spaceId: 'kaldwyn', x: 62, z: 136, activity: 'work' },
+      { fromHour: 6, toHour: 20, spaceId: 'kaldwyn', x: 67, z: 132, activity: 'work' },
       { fromHour: 20, toHour: 24, spaceId: 'fenharrow_inn', x: 3, z: 8, activity: 'idle' },
       { fromHour: 0, toHour: 6, spaceId: 'kaldwyn', x: 66, z: 132, activity: 'sleep' },
     ],
@@ -356,9 +356,9 @@ export const ACTORS: Record<string, ActorTemplate> = {
     dialogueId: 'ysolde_dialogue',
     schedule: [
       { fromHour: 5, toHour: 18, spaceId: 'kaldwyn', x: 10, z: 185, activity: 'wander' },
-      { fromHour: 18, toHour: 23, spaceId: 'fenharrow_inn', x: 6, z: 8, activity: 'idle' },
-      { fromHour: 23, toHour: 24, spaceId: 'kaldwyn', x: 24, z: 168, activity: 'sleep' },
-      { fromHour: 0, toHour: 5, spaceId: 'kaldwyn', x: 24, z: 168, activity: 'sleep' },
+      { fromHour: 18, toHour: 23, spaceId: 'fenharrow_inn', x: 6, z: 6, activity: 'idle' },
+      { fromHour: 23, toHour: 24, spaceId: 'kaldwyn', x: 27, z: 168, activity: 'sleep' },
+      { fromHour: 0, toHour: 5, spaceId: 'kaldwyn', x: 27, z: 168, activity: 'sleep' },
     ],
     archetype: 'villager_f',
     respawnGameHours: 'never',

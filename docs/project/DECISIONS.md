@@ -168,7 +168,9 @@ Third person is the primary mode: orbit boom with pitch limits, scroll zoom
 movement (input rotated by view yaw in the sim), first person retained as a
 secondary toggle. Lock-on/soft-targeting: evaluated, deferred - free-aim
 melee arcs + threat readability suffice at current pace (revisit with ranged
-PvP). Building-occlusion camera collision is KL-12.
+PvP). D-025 supersedes the original terrain-only obstruction rule: the boom
+now shares prop and interior-boundary obstruction with projectiles; the
+remaining close-wall presentation limitation is KL-12.
 
 ## D-024: Authoritative combat feedback - LOCKED
 Combat presentation consumes `ActorView` plus filtered `SimEvent` data:
@@ -178,6 +180,15 @@ synthesized cue palette. Browser audio unlocks only from user activation and
 cannot submit intent or resolve outcomes. Broader music, ambience, spatial
 mixing, and accessibility volume controls remain open. See
 `COMBAT_CONTRACT.md`.
+
+## D-025: Shared environmental collision and traversal - LOCKED
+Solid props use authored-yaw oriented footprints and terrain-relative vertical
+bounds. `positionTraversable` is the one actor/nav occupancy query; movement
+substeps it, navigation sweeps it, and deterministic placement repairs against
+it. Projectiles and the third-person camera share `worldObstructionT` across
+props, terrain, and interior floor/wall/ceiling boundaries. Interior render
+walls are exact room-union boundary segments. Water is wade-only to 0.5 m;
+swimming remains a later locked package. See `WORLD_TRAVERSAL_CONTRACT.md`.
 
 ## D-012: Perception model - LOCKED
 Distance (template range) x night factor (outdoors 21:00-05:00: 65%) x stealth

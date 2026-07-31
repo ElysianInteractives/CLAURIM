@@ -30,6 +30,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Naming/dialogue originality regime + automated IP gate (D-022).
 - Third-person primary camera with collision (D-023).
 - Authoritative combat feedback views/events and minimal cue layer (D-024).
+- Shared oriented environmental collision, route validation, and water policy
+  (D-025).
 
 Not locked (open design space): weather, music/ambience/spatial audio and
 mixing, crafting, followers, crime,

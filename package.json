@@ -16,6 +16,7 @@
     "qa:ws": "tsx scripts/qa_ws_smoke.ts",
     "mp:bench": "tsx src/headless/mp_bench.ts",
     "combat:bench": "tsx src/headless/combat_bench.ts",
+    "world:tour": "tsx src/headless/traversal_tour.ts",
     "standalone": "vite build && node scripts/make_standalone.mjs",
     "gate": "npm run validate && npm run typecheck && vitest run && vite build"
   },

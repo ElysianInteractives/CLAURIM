@@ -57,6 +57,12 @@ Streams terrain cells, swaps space contents on `currentSpace()` change,
 poses characters from ActorView state. May not import `Sim` (only
 `game/sim_world.ts` may) and may not write back.
 
+Environmental geometry is the other permitted pure-data seam: renderer props
+use the same yaw/scale records as `CollisionIndex`; interior walls use
+`roomBoundarySegments`; the camera reads `worldObstructionT`. These imports
+query immutable content/geometry and do not expose or mutate simulation state
+(D-025).
+
 ## Save
 See D-009 and `src/sim/save/save.ts`. The envelope carries schemaVersion +
 contentVersion + seed + rng state + full actor/quest/bookkeeping state.

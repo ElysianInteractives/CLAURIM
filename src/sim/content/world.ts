@@ -108,7 +108,7 @@ export const DOORS: DoorDef[] = [
     id: 'door_inn_out',
     spaceId: 'fenharrow_inn',
     x: 0,
-    z: 0.4,
+    z: 0.8,
     name: 'Fenharrow',
     targetSpaceId: 'kaldwyn',
     targetX: 33,
@@ -134,15 +134,15 @@ export const SPAWNERS: SpawnerDef[] = [
   { id: 'sp_mine_thralls', spaceId: 'duskhollow_mine', x: 0, z: 46, actorId: 'barrow_thrall', count: 2, radius: 3, respawnGameHours: 'never' },
   { id: 'sp_mine_boss', spaceId: 'duskhollow_mine', x: 0, z: 60, actorId: 'barrow_wight', count: 1, radius: 2, respawnGameHours: 'never' },
   // Villagers (spawned via schedule system, one per spawner)
-  { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 3, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },
-  { id: 'sp_bronn', spaceId: 'kaldwyn', x: 62, z: 133, actorId: 'bronn', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 4, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_bronn', spaceId: 'kaldwyn', x: 67, z: 132, actorId: 'bronn', count: 1, radius: 1, respawnGameHours: 'never' },
   { id: 'sp_ysolde', spaceId: 'kaldwyn', x: 12, z: 182, actorId: 'ysolde', count: 1, radius: 1, respawnGameHours: 'never' },
 ];
 
 export const CONTAINERS: ContainerDef[] = [
   { id: 'mine_supply_cache', spaceId: 'duskhollow_mine', x: -6, z: 36, name: 'Supply Cache', lootTable: 'mine_cache' },
   { id: 'hadrin_pack', spaceId: 'duskhollow_mine', x: 6, z: 66, name: "Hadrin's Pack", lootTable: 'journal_cache' },
-  { id: 'ruin_chest', spaceId: 'kaldwyn', x: 44, z: -424, name: 'Weathered Chest', lootTable: 'mine_cache' },
+  { id: 'ruin_chest', spaceId: 'kaldwyn', x: 45, z: -422, name: 'Weathered Chest', lootTable: 'mine_cache' },
 ];
 
 /** Player spawn (new game). */

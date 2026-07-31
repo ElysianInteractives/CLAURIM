@@ -24,6 +24,17 @@ target/hit/block/hurt feedback; and minimal authoritative-event combat audio.
 1280x720 and a scaled true 1920x1080 CSS viewport; the exact short-path source
 gate is green at 10 suites / 92 tests.
 
+Plan 3 verifies WRL-001..004: yaw-aware prop footprints and terrain-relative
+vertical bounds; one movement/navigation occupancy query; swept route edges
+and substepped movement; exact room-union render walls; shared projectile and
+camera obstruction; a wade-only water policy; safe authored/runtime
+placements; and isolated multiplayer transitions/cell activation.
+`WORLD_TRAVERSAL_CONTRACT.md` is the exact ruleset. The deterministic
+`npm run world:tour` covers all three spaces, 17 route legs, and 34 authored
+placements. Browser evidence covers direct 1280x720 and a scaled true
+1920x1080 CSS viewport. The exact short-path gate is green at 11 suites /
+105 tests.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -56,14 +67,15 @@ session added and TESTED:
   all dialogue rewritten with voices + plural-adventurer framing.
 
 ## Verification evidence (this session)
-- `npm test`: 69 tests / 7 suites green (multiplayer sim, server/net,
-  saves+migrations, quest e2e, nav, determinism, architecture guards incl.
-  new I-14..I-22).
+- `npm test`: 105 tests / 11 suites green (multiplayer sim, server/net,
+  saves+migrations, quest e2e, combat, traversal, nav, determinism,
+  architecture guards incl. I-14..I-25).
 - Live ws smoke: server + 2 real WebSocket clients: welcome, 25 snapshots
   per client per 2.5 s, server-side movement (ack seq 74), mutual remote
   visibility, shared party, characters persisted on disconnect.
-- `npm run mp:bench` (naive bot parties vs boss): solo 0/3 kills (9 wipes),
-  3-party 1/3 (25 s), 5-party 2/3 (24 s). See ENCOUNTER_DESIGN.md.
+- `npm run mp:bench` after Plan 3 physical-route corrections (naive bot
+  parties vs boss): solo 0/3 kills (9 wipes), 3-party 2/3 (25 s), 5-party
+  2/3 (23 s). See ENCOUNTER_DESIGN.md.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
   build).
 
@@ -73,6 +85,7 @@ session added and TESTED:
   in two tabs for two clients; no query = offline single-player.
 - `npm run mp:bench -- runs=5` - dungeon difficulty measurement.
 - `npm run combat:bench -- seconds=30` - sustained weapon/spell comparison.
+- `npm run world:tour` - deterministic all-space traversal/placement audit.
 
 ## How to continue
 1. Read CLAUDE.md, DECISIONS.md (D-001..D-024), INVARIANTS.md.

@@ -135,6 +135,40 @@ behavior.
   [hurt 1280x720](../screenshots/2026-07-31/plan-2-combat-hurt-1280x720.png),
   and [scaled 1920x1080](../screenshots/2026-07-31/plan-2-combat-1920x1080-scaled.png).
 
+### Plan 3 world traversal/environment exit
+
+- Exact short-path source copy: `npm run gate` green; 11 suites / 105 tests.
+  Production bundle: 611.43 kB JavaScript / 162.45 kB gzip.
+- The 13-test traversal suite pins oriented prop footprints, terrain-relative
+  projectile height, shared camera obstruction, anti-tunneling movement,
+  exact room-union walls, the wade-only water policy, authored placements and
+  routes, every authored doorway transition, deterministic spawn repair, and
+  multiplayer transition/cell isolation.
+- `npm run world:tour` covers every authored space, all 17 route legs, and all
+  34 start/door/target/spawner/schedule/container placements with no failed
+  route or placement.
+- Headless `ticks=9000 seed=42`: 121 ms, 74,380 ticks/sec, 9,958-byte save,
+  and 20 living actors. The real two-client WebSocket smoke passes with ack
+  sequence 30, 4.4 m authoritative movement, mutual visibility, and
+  3,917 / 3,905-byte snapshots.
+- Correct physical routes and prop footprints change the naive boss-bot
+  pressure baseline without altering D-024 combat rules: solo 0/3, three
+  players 2/3, and five players 2/3. Both intended group sizes still win; the
+  mechanics-naive bot limitation remains KL-13.
+- At the rotated smithy, the camera boom shortens from the requested 6 m to
+  3.218 m before the wall. The mine entrance is a stable 19 m landing. Mine
+  gallery walls retain their solid spans and expose only the authored narrow
+  opening.
+- Direct 1280x720 and true 1920x1080 CSS viewport checks passed. A clean
+  direct page emitted no warning or error. The temporary scaled iframe
+  retains the known browser-instrumentation `MutationObserver` artifact and
+  does not ship.
+- Approved captures:
+  [smithy camera 1280x720](../screenshots/2026-07-31/plan-3-smithy-camera-1280x720.jpg),
+  [mine walls 1280x720](../screenshots/2026-07-31/plan-3-mine-boundaries-1280x720.jpg),
+  [mine landing 1280x720](../screenshots/2026-07-31/plan-3-mine-landing-1280x720.jpg),
+  and [mine walls scaled 1920x1080](../screenshots/2026-07-31/plan-3-mine-boundaries-1920x1080-scaled.jpg).
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -142,7 +176,7 @@ behavior.
 | QA-GATE | Content, types, tests, production build | `npm run gate` | Suite/test counts and bundle output |
 | QA-OFF-BOOT | Offline renderer and HUD bootstrap | `npm run dev`; open `/` | Console log, screenshot, visible HUD |
 | QA-OFF-MENUS | Inventory, journal, perks | `Tab`, `J`, `P`; open and close each | Panel content, focus, input recovery |
-| QA-OFF-TRAVERSE | Ruin -> Fenharrow -> mine route | Walk the authored road, enter/exit the mine | Stuck/clipping list, route time, screenshots |
+| QA-OFF-TRAVERSE | Every authored route, space, and placement | `npm run world:tour`, then browser-check changed geometry | Route/placement report, clipping list, screenshots |
 | QA-CMB-SMOKE | Melee, block, spells, damage, death | Falkmoor hostiles, then a mine pull | Inputs, outcomes, readable feedback |
 | QA-SIM | Deterministic speed/save baseline | `npm run headless -- ticks=9000 seed=42` | JSON metrics |
 | QA-BAL-BOSS | Party-size pressure baseline | `npm run mp:bench -- runs=3` | JSON summary |

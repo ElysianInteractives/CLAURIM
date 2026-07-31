@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import type { ContainerDef, DoorDef, InteriorLayout, PropDef } from '../sim/content/schema';
 import { terrainHeight } from '../sim/world/terrain';
+import { roomBoundarySegments } from '../sim/world/spaces';
 import { PALETTE } from './palette';
 
 const wood = new THREE.MeshLambertMaterial({ color: PALETTE.woodWall });
@@ -185,27 +186,27 @@ export function buildInteriorShell(layout: InteriorLayout, isMine: boolean): THR
     const ceil = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 0.2, d + 1), wallMat);
     ceil.position.set((r.x0 + r.x1) / 2, layout.ceilingY, (r.z0 + r.z1) / 2);
     g.add(ceil);
-    // Wall slabs per edge, with gaps where another room adjoins.
-    const edges: { x: number; z: number; sx: number; sz: number }[] = [
-      { x: (r.x0 + r.x1) / 2, z: r.z0 - 0.25, sx: w + 1, sz: 0.5 },
-      { x: (r.x0 + r.x1) / 2, z: r.z1 + 0.25, sx: w + 1, sz: 0.5 },
-      { x: r.x0 - 0.25, z: (r.z0 + r.z1) / 2, sx: 0.5, sz: d + 1 },
-      { x: r.x1 + 0.25, z: (r.z0 + r.z1) / 2, sx: 0.5, sz: d + 1 },
-    ];
-    for (const e of edges) {
-      // Skip edge segments that overlap another room (doorways between rooms).
-      const overlapped = layout.rooms.some(
-        (o) => o !== r && e.x > o.x0 - 0.5 && e.x < o.x1 + 0.5 && e.z > o.z0 - 0.5 && e.z < o.z1 + 0.5,
-      );
-      if (overlapped) continue;
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(e.sx, layout.ceilingY, e.sz), wallMat);
-      wall.position.set(e.x, layout.ceilingY / 2, e.z);
-      g.add(wall);
-    }
     // A torch light per room.
     const torch = new THREE.PointLight(PALETTE.torch, isMine ? 45 : 25, Math.max(w, d) * 1.6);
     torch.position.set((r.x0 + r.x1) / 2, layout.ceilingY - 0.8, (r.z0 + r.z1) / 2);
     g.add(torch);
+  }
+  for (const segment of roomBoundarySegments(layout)) {
+    const length = segment.to - segment.from;
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        segment.axis === 'x' ? length : 0.5,
+        layout.ceilingY,
+        segment.axis === 'z' ? length : 0.5,
+      ),
+      wallMat,
+    );
+    if (segment.axis === 'x') {
+      wall.position.set((segment.from + segment.to) / 2, layout.ceilingY / 2, segment.fixed);
+    } else {
+      wall.position.set(segment.fixed, layout.ceilingY / 2, (segment.from + segment.to) / 2);
+    }
+    g.add(wall);
   }
   return g;
 }

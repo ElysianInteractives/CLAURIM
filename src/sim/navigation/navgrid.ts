@@ -5,8 +5,8 @@
 
 import type { SpaceId, Vec3 } from '../types';
 import type { ContentRegistry } from '../content/schema';
-import { CollisionIndex, ACTOR_RADIUS } from '../world/collision';
-import { groundHeight, isTerrainWalkable } from '../world/spaces';
+import { CollisionIndex, positionTraversable } from '../world/collision';
+import { groundHeight } from '../world/spaces';
 
 const NAV_STEP = 1.0;
 const MAX_WINDOW = 160; // meters; bounded search window
@@ -28,11 +28,35 @@ function walkable(
   z: number,
   seed: number,
 ): boolean {
-  if (!isTerrainWalkable(content, spaceId, x, z, seed)) return false;
-  return !colliders.blocked(spaceId, x, z, ACTOR_RADIUS);
+  return positionTraversable(content, colliders, spaceId, x, z, seed);
 }
 
-/** A* on a NAV_STEP lattice anchored at the start point. Returns waypoints
+function segmentWalkable(
+  content: ContentRegistry,
+  colliders: CollisionIndex,
+  spaceId: SpaceId,
+  from: { x: number; z: number },
+  to: { x: number; z: number },
+  seed: number,
+): boolean {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  const distance = Math.hypot(dx, dz);
+  const steps = Math.max(1, Math.ceil(distance / 0.2));
+  let previousHeight = groundHeight(content, spaceId, from.x, from.z, seed);
+  for (let index = 1; index <= steps; index++) {
+    const t = index / steps;
+    const x = from.x + dx * t;
+    const z = from.z + dz * t;
+    if (!walkable(content, colliders, spaceId, x, z, seed)) return false;
+    const height = groundHeight(content, spaceId, x, z, seed);
+    if (Math.abs(height - previousHeight) > 1.6) return false;
+    previousHeight = height;
+  }
+  return true;
+}
+
+/** A* on a NAV_STEP lattice anchored at the exact start point. Returns waypoints
  * (including goal) or null when no path exists within the window. */
 export function findPath(
   content: ContentRegistry,
@@ -45,11 +69,17 @@ export function findPath(
   const dx = goal.x - start.x;
   const dz = goal.z - start.z;
   if (Math.abs(dx) > MAX_WINDOW || Math.abs(dz) > MAX_WINDOW) return null;
+  if (!walkable(content, colliders, spaceId, start.x, start.z, seed)) return null;
+  if (!walkable(content, colliders, spaceId, goal.x, goal.z, seed)) return null;
 
-  const sx = Math.round(start.x / NAV_STEP);
-  const sz = Math.round(start.z / NAV_STEP);
-  const gx = Math.round(goal.x / NAV_STEP);
-  const gz = Math.round(goal.z / NAV_STEP);
+  const sx = 0;
+  const sz = 0;
+  const gx = Math.round(dx / NAV_STEP);
+  const gz = Math.round(dz / NAV_STEP);
+  const worldPoint = (x: number, z: number) => ({
+    x: start.x + x * NAV_STEP,
+    z: start.z + z * NAV_STEP,
+  });
 
   const key = (x: number, z: number) => `${x},${z}`;
   const open: Node[] = [];
@@ -87,17 +117,31 @@ export function findPath(
     closed.add(ck);
     expansions++;
 
-    if (cur.x === gx && cur.z === gz) {
+    const terminal = worldPoint(cur.x, cur.z);
+    if (
+      Math.hypot(terminal.x - goal.x, terminal.z - goal.z) <= NAV_STEP * 1.5 &&
+      segmentWalkable(content, colliders, spaceId, terminal, goal, seed)
+    ) {
       const path: Vec3[] = [];
       let n: Node | null = cur;
       while (n) {
-        const wx = n.x * NAV_STEP;
-        const wz = n.z * NAV_STEP;
-        path.push({ x: wx, y: groundHeight(content, spaceId, wx, wz, seed), z: wz });
+        const point = worldPoint(n.x, n.z);
+        path.push({
+          x: point.x,
+          y: groundHeight(content, spaceId, point.x, point.z, seed),
+          z: point.z,
+        });
         n = n.parent;
       }
       path.reverse();
-      path[path.length - 1] = { x: goal.x, y: groundHeight(content, spaceId, goal.x, goal.z, seed), z: goal.z };
+      const last = path[path.length - 1];
+      if (Math.hypot(last.x - goal.x, last.z - goal.z) > 1e-6) {
+        path.push({
+          x: goal.x,
+          y: groundHeight(content, spaceId, goal.x, goal.z, seed),
+          z: goal.z,
+        });
+      }
       return path;
     }
 
@@ -106,14 +150,10 @@ export function findPath(
       const nz = cur.z + ddz;
       const nk = key(nx, nz);
       if (closed.has(nk)) continue;
-      const wx = nx * NAV_STEP;
-      const wz = nz * NAV_STEP;
-      if (Math.abs(wx - start.x) > MAX_WINDOW || Math.abs(wz - start.z) > MAX_WINDOW) continue;
-      if (!walkable(content, colliders, spaceId, wx, wz, seed)) continue;
-      // Reject steps with a large height jump (cliff edge between lattice points).
-      const hCur = groundHeight(content, spaceId, cur.x * NAV_STEP, cur.z * NAV_STEP, seed);
-      const hNext = groundHeight(content, spaceId, wx, wz, seed);
-      if (Math.abs(hNext - hCur) > 1.6) continue;
+      const currentPoint = worldPoint(cur.x, cur.z);
+      const nextPoint = worldPoint(nx, nz);
+      if (Math.abs(nextPoint.x - start.x) > MAX_WINDOW || Math.abs(nextPoint.z - start.z) > MAX_WINDOW) continue;
+      if (!segmentWalkable(content, colliders, spaceId, currentPoint, nextPoint, seed)) continue;
       const g = cur.g + cost;
       const prev = best.get(nk);
       if (prev !== undefined && prev <= g) continue;
@@ -135,11 +175,6 @@ export function lineWalkable(
 ): boolean {
   const dx = to.x - from.x;
   const dz = to.z - from.z;
-  const dist = Math.sqrt(dx * dx + dz * dz);
-  const steps = Math.max(1, Math.ceil(dist / 0.8));
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    if (!walkable(content, colliders, spaceId, from.x + dx * t, from.z + dz * t, seed)) return false;
-  }
-  return true;
+  if (dx === 0 && dz === 0) return walkable(content, colliders, spaceId, to.x, to.z, seed);
+  return segmentWalkable(content, colliders, spaceId, from, to, seed);
 }

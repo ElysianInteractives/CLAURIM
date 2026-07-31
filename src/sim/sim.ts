@@ -33,7 +33,12 @@ import {
 } from './types';
 import { CONTENT, CONTENT_VERSION, PLAYER_START } from './content';
 import { validateContent, type ContentRegistry } from './content/schema';
-import { CollisionIndex, projectileObstructionT, resolveMove } from './world/collision';
+import {
+  CollisionIndex,
+  nearestTraversablePoint,
+  projectileObstructionT,
+  resolveMove,
+} from './world/collision';
 import { groundHeight } from './world/spaces';
 import { isActiveAt } from './world/cells';
 import { createActor, recalcActorStats } from './actors/actor';
@@ -311,12 +316,22 @@ export class Sim {
   spawnFromTemplate(templateId: ContentId, spaceId: SpaceId, pos: Vec3, summonedBy: EntityId): EntityId {
     const tpl = this.content.actors[templateId];
     if (!tpl) return NO_ENTITY;
+    const safe = nearestTraversablePoint(
+      this.content,
+      this.colliders,
+      spaceId,
+      pos.x,
+      pos.z,
+      this.seed,
+      summonedBy === NO_ENTITY ? 8 : 4,
+    );
+    if (!safe) return NO_ENTITY;
     const id = this.nextEntityId++;
     const position: Position = {
       spaceId,
-      x: pos.x,
-      y: groundHeight(this.content, spaceId, pos.x, pos.z, this.seed),
-      z: pos.z,
+      x: safe.x,
+      y: safe.y,
+      z: safe.z,
     };
     const actor = createActor(id, tpl.kind, tpl.id, tpl.name, position);
     actor.factionId = tpl.factionId ?? null;
@@ -357,7 +372,25 @@ export class Sim {
       pos.x = PLAYER_START.x;
       pos.z = PLAYER_START.z;
     }
-    pos.y = groundHeight(this.content, pos.spaceId, pos.x, pos.z, this.seed);
+    const safe = nearestTraversablePoint(
+      this.content,
+      this.colliders,
+      pos.spaceId,
+      pos.x,
+      pos.z,
+      this.seed,
+      8,
+    );
+    if (safe) {
+      pos.x = safe.x;
+      pos.y = safe.y;
+      pos.z = safe.z;
+    } else {
+      pos.spaceId = PLAYER_START.spaceId;
+      pos.x = PLAYER_START.x;
+      pos.z = PLAYER_START.z;
+      pos.y = groundHeight(this.content, pos.spaceId, pos.x, pos.z, this.seed);
+    }
     const player = createActor(id, 'player', 'player', restore?.name ?? name, pos);
     player.factionId = 'player';
     this.actors.set(id, player);
@@ -951,15 +984,27 @@ export class Sim {
     const p = this.playerActor(charId);
     const tr = this.transientBy.get(charId);
     if (!p) return;
+    const safe = nearestTraversablePoint(this.content, this.colliders, spaceId, x, z, this.seed, 4);
+    if (!safe) return;
     p.pos.spaceId = spaceId;
-    p.pos.x = x;
-    p.pos.z = z;
-    p.pos.y = groundHeight(this.content, spaceId, x, z, this.seed);
+    p.pos.x = safe.x;
+    p.pos.z = safe.z;
+    p.pos.y = safe.y;
     p.yaw = yaw;
+    p.vel.x = 0;
+    p.vel.y = 0;
+    p.vel.z = 0;
+    p.moveIntent.x = 0;
+    p.moveIntent.z = 0;
+    p.attack = null;
+    p.blocking = false;
+    p.sprinting = false;
     if (tr) {
       tr.airborne = false;
       tr.vy = 0;
     }
+    this.dialogueSessions.delete(charId);
+    this.shopMerchantBy.delete(charId);
     this.events.push({ type: 'spaceEntered', playerId: p.id, spaceId });
     onQuestEvent(this.ctx, { type: 'spaceEntered', playerId: p.id, spaceId });
   }

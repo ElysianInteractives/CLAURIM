@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { ActorView, IWorld } from '../world_api';
 import { CONTENT } from '../sim/content';
+import { CollisionIndex, worldObstructionT } from '../sim/world/collision';
 import { PALETTE } from './palette';
 import { TerrainStreamer, disposeGroup } from './terrain_mesh';
 import { buildContainerMesh, buildDoorMarker, buildInteriorShell, buildProp } from './structures';
@@ -73,6 +74,7 @@ export class Renderer {
   private projectileMeshes = new Map<number, THREE.Mesh>();
   private aoeMeshes = new Map<number, THREE.Mesh>();
   private telegraphRings = new Map<number, THREE.Mesh>();
+  private collision = new CollisionIndex(CONTENT);
   private builtSpace: string | null = null;
   private clock = 0;
 
@@ -314,22 +316,29 @@ export class Renderer {
       this.camera.rotation.set(this.cameraPitch, this.cameraYaw + Math.PI, 0, 'YXZ');
       return;
     }
-    // Camera collision (third-person, D-023): march along the eye->camera ray
-    // and shorten the boom where terrain/floor would occlude the player.
+    // Camera collision (D-023/D-025): use the same oriented props,
+    // interior boundaries, and terrain obstruction as the authoritative sim.
     let d = this.cameraDistance;
     const dirX = -Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch);
     const dirZ = -Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch);
     const dirY = -Math.sin(this.cameraPitch);
     const eyeY = player.y + eye;
-    for (let s = 1; s <= 8; s++) {
-      const t = (s / 8) * this.cameraDistance;
-      const px = player.x + dirX * t;
-      const pz = player.z + dirZ * t;
-      const py = eyeY + dirY * t;
-      if (py < this.world.groundHeight(px, pz) + 0.35) {
-        d = Math.max(1.2, t - 0.6);
-        break;
-      }
+    const desired = {
+      x: player.x + dirX * this.cameraDistance,
+      y: eyeY + dirY * this.cameraDistance,
+      z: player.z + dirZ * this.cameraDistance,
+    };
+    const obstruction = worldObstructionT(
+      CONTENT,
+      this.collision,
+      this.world.currentSpace(),
+      { x: player.x, y: eyeY, z: player.z },
+      desired,
+      this.world.seed(),
+      0.22,
+    );
+    if (obstruction !== null) {
+      d = Math.max(0.15, obstruction * this.cameraDistance - 0.2);
     }
     const cx = player.x + dirX * d;
     const cz = player.z + dirZ * d;

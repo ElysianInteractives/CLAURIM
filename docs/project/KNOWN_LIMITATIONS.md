@@ -4,9 +4,10 @@
   interpolating between ticks; at 30 Hz this is visible as slight stepping on
   fast camera pans. Fix: interpolate ActorView transforms in the renderer
   (host-side only). Opus ticket exists.
-- KL-2 Prop collision ignores yaw: rotated props collide with their unrotated
-  AABB footprint. Visible on the rotated smithy/house shells (slightly
-  generous collision). Fix: OBB or footprint circles per prop.
+- KL-2 Solid prop collision now honors authored yaw with oriented rectangular
+  footprints. Cylinders, tents, and other non-box procedural meshes still use
+  that conservative rectangle; add collider shapes only with a locked content
+  schema package.
 - KL-3 First-person mode is a camera toggle; the body hides but hands/weapon
   are not drawn. The camera abstraction supports it; the view model is art
   work, not architecture.
@@ -17,9 +18,9 @@
 - KL-5 Audio is limited to synthesized combat feedback unlocked by a browser
   user gesture. There is no music, ambience, spatial mix, volume UI, or asset
   pipeline yet.
-- KL-6 Projectile sweeps now stop on implicit interior walls and solid prop
-  AABBs. Rotated solid props still inherit KL-2's conservative unrotated
-  footprint.
+- KL-6 Projectile sweeps stop on terrain-relative oriented solid props and
+  implicit interior walls/floors/ceilings. Non-box meshes retain KL-2's
+  conservative rectangle.
 - KL-7 Browser QA is now available and has a repeatable baseline
   (`QA_BASELINE.md`), but there is no automated pixel-diff or frame-pacing
   harness. Visual and interaction changes still require human review and
@@ -33,8 +34,10 @@
 - KL-11 No real authentication: charId is the identity token. Anyone who
   knows a charId can play that character. Accounts service is FABLE_REQUIRED
   before any public deployment.
-- KL-12 Camera collision handles terrain/floors via ray-march; building/prop
-  occlusion is not yet handled (camera can clip through walls at odd angles).
+- KL-12 Third-person camera collision now shares terrain, oriented props, and
+  interior boundaries with projectile obstruction. It shortens as far as
+  0.15 m rather than fading foreground meshes, so the player body can briefly
+  dominate the view when backed tightly into a wall.
 - KL-13 Difficulty numbers are bounded from below by naive bots (never
   block, cluster in cleaves, rarely revive). Real-party validation and a
   smarter bot policy are open benchmark work (OB-M6).

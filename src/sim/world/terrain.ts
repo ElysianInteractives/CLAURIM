@@ -24,7 +24,7 @@ export const ROAD_POINTS: readonly { x: number; z: number }[] = [
   { x: -10, z: -180 },
   { x: -30, z: -60 },
   { x: 0, z: 60 },
-  { x: 40, z: 150 },
+  { x: 46, z: 144 },
   { x: 60, z: 240 },
   { x: 110, z: 330 },
 ];
@@ -38,6 +38,7 @@ export const RUIN_RADIUS = 46;
 export const RUIN_PLATEAU_H = 22;
 
 export const MINE_ENTRANCE = { x: 118, z: 338 };
+export const MINE_ENTRANCE_PLATEAU_H = 19;
 
 /** River runs roughly west-east across the south, meandering. */
 function riverCenterX(z: number): number {
@@ -99,6 +100,11 @@ export function terrainHeight(x: number, z: number, seed: number): number {
   const rMask = 1 - smoothstep(RUIN_RADIUS * 0.5, RUIN_RADIUS, rDist2);
   h = h * (1 - rMask) + RUIN_PLATEAU_H * rMask;
 
+  // Mine apron: the authored door and its return target must share a stable,
+  // walkable landing instead of straddling procedural slope noise.
+  const mineDist = Math.sqrt(dist2(x, z, MINE_ENTRANCE.x, MINE_ENTRANCE.z));
+  const mineMask = 1 - smoothstep(5, 18, mineDist);
+
   // Road bed: pull height toward a smoothed baseline near the road.
   const roadD = roadDistance(x, z);
   const roadMask = 1 - smoothstep(3, 14, roadD);
@@ -108,8 +114,10 @@ export function terrainHeight(x: number, z: number, seed: number): number {
     h = h * (1 - roadMask * 0.85) + target * roadMask * 0.85;
   }
 
+  h = h * (1 - mineMask) + MINE_ENTRANCE_PLATEAU_H * mineMask;
+
   // Fine detail everywhere except roadbed/plateaus.
-  const detailMask = (1 - roadMask) * (1 - sMask) * (1 - rMask);
+  const detailMask = (1 - roadMask) * (1 - sMask) * (1 - rMask) * (1 - mineMask);
   h += (fbm2(x * 0.09, z * 0.09, seed + 31, 3) - 0.5) * 2.2 * detailMask;
 
   return h;
