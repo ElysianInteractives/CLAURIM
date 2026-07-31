@@ -6,11 +6,26 @@ import type { IWorld } from '../world_api';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
-  #hud .bars { position: absolute; left: 24px; bottom: 24px; width: 260px; }
-  #hud .bar { height: 14px; margin-top: 6px; background: rgba(10,10,14,.65); border: 1px solid rgba(230,220,190,.35); border-radius: 3px; overflow: hidden; }
+  #hud .bars { position: absolute; left: 24px; bottom: 24px; width: min(310px, calc(100vw - 48px)); padding: 12px 14px;
+    background: linear-gradient(115deg, rgba(9,10,13,.88), rgba(18,16,13,.68)); border: 1px solid rgba(224,209,164,.38);
+    border-radius: 6px; box-shadow: 0 4px 18px rgba(0,0,0,.45); box-sizing: border-box; }
+  #hud .resource + .resource { margin-top: 9px; }
+  #hud .resource-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 14px;
+    line-height: 1.1; text-shadow: 0 1px 2px #000; }
+  #hud .resource-label { font-weight: bold; letter-spacing: .035em; }
+  #hud .resource-value { color: #f4eddb; font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 12px;
+    font-variant-numeric: tabular-nums; }
+  #hud .bar { height: 14px; margin-top: 5px; background: rgba(5,6,9,.82); border: 1px solid rgba(245,235,205,.42);
+    border-radius: 3px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,.8); }
   #hud .bar > div { height: 100%; transition: width .12s; }
-  #hud .hp > div { background: #a03327; } #hud .st > div { background: #3f7a37; } #hud .mg > div { background: #35558a; }
-  #hud .crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 18px; opacity: .8; }
+  #hud .resource--health .bar > div, #hud .hp > div { background-color: #a83b31;
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.13) 0 5px, transparent 5px 10px); }
+  #hud .resource--stamina .bar > div { background-color: #4d843e;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.12) 0 2px, transparent 2px 8px); }
+  #hud .resource--magicka .bar > div { background-color: #3c6398;
+    background-image: radial-gradient(circle at 4px 4px, rgba(255,255,255,.22) 0 1px, transparent 1.5px); background-size: 8px 8px; }
+  #hud .crosshair { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; transform: translate(-50%,-50%);
+    border: 2px solid rgba(239,230,207,.92); border-radius: 50%; box-sizing: border-box; opacity: .9; box-shadow: 0 0 0 1px rgba(0,0,0,.75); }
   #hud .prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 18px; text-shadow: 0 1px 3px #000; }
   #hud .feed { position: absolute; right: 24px; top: 24px; width: 320px; text-align: right; font-size: 14px; text-shadow: 0 1px 2px #000; }
   #hud .feed div { margin-bottom: 3px; opacity: .95; }
@@ -33,13 +48,45 @@ const CSS = `
   #hud .pmember .bar { height: 8px; margin-top: 2px; }
   #hud .pdowntag { color: #d05040; font-weight: bold; }
   #hud .pdown span { opacity: .7; }
+  #hud .help-card { position: absolute; right: 24px; bottom: 24px; width: min(370px, calc(100vw - 48px)); padding: 14px 16px 15px;
+    box-sizing: border-box; background: linear-gradient(145deg, rgba(13,13,15,.94), rgba(27,23,18,.9));
+    border: 1px solid rgba(218,198,142,.55); border-radius: 6px; box-shadow: 0 5px 24px rgba(0,0,0,.55);
+    text-shadow: 0 1px 2px #000; }
+  #hud .help-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(218,198,142,.3); }
+  #hud .help-head strong { color: #e4d39d; font-size: 17px; letter-spacing: .04em; }
+  #hud .help-head span { color: #c9bea0; font-size: 12px; }
+  #hud .look-hint { margin: 10px 0 11px; color: #fff8e5; font-size: 14px; line-height: 1.35; }
+  #hud .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+  #hud .control-group h3 { margin: 0 0 5px; color: #cdbd8d; font-size: 12px; font-weight: normal; letter-spacing: .1em;
+    text-transform: uppercase; }
+  #hud .control-row { display: grid; grid-template-columns: minmax(58px, auto) 1fr; align-items: center; gap: 8px; min-height: 24px;
+    color: #e9e1ce; font-size: 13px; }
+  #hud kbd { display: inline-block; min-width: 18px; padding: 2px 5px; box-sizing: border-box; color: #fff8e3;
+    background: rgba(104,91,61,.52); border: 1px solid rgba(225,207,157,.5); border-radius: 3px;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.45); font: 11px/1.25 ui-monospace, 'Cascadia Mono', Consolas, monospace; text-align: center; }
+  #hud .help-toggle { position: absolute; right: 24px; bottom: 24px; padding: 8px 11px; color: #eee4c9;
+    background: rgba(12,12,14,.86); border: 1px solid rgba(218,198,142,.45); border-radius: 5px; box-shadow: 0 3px 12px rgba(0,0,0,.42);
+    font-size: 13px; text-shadow: 0 1px 2px #000; }
+  @media (max-height: 760px) {
+    #hud .help-card { padding: 11px 14px 12px; }
+    #hud .look-hint { margin: 8px 0; }
+    #hud .control-grid { gap: 7px 15px; }
+    #hud .control-row { min-height: 21px; }
+  }
 `;
 
 type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks';
+type ResourceKind = 'health' | 'stamina' | 'magicka';
+type ResourceReadout = Pick<
+  ReturnType<IWorld['playerResources']>,
+  'health' | 'maxHealth' | 'stamina' | 'maxStamina' | 'magicka' | 'maxMagicka'
+>;
 
 export class Hud {
   private root: HTMLDivElement;
   private feedLines: { text: string; until: number }[] = [];
+  private controlsOpen = true;
   panel: Panel = 'none';
   private time = 0;
 
@@ -59,6 +106,10 @@ export class Hud {
 
   togglePanel(p: Panel): void {
     this.panel = this.panel === p ? 'none' : p;
+  }
+
+  toggleControls(): void {
+    this.controlsOpen = !this.controlsOpen;
   }
 
   isMenuOpen(): boolean {
@@ -146,14 +197,11 @@ export class Hud {
     const prompt = this.world.nearestInteractablePrompt();
     let html = `
       <div class="clockrow">Kaldwyn Reach - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
-      <div class="bars">
-        <div class="bar hp"><div style="width:${(100 * r.health) / r.maxHealth}%"></div></div>
-        <div class="bar st"><div style="width:${(100 * r.stamina) / r.maxStamina}%"></div></div>
-        <div class="bar mg"><div style="width:${(100 * r.magicka) / r.maxMagicka}%"></div></div>
-      </div>
-      <div class="crosshair">·</div>
-      <div class="feed">${this.feedLines.map((l) => `<div>${esc(l.text)}</div>`).join('')}</div>
+      ${renderResourceMeters(r)}
+      <div class="crosshair" aria-hidden="true"></div>
+      <div class="feed" aria-live="polite" aria-atomic="false">${this.feedLines.map((l) => `<div>${esc(l.text)}</div>`).join('')}</div>
     `;
+    if (this.panel === 'none') html += renderControlsHelp(this.controlsOpen);
     if (prompt && this.panel === 'none') html += `<div class="prompt">[E] ${esc(prompt)}</div>`;
     // Party frames (multiplayer presence).
     const party = this.world.party();
@@ -268,4 +316,66 @@ export class Hud {
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function resourcePercent(current: number, maximum: number): number {
+  if (!Number.isFinite(current) || !Number.isFinite(maximum) || maximum <= 0) return 0;
+  return Math.max(0, Math.min(100, (100 * current) / maximum));
+}
+
+function displayResource(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+export function renderResourceMeter(kind: ResourceKind, current: number, maximum: number): string {
+  const label = kind[0].toUpperCase() + kind.slice(1);
+  const maxDisplay = Math.max(1, displayResource(maximum));
+  const currentDisplay = Math.min(maxDisplay, displayResource(current));
+  const percent = resourcePercent(current, maximum);
+  return `
+    <div class="resource resource--${kind}" role="meter" aria-label="${label}" aria-valuemin="0"
+      aria-valuemax="${maxDisplay}" aria-valuenow="${currentDisplay}" aria-valuetext="${currentDisplay} of ${maxDisplay}">
+      <div class="resource-head"><span class="resource-label">${label}</span><span class="resource-value">${currentDisplay} / ${maxDisplay}</span></div>
+      <div class="bar" aria-hidden="true"><div style="width:${percent.toFixed(2)}%"></div></div>
+    </div>`;
+}
+
+export function renderResourceMeters(resources: ResourceReadout): string {
+  return `<div class="bars" aria-label="Player resources">
+    ${renderResourceMeter('health', resources.health, resources.maxHealth)}
+    ${renderResourceMeter('stamina', resources.stamina, resources.maxStamina)}
+    ${renderResourceMeter('magicka', resources.magicka, resources.maxMagicka)}
+  </div>`;
+}
+
+export function renderControlsHelp(expanded: boolean): string {
+  if (!expanded) {
+    return `<div class="help-toggle" aria-label="Press H to show game controls"><kbd>H</kbd> Controls</div>`;
+  }
+  return `<aside class="help-card" aria-label="Game controls">
+    <div class="help-head"><strong>Controls</strong><span><kbd>H</kbd> hide</span></div>
+    <p class="look-hint">Click the world to capture the mouse and look around.</p>
+    <div class="control-grid">
+      <section class="control-group"><h3>Movement</h3>
+        <div class="control-row"><kbd>WASD</kbd><span>Move</span></div>
+        <div class="control-row"><kbd>Shift</kbd><span>Sprint</span></div>
+        <div class="control-row"><kbd>C / Space</kbd><span>Sneak / jump</span></div>
+      </section>
+      <section class="control-group"><h3>Combat</h3>
+        <div class="control-row"><kbd>LMB</kbd><span>Attack</span></div>
+        <div class="control-row"><kbd>RMB</kbd><span>Block</span></div>
+        <div class="control-row"><kbd>1 / 2</kbd><span>Cast spells</span></div>
+      </section>
+      <section class="control-group"><h3>World</h3>
+        <div class="control-row"><kbd>E</kbd><span>Interact</span></div>
+        <div class="control-row"><kbd>Tab</kbd><span>Inventory</span></div>
+        <div class="control-row"><kbd>J / P</kbd><span>Journal / perks</span></div>
+      </section>
+      <section class="control-group"><h3>Utility</h3>
+        <div class="control-row"><kbd>V</kbd><span>Camera</span></div>
+        <div class="control-row"><kbd>F5 / F9</kbd><span>Save / load</span></div>
+        <div class="control-row"><kbd>Esc</kbd><span>Close menu</span></div>
+      </section>
+    </div>
+  </aside>`;
 }

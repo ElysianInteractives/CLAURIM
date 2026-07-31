@@ -75,6 +75,30 @@ Online at
 Pointer-lock errors created by browser automation during navigation are
 harness artifacts unless reproduced in an ordinary interactive browser.
 
+### Plan 1 HUD/readability exit
+
+Plan 1 resolves UX-001 and UX-002 without changing simulation or gameplay
+behavior.
+
+- `npm run gate`: green; 8 suites / 76 tests.
+- At 1280x720, the resource card measures 310x153 px at `(24, 543)` and the
+  expanded controls card measures 370x260 px at `(886, 436)`. Both keep
+  24-pixel edge insets and do not overlap.
+- At a true 1920x1080 CSS viewport in a temporary 2/3-scale iframe harness,
+  the resource card remains 310x153 px at `(24, 903)` and the controls card
+  measures 370x292 px at `(1526, 764)`. Both keep 24-pixel edge insets and do
+  not overlap.
+- `H` collapses the controls card to a readable `H Controls` reminder and
+  restores it. Inventory, journal, and perks continue to open/close through
+  `Tab`, `J`, and `P`; the expanded help card stays out of menu views.
+- The direct game page produced no browser warnings or errors. The scaled
+  iframe harness itself triggers a browser-instrumentation `MutationObserver`
+  error; it is not emitted by the game and the harness does not ship.
+- Approved captures:
+  [expanded 1280x720](../screenshots/2026-07-31/plan-1-hud-1280x720.png),
+  [collapsed 1280x720](../screenshots/2026-07-31/plan-1-hud-collapsed-1280x720.png),
+  and [scaled 1920x1080](../screenshots/2026-07-31/plan-1-hud-1920x1080-scaled.png).
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |

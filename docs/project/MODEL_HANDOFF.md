@@ -11,6 +11,11 @@ The first browser baseline confirmed NET-001: online browser boot sends
 `hello` while the WebSocket is still connecting. This is recorded with root
 cause but deliberately not fixed until the networking change plan is locked.
 
+Plan 1 verifies UX-001/UX-002: the HUD now uses named, numeric, patterned
+resource meters and a structured controls card that toggles with `H`. Browser
+evidence covers 1280x720 and a true 1920x1080 CSS viewport; the gate is green
+at 8 suites / 76 tests.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
