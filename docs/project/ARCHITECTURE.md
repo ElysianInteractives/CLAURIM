@@ -1,0 +1,69 @@
+# Architecture
+
+Read CLAUDE.md first; this file adds the diagrams-in-prose and rationale.
+Locked decisions: DECISIONS.md. Invariants: INVARIANTS.md.
+
+## Layering
+```
+content (data-as-code)      docs
+        |
+      src/sim  <- deterministic core: world, actors, combat, effects, AI,
+        |         navigation, quests, dialogue, inventory, progression, save
+   src/world_api (IWorld: world_read / player_intent / menus facets)
+        |
+  +-----+---------+----------------+
+  |               |                |
+src/game       src/render       src/ui        src/headless
+(SimWorld       (Three.js,       (DOM HUD      (Node host,
+ adapter,        observes         + menus)      scripted runs)
+ input)          IWorld+data)
+        \          |             /
+         \         |            /
+          src/main.ts (browser host loop: 30 Hz fixed step + rAF render)
+```
+
+## The tick (Sim.tick)
+1. clear events; advance tick counter
+2. player: stance flags, movement (axis-slide collision), jump/gravity,
+   interact cooldown
+3. per actor ascending id: effects (DoT/HoT/expiry) -> brain (if active
+   window) -> attack state machine -> regen
+4. projectiles step + hit
+5. every 10 ticks: positional reach objectives; every 300: respawn checks
+
+Determinism notes: actor iteration is id-ordered; all rng draws go through the
+one Rng stream (plus forked child streams for spawner placement and merchant
+stock, keyed by stable ids) so event-order changes cannot silently reshuffle
+unrelated rolls.
+
+## Spaces, cells, streaming
+Exterior `kaldwyn` is a 1024x1024 m authored region; interiors are separate
+spaces with flat floors and room-rect layouts. Cells are 64 m; the 5x5 block
+around the player is "active": AI ticks there, terrain meshes exist there.
+All actors stay resident (D-004). Transitions teleport the player through
+door records and emit `spaceEntered`.
+
+## Where things resolve
+- Damage: only `combat/damage` via `SimContext.dealDamage`.
+- Loot: rolled once per corpse at death; containers roll once on first open;
+  both persist in the save.
+- Quest credit: `quests/quest_runtime.onQuestEvent` consuming SimEvents.
+- Trade: `inventory/inventory.ts` buy/sell with speech-scaled prices.
+- Never in: render, ui, hosts.
+
+## Renderer contract
+Reads IWorld + content data + pure terrain fns. Owns meshes/lights/camera.
+Streams terrain cells, swaps space contents on `currentSpace()` change,
+poses characters from ActorView state. May not import `Sim` (only
+`game/sim_world.ts` may) and may not write back.
+
+## Save
+See D-009 and `src/sim/save/save.ts`. The envelope carries schemaVersion +
+contentVersion + seed + rng state + full actor/quest/bookkeeping state.
+Loads validate, migrate linearly, and reject rather than half-load.
+
+## Performance envelope (measured this session)
+- Headless: ~50k ticks/s (Node 22, sandbox container) => sim budget is a
+  rounding error at slice scale.
+- Bundle: 559 kB (147 kB gzip), three.js dominant.
+- Terrain cell build: 33x33 vertex grid + scatter; 25 cells live worst case.

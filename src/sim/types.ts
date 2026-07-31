@@ -1,0 +1,319 @@
+// Shared simulation types and global tuning constants. Host-agnostic: no DOM,
+// no Three.js, no wall clock. See docs/project/ARCHITECTURE.md.
+
+// ---------------------------------------------------------------------------
+// Tick
+// ---------------------------------------------------------------------------
+
+/** Simulation tick rate. LOCKED decision D-003: 30 Hz fixed step, renderer
+ * interpolates. Do not change without a DECISIONS.md entry and re-tuning of
+ * every duration constant. */
+export const TICK_RATE = 30;
+export const DT = 1 / TICK_RATE;
+
+/** Game-hours advanced per real second of simulation (1 game day = 24 min). */
+export const GAME_HOURS_PER_SECOND = 1 / 60;
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/** Runtime entity id. Sequential, allocated deterministically at world init,
+ * persisted in saves. 0 is reserved (no entity). */
+export type EntityId = number;
+export const NO_ENTITY: EntityId = 0;
+
+/** Content id: a stable string key into a content table ("iron_sword"). */
+export type ContentId = string;
+
+/** Space id: an exterior region or an interior ("kaldwyn", "duskhollow_mine"). */
+export type SpaceId = string;
+
+export interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface Position extends Vec3 {
+  spaceId: SpaceId;
+}
+
+// ---------------------------------------------------------------------------
+// Damage and stats
+// ---------------------------------------------------------------------------
+
+export type DamageChannel = 'physical' | 'fire' | 'frost' | 'shock' | 'poison';
+
+export const DAMAGE_CHANNELS: readonly DamageChannel[] = [
+  'physical',
+  'fire',
+  'frost',
+  'shock',
+  'poison',
+];
+
+/** Every stat the modifier system can target. Derived stats are recomputed
+ * from base + modifiers each time modifiers change (see effects/modifiers.ts). */
+export type StatKey =
+  | 'maxHealth'
+  | 'maxStamina'
+  | 'maxMagicka'
+  | 'healthRegen'
+  | 'staminaRegen'
+  | 'magickaRegen'
+  | 'moveSpeed'
+  | 'meleeDamage'
+  | 'rangedDamage'
+  | 'spellPower'
+  | 'armor'
+  | 'blockMitigation'
+  | 'stealth'
+  | 'detection'
+  | 'carryWeight'
+  | 'resistPhysical'
+  | 'resistFire'
+  | 'resistFrost'
+  | 'resistShock'
+  | 'resistPoison';
+
+export type Stats = Record<StatKey, number>;
+
+export const RESIST_BY_CHANNEL: Record<DamageChannel, StatKey> = {
+  physical: 'resistPhysical',
+  fire: 'resistFire',
+  frost: 'resistFrost',
+  shock: 'resistShock',
+  poison: 'resistPoison',
+};
+
+// ---------------------------------------------------------------------------
+// Skills
+// ---------------------------------------------------------------------------
+
+export type SkillId =
+  | 'oneHanded'
+  | 'archery'
+  | 'block'
+  | 'lightArmor'
+  | 'sneak'
+  | 'destruction'
+  | 'restoration'
+  | 'smithing'
+  | 'alchemy'
+  | 'speech';
+
+export const SKILL_IDS: readonly SkillId[] = [
+  'oneHanded',
+  'archery',
+  'block',
+  'lightArmor',
+  'sneak',
+  'destruction',
+  'restoration',
+  'smithing',
+  'alchemy',
+  'speech',
+];
+
+// ---------------------------------------------------------------------------
+// Actors
+// ---------------------------------------------------------------------------
+
+export type ActorKind = 'player' | 'npc' | 'creature';
+
+export type EquipSlot = 'mainHand' | 'offHand' | 'body' | 'head' | 'feet' | 'amulet';
+
+export const EQUIP_SLOTS: readonly EquipSlot[] = [
+  'mainHand',
+  'offHand',
+  'body',
+  'head',
+  'feet',
+  'amulet',
+];
+
+export type AttackKind = 'melee' | 'ranged' | 'spell';
+export type AttackPhase = 'windup' | 'active' | 'recover';
+
+export interface AttackState {
+  kind: AttackKind;
+  phase: AttackPhase;
+  /** Ticks remaining in the current phase. */
+  t: number;
+  /** Spell content id when kind === 'spell'. */
+  spellId?: ContentId;
+  /** True once the melee hit for this swing has been resolved. */
+  resolved?: boolean;
+  power?: number;
+}
+
+export type AiState = 'idle' | 'schedule' | 'combat' | 'search' | 'flee' | 'return' | 'dead';
+
+export interface Brain {
+  state: AiState;
+  targetId: EntityId;
+  lastKnownPos: Vec3 | null;
+  /** Ticks remaining in current sub-behavior (search timer, attack pause...). */
+  timer: number;
+  homePos: Position;
+  path: Vec3[] | null;
+  pathIdx: number;
+  /** Ticks until the next path recompute is allowed. */
+  repathCooldown: number;
+  alertness: number;
+}
+
+export interface ItemStack {
+  itemId: ContentId;
+  count: number;
+}
+
+export interface ActiveEffect {
+  effectId: ContentId;
+  /** Seconds remaining; Infinity for permanent (equipment/perk) effects. */
+  remaining: number;
+  stacks: number;
+  /** Attribution: who or what applied it ("spell:flamebolt", "perk:juggernaut"). */
+  source: string;
+}
+
+export interface SkillState {
+  level: number;
+  xp: number;
+}
+
+export interface Actor {
+  id: EntityId;
+  kind: ActorKind;
+  /** Content id of the actor template (npc/creature) or 'player'. */
+  templateId: ContentId;
+  name: string;
+  pos: Position;
+  /** Facing yaw, radians. 0 = +z. */
+  yaw: number;
+  vel: Vec3;
+  /** Current resources. */
+  health: number;
+  stamina: number;
+  magicka: number;
+  /** Derived stats, recomputed when modifiers change. */
+  stats: Stats;
+  dead: boolean;
+  /** Sneaking stance (player) or innate stealth posture. */
+  sneaking: boolean;
+  blocking: boolean;
+  sprinting: boolean;
+  attack: AttackState | null;
+  effects: ActiveEffect[];
+  inventory: ItemStack[];
+  equipment: Partial<Record<EquipSlot, ContentId>>;
+  gold: number;
+  skills: Record<SkillId, SkillState>;
+  perks: ContentId[];
+  level: number;
+  characterXp: number;
+  perkPoints: number;
+  brain: Brain | null;
+  factionId: ContentId | null;
+  /** Spawner that owns this actor, for cleared-state persistence. */
+  spawnerId: string | null;
+  /** Loot rolled on death (from the template loot table). */
+  lootRolled: boolean;
+  /** Movement intent for this tick (set by hosts for the player, by AI for NPCs). */
+  moveIntent: { x: number; z: number };
+  interactCooldown: number;
+}
+
+// ---------------------------------------------------------------------------
+// Projectiles
+// ---------------------------------------------------------------------------
+
+export interface Projectile {
+  id: number;
+  spaceId: SpaceId;
+  pos: Vec3;
+  vel: Vec3;
+  channel: DamageChannel;
+  damage: number;
+  sourceId: EntityId;
+  /** Seconds until despawn. */
+  ttl: number;
+  kind: 'arrow' | 'spell';
+  spellId?: ContentId;
+}
+
+// ---------------------------------------------------------------------------
+// Events (sim -> hosts, and sim-internal quest/journal feed)
+// ---------------------------------------------------------------------------
+
+export type SimEvent =
+  | { type: 'damage'; targetId: EntityId; sourceId: EntityId; amount: number; channel: DamageChannel; blocked: boolean }
+  | { type: 'death'; targetId: EntityId; sourceId: EntityId; templateId: ContentId }
+  | { type: 'heal'; targetId: EntityId; amount: number }
+  | { type: 'itemAdded'; actorId: EntityId; itemId: ContentId; count: number }
+  | { type: 'itemRemoved'; actorId: EntityId; itemId: ContentId; count: number }
+  | { type: 'skillUp'; skill: SkillId; level: number }
+  | { type: 'levelUp'; level: number }
+  | { type: 'questStarted'; questId: ContentId }
+  | { type: 'questAdvanced'; questId: ContentId; stageId: string }
+  | { type: 'questCompleted'; questId: ContentId }
+  | { type: 'objectiveProgress'; questId: ContentId; objectiveId: string; progress: number; required: number }
+  | { type: 'dialogueLine'; speakerId: EntityId; text: string }
+  | { type: 'spaceEntered'; spaceId: SpaceId }
+  | { type: 'interacted'; actorId: EntityId; targetKind: string; targetId: string }
+  | { type: 'talkedTo'; npcTemplateId: ContentId }
+  | { type: 'effectApplied'; targetId: EntityId; effectId: ContentId }
+  | { type: 'playerDied' };
+
+// ---------------------------------------------------------------------------
+// Quests
+// ---------------------------------------------------------------------------
+
+export interface ObjectiveProgress {
+  /** kill/collect counters keyed by objective id. */
+  count: number;
+  done: boolean;
+}
+
+export interface QuestState {
+  questId: ContentId;
+  /** Current stage id, or 'done' / 'failed'. */
+  stageId: string;
+  objectives: Record<string, ObjectiveProgress>;
+  completed: boolean;
+  failed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Combat tuning (LOCKED with D-007; change only with a DECISIONS.md entry)
+// ---------------------------------------------------------------------------
+
+export const MELEE_RANGE = 2.4;
+export const MELEE_ARC_COS = Math.cos((100 * Math.PI) / 180 / 2);
+export const MELEE_WINDUP_TICKS = 8;
+export const MELEE_ACTIVE_TICKS = 3;
+export const MELEE_RECOVER_TICKS = 10;
+export const RANGED_WINDUP_TICKS = 20;
+export const SPELL_WINDUP_TICKS = 12;
+export const ATTACK_STAMINA_COST = 12;
+export const SPRINT_STAMINA_PER_SEC = 8;
+export const BLOCK_STAMINA_ON_HIT = 8;
+export const ARROW_SPEED = 38;
+export const SPELL_PROJECTILE_SPEED = 24;
+export const ARMOR_DR_FACTOR = 0.12;
+export const ARMOR_DR_CAP = 0.8;
+export const SNEAK_ATTACK_MULT = 2.5;
+export const BASE_WALK_SPEED = 4.4;
+export const SPRINT_MULT = 1.55;
+export const SNEAK_MULT = 0.6;
+
+/** Character XP required to advance from `level` to `level + 1`. */
+export function xpForLevel(level: number): number {
+  return 60 + 30 * (level - 1);
+}
+
+/** Skill XP required for the next skill level at `level`. */
+export function skillXpForLevel(level: number): number {
+  return 25 + level * 12;
+}

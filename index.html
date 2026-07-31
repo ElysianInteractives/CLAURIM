@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claurim</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0e14; }
+      #game { width: 100vw; height: 100vh; display: block; }
+      #help { position: fixed; right: 12px; bottom: 10px; color: #cfc5a5; opacity: .55;
+        font: 12px Georgia, serif; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="help">Click to look - WASD move - Shift sprint - C sneak - Space jump - LMB attack - RMB block - 1 flamebolt - 2 mend - E interact - Tab inv - J journal - P perks - V camera - F5 save - F9 load</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

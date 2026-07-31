@@ -1,0 +1,29 @@
+# Known limitations (honest register; each is deliberate, none is forgotten)
+
+- KL-1 Render interpolation: the renderer draws the latest sim state without
+  interpolating between ticks; at 30 Hz this is visible as slight stepping on
+  fast camera pans. Fix: interpolate ActorView transforms in the renderer
+  (host-side only). Opus ticket exists.
+- KL-2 Prop collision ignores yaw: rotated props collide with their unrotated
+  AABB footprint. Visible on the rotated smithy/house shells (slightly
+  generous collision). Fix: OBB or footprint circles per prop.
+- KL-3 First-person mode is a camera toggle; the body hides but hands/weapon
+  are not drawn. The camera abstraction supports it; the view model is art
+  work, not architecture.
+- KL-4 Cross-space NPC schedule travel: an NPC whose current schedule entry is
+  in another space stays put instead of walking through doors. Bronn/Ysolde
+  schedules are authored within one space per block to mask this. Fix:
+  schedule-driven door transitions for NPCs.
+- KL-5 No audio at all yet (no audio system decision has been made).
+- KL-6 Projectile collision vs interior walls uses ground height only; in
+  interiors, walls stop actors but a projectile can pass a wall segment at
+  grazing angles. Fix: segment-vs-wall test in `tickProjectiles`.
+- KL-7 No in-sandbox browser: screenshots must be captured on a dev machine
+  (`npm run dev`, or the standalone file build). The session that built this
+  could not render pixels; visual QA of the first build happened via the
+  user's browser (see MODEL_HANDOFF).
+- KL-8 Melee arc check is 2D (ignores height difference); irrelevant until
+  flying/vertical combat exists.
+- KL-9 The A* open list is an array scan (fine at slice scale; heap swap is a
+  bounded perf ticket).
+- KL-10 localStorage single save slot in the browser host.
