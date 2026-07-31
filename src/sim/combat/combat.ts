@@ -7,12 +7,14 @@ import {
   ARMOR_DR_FACTOR,
   ARROW_SPEED,
   ATTACK_STAMINA_COST,
+  BLOCK_ARC_COS,
   BLOCK_STAMINA_ON_HIT,
   DOWNED_TICKS,
   DT,
   INTERRUPT_DAMAGE,
   MELEE_ACTIVE_TICKS,
   MELEE_ARC_COS,
+  MELEE_HEIGHT_TOLERANCE,
   MELEE_RANGE,
   MELEE_RECOVER_TICKS,
   MELEE_WINDUP_TICKS,
@@ -25,6 +27,9 @@ import {
   type Actor,
   type DamageChannel,
   type EntityId,
+  type QueuedAttack,
+  type SimEvent,
+  type Vec3,
 } from '../types';
 import type { SimContext } from '../sim_context';
 import { rollLoot } from '../inventory/inventory';
@@ -41,7 +46,12 @@ export function resetProjectileIds(): void {
 // Damage
 // ---------------------------------------------------------------------------
 
-export function mitigate(target: Actor, amount: number, channel: DamageChannel): { taken: number; blocked: boolean } {
+export function mitigate(
+  target: Actor,
+  amount: number,
+  channel: DamageChannel,
+  allowBlock = true,
+): { taken: number; blocked: boolean } {
   let dmg = amount;
   // Armor DR applies to physical only.
   if (channel === 'physical') {
@@ -51,11 +61,28 @@ export function mitigate(target: Actor, amount: number, channel: DamageChannel):
   const resist = target.stats[RESIST_BY_CHANNEL[channel]];
   dmg *= 1 - resist;
   let blocked = false;
-  if (target.blocking && target.stamina > 0) {
+  if (allowBlock && target.blocking && target.stamina > 0) {
     dmg *= 1 - Math.min(0.9, target.stats.blockMitigation);
     blocked = true;
   }
   return { taken: Math.max(0, dmg), blocked };
+}
+
+function sourceInsideBlockArc(
+  ctx: SimContext,
+  target: Actor,
+  sourceId: EntityId,
+  blockOrigin?: Vec3,
+): boolean {
+  const source = ctx.actors.get(sourceId);
+  if (!source || source.dead || source.pos.spaceId !== target.pos.spaceId) return false;
+  const origin = blockOrigin ?? source.pos;
+  const dx = origin.x - target.pos.x;
+  const dz = origin.z - target.pos.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance < 0.001) return false;
+  const forward = facing(target);
+  return (dx / distance) * forward.x + (dz / distance) * forward.z >= BLOCK_ARC_COS;
 }
 
 export function dealDamage(
@@ -64,11 +91,14 @@ export function dealDamage(
   sourceId: EntityId,
   amount: number,
   channel: DamageChannel,
+  blockable = true,
+  blockOrigin?: Vec3,
 ): void {
   const target = ctx.actors.get(targetId);
   if (!target || target.dead || amount <= 0) return;
   if (target.downed) return; // downed players are out of the fight, not corpses
-  const { taken, blocked } = mitigate(target, amount, channel);
+  const allowBlock = blockable && sourceInsideBlockArc(ctx, target, sourceId, blockOrigin);
+  const { taken, blocked } = mitigate(target, amount, channel, allowBlock);
   target.health -= taken;
   if (blocked) {
     target.stamina = Math.max(0, target.stamina - BLOCK_STAMINA_ON_HIT);
@@ -181,22 +211,30 @@ export function handleDeath(ctx: SimContext, targetId: EntityId, killerId: Entit
 
 export function startMelee(ctx: SimContext, attackerId: EntityId): boolean {
   const a = ctx.actors.get(attackerId);
-  if (!a || a.dead || a.attack) return false;
-  if (a.kind === 'player' && a.stamina < ATTACK_STAMINA_COST) return false;
+  if (!a) return false;
+  if (a.dead || a.downed) return rejectAction(ctx, a, 'melee', 'incapacitated');
+  if (a.attack) return bufferAttack(ctx, a, { kind: 'melee' });
+  if (a.kind === 'player' && a.stamina < ATTACK_STAMINA_COST) {
+    return rejectAction(ctx, a, 'melee', 'stamina');
+  }
   if (a.kind === 'player') a.stamina -= ATTACK_STAMINA_COST;
+  a.blocking = false;
   a.attack = { kind: 'melee', phase: 'windup', t: MELEE_WINDUP_TICKS };
   return true;
 }
 
 export function startRanged(ctx: SimContext, attackerId: EntityId): boolean {
   const a = ctx.actors.get(attackerId);
-  if (!a || a.dead || a.attack) return false;
+  if (!a) return false;
+  if (a.dead || a.downed) return rejectAction(ctx, a, 'ranged', 'incapacitated');
+  if (a.attack) return bufferAttack(ctx, a, { kind: 'ranged' });
   if (a.kind === 'player') {
     const weapon = a.equipment.mainHand ? ctx.content.items[a.equipment.mainHand] : null;
-    if (!weapon || weapon.weaponType !== 'bow') return false;
+    if (!weapon || weapon.weaponType !== 'bow') return rejectAction(ctx, a, 'ranged', 'weapon');
     const hasArrow = a.inventory.some((s) => s.itemId === 'arrow' && s.count > 0);
-    if (!hasArrow) return false;
+    if (!hasArrow) return rejectAction(ctx, a, 'ranged', 'ammo');
   }
+  a.blocking = false;
   a.attack = { kind: 'ranged', phase: 'windup', t: RANGED_WINDUP_TICKS };
   return true;
 }
@@ -204,15 +242,44 @@ export function startRanged(ctx: SimContext, attackerId: EntityId): boolean {
 export function startSpell(ctx: SimContext, attackerId: EntityId, spellId: string): boolean {
   const a = ctx.actors.get(attackerId);
   const spell = ctx.content.spells[spellId];
-  if (!a || a.dead || a.attack || !spell) return false;
-  if (a.magicka < spell.magickaCost) return false;
+  if (!a) return false;
+  if (a.dead || a.downed) return rejectAction(ctx, a, 'spell', 'incapacitated');
+  if (!spell) return rejectAction(ctx, a, 'spell', 'unknown');
+  if (a.attack) return bufferAttack(ctx, a, { kind: 'spell', spellId });
+  if (a.magicka < spell.magickaCost) return rejectAction(ctx, a, 'spell', 'magicka');
   a.magicka -= spell.magickaCost;
+  a.blocking = false;
   a.attack = { kind: 'spell', phase: 'windup', t: SPELL_WINDUP_TICKS, spellId };
   return true;
 }
 
 function facing(a: Actor): { x: number; z: number } {
   return { x: Math.sin(a.yaw), z: Math.cos(a.yaw) };
+}
+
+function rejectAction(
+  ctx: SimContext,
+  actor: Actor,
+  action: QueuedAttack['kind'],
+  reason: Extract<SimEvent, { type: 'actionRejected' }>['reason'],
+): false {
+  ctx.emit({ type: 'actionRejected', actorId: actor.id, action, reason });
+  return false;
+}
+
+function bufferAttack(ctx: SimContext, actor: Actor, queued: QueuedAttack): boolean {
+  const current = actor.attack;
+  if (!current || current.phase === 'windup' || current.telegraph) {
+    return rejectAction(ctx, actor, queued.kind, 'busy');
+  }
+  current.queued = queued;
+  return true;
+}
+
+function startQueuedAttack(ctx: SimContext, actor: Actor, queued: QueuedAttack): void {
+  if (queued.kind === 'melee') startMelee(ctx, actor.id);
+  else if (queued.kind === 'ranged') startRanged(ctx, actor.id);
+  else if (queued.spellId) startSpell(ctx, actor.id, queued.spellId);
 }
 
 /** Melee hit check: range + arc against every hostile living actor in space. */
@@ -223,11 +290,13 @@ function resolveMeleeHit(ctx: SimContext, attacker: Actor): void {
     if (target.pos.spaceId !== attacker.pos.spaceId) continue;
     const dx = target.pos.x - attacker.pos.x;
     const dz = target.pos.z - attacker.pos.z;
+    const dy = target.pos.y - attacker.pos.y;
     const dist = Math.sqrt(dx * dx + dz * dz);
     if (dist > MELEE_RANGE) continue;
+    if (Math.abs(dy) > MELEE_HEIGHT_TOLERANCE) continue;
     const dot = dist > 0.001 ? (dx / dist) * dir.x + (dz / dist) * dir.z : 1;
     if (dot < MELEE_ARC_COS) continue;
-    if (!ctx.isHostile(attacker, target) && attacker.kind !== 'player') continue;
+    if (!ctx.isHostile(attacker, target)) continue;
     let dmg = attacker.stats.meleeDamage;
     let sneakBonus = false;
     if (attacker.kind === 'player' && attacker.sneaking && target.brain && target.brain.state !== 'combat') {
@@ -293,7 +362,12 @@ export function tickAttack(ctx: SimContext, actorId: EntityId): void {
     } else if (atk.kind === 'ranged') {
       // Consume an arrow (player) and release.
       if (a.kind === 'player') {
-        ctx.removeItem(a.id, 'arrow', 1);
+        if (!ctx.removeItem(a.id, 'arrow', 1)) {
+          rejectAction(ctx, a, 'ranged', 'ammo');
+          atk.phase = 'recover';
+          atk.t = MELEE_RECOVER_TICKS;
+          return;
+        }
         ctx.trainSkill(a.id, 'archery', 5);
       }
       spawnProjectile(ctx, a, 'arrow', a.stats.rangedDamage, 'physical');
@@ -317,8 +391,29 @@ export function tickAttack(ctx: SimContext, actorId: EntityId): void {
     atk.phase = 'recover';
     atk.t = MELEE_RECOVER_TICKS;
   } else {
+    const queued = atk.queued;
     a.attack = null;
+    if (queued) startQueuedAttack(ctx, a, queued);
   }
+}
+
+function segmentSphereEntry(from: Vec3, to: Vec3, center: Vec3, radiusSq: number): number | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  const lengthSq = dx * dx + dy * dy + dz * dz;
+  const projected =
+    lengthSq > 1e-9
+      ? ((center.x - from.x) * dx + (center.y - from.y) * dy + (center.z - from.z) * dz) / lengthSq
+      : 0;
+  const t = Math.max(0, Math.min(1, projected));
+  const px = from.x + dx * t;
+  const py = from.y + dy * t;
+  const pz = from.z + dz * t;
+  const ox = center.x - px;
+  const oy = center.y - py;
+  const oz = center.z - pz;
+  return ox * ox + oy * oy + oz * oz < radiusSq ? t : null;
 }
 
 /** Step all projectiles one tick: move, collide with actors and walls. */
@@ -331,41 +426,53 @@ export function tickProjectiles(ctx: SimContext): void {
       list.splice(i, 1);
       continue;
     }
-    const nx = p.pos.x + p.vel.x * DT;
-    const nz = p.pos.z + p.vel.z * DT;
-    // Terrain / wall hit: projectile dies if the ground rises above it.
-    const groundY = ctx.ground(p.spaceId, nx, nz);
-    if (groundY > p.pos.y) {
-      list.splice(i, 1);
-      continue;
-    }
-    p.pos.x = nx;
-    p.pos.z = nz;
-    // Actor hit: first living actor (excluding source) within radius.
-    let hit = false;
+    const from = { ...p.pos };
+    const to = {
+      x: p.pos.x + p.vel.x * DT,
+      y: p.pos.y + p.vel.y * DT,
+      z: p.pos.z + p.vel.z * DT,
+    };
+    const obstruction = ctx.projectileObstruction(p.spaceId, from, to);
+
+    // Swept actor hit: choose the earliest body along the step so entity
+    // iteration order cannot decide which target an arrow strikes.
+    let hitTarget: Actor | null = null;
+    let hitT: number | null = null;
     for (const target of ctx.actors.values()) {
       if (target.id === p.sourceId || target.dead || target.downed) continue;
       if (target.pos.spaceId !== p.spaceId) continue;
-      const dx = target.pos.x - p.pos.x;
-      const dz = target.pos.z - p.pos.z;
-      const dy = target.pos.y + 1.2 - p.pos.y;
-      if (dx * dx + dz * dz + dy * dy < 0.8) {
-        const src = ctx.actors.get(p.sourceId);
-        // Friendly fire: only hostile pairs take projectile damage (or any pair
-        // where the source is the player).
-        if (src && (src.kind === 'player' || ctx.isHostile(src, target))) {
-          ctx.dealDamage(target.id, p.sourceId, p.damage * ctx.rng.range(0.9, 1.1), p.channel);
-          if (p.kind === 'spell' && p.spellId) {
-            const spell = ctx.content.spells[p.spellId];
-            for (const e of spell?.applyEffects ?? []) {
-              ctx.applyEffect(target.id, e, `spell:${p.spellId}`);
-            }
-          }
-          hit = true;
-        }
-        if (hit) break;
+      const t = segmentSphereEntry(from, to, { x: target.pos.x, y: target.pos.y + 1.2, z: target.pos.z }, 0.8);
+      if (t !== null && (hitT === null || t < hitT)) {
+        hitTarget = target;
+        hitT = t;
       }
     }
-    if (hit) list.splice(i, 1);
+
+    if (hitTarget && hitT !== null && (obstruction === null || hitT < obstruction)) {
+      const src = ctx.actors.get(p.sourceId);
+      if (src && ctx.isHostile(src, hitTarget)) {
+        ctx.dealDamage(
+          hitTarget.id,
+          p.sourceId,
+          p.damage * ctx.rng.range(0.9, 1.1),
+          p.channel,
+          true,
+          from,
+        );
+        if (p.kind === 'spell' && p.spellId) {
+          const spell = ctx.content.spells[p.spellId];
+          for (const e of spell?.applyEffects ?? []) {
+            ctx.applyEffect(hitTarget.id, e, `spell:${p.spellId}`);
+          }
+        }
+      }
+      list.splice(i, 1);
+      continue;
+    }
+    if (obstruction !== null) {
+      list.splice(i, 1);
+      continue;
+    }
+    p.pos = to;
   }
 }

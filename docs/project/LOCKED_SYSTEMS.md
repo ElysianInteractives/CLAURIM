@@ -29,8 +29,10 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Downed/revive/release + wipe reset (D-021).
 - Naming/dialogue originality regime + automated IP gate (D-022).
 - Third-person primary camera with collision (D-023).
+- Authoritative combat feedback views/events and minimal cue layer (D-024).
 
-Not locked (open design space): weather, audio, crafting, followers, crime,
+Not locked (open design space): weather, music/ambience/spatial audio and
+mixing, crafting, followers, crime,
 dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
 accounts/authentication service, explicit party UI/matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading.

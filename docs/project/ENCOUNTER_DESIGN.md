@@ -53,15 +53,33 @@ blocks, clusters in cleaves, and rarely revives) against the boss:
 | party | runs | kills | avg kill time | wipes | max phase |
 |---|---|---|---|---|---|
 | 1 | 3 | 0 | - | 9 (limit 3/run) | 1 |
-| 3 | 3 | 1 | 25 s | 6 | 2 |
-| 5 | 3 | 2 | 24 s | 3 | 2 |
+| 3 | 3 | 3 | 25 s | 0 | 2 |
+| 5 | 3 | 3 | 33 s | 1 | 2 |
 
-Reading: the boss reliably defeats solo players; clumsy parties of 3 can
-win; parties of 5 win more often; success scales with numbers and the bots'
-biggest killer is standing in the cleave (mechanics matter). Real players
-who block, interrupt, spread, and revive will outperform these floors.
+Reading: the boss reliably defeats solo players; clumsy parties of 3 and 5
+can win, although the 5-player sample still wiped once. Plan 2 removed player
+melee friendly fire, which explains the improvement from the earlier 1/3 and
+2/3 group results. The bots' biggest killer remains standing in cleaves
+(mechanics matter). Real players who block, interrupt, spread, and revive
+should outperform these floors.
 Remaining uncertainty: bot quality bounds the estimate from below; a
 blocking/interrupting bot policy is an Opus benchmark ticket (OB-M6).
+
+## Plan 2 sustained-output baseline (`npm run combat:bench -- seconds=30`)
+
+Same fixed boss target, 30 seconds, natural regeneration, buffered legal
+inputs, authoritative mitigation:
+
+| loadout | hits | damage | DPS | resource wait |
+|---|---:|---:|---:|---:|
+| worn dagger | 40 | 229.6 | 7.65 | 1.8 s stamina |
+| iron sword | 40 | 362.2 | 12.07 | 1.8 s stamina |
+| steel sword | 40 | 455.4 | 15.18 | 1.8 s stamina |
+| hunting bow | 30 | 170.7 | 5.69 | 0.0 s |
+| Flamebolt | 13 | 132.4 | 4.41 | 20.5 s magicka |
+
+This table is a regression comparison, not a final balance verdict. Bow range
+and Flamebolt's burning utility are not represented by direct-hit DPS.
 
 ## Death and recovery
 See MULTIPLAYER_STATE_MODEL.md (downed 30 s / revive 30% / release 40% at

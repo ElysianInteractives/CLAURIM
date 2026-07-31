@@ -164,26 +164,16 @@ describe('combat', () => {
   });
 
   it('blocking reduces damage taken', () => {
-    const sim1 = new Sim(42, CONTENT, { skipSpawn: true });
-    // Build two identical duels via context-level damage.
-    const mkVictim = (sim: Sim, blocking: boolean) => {
-      const ctx = sim.context();
-      // Use a raw sim with manual actors for full control.
-      return { ctx, blocking };
-    };
-    void mkVictim;
-    // Simpler: use mitigate through dealDamage on real sims.
-    const simA = new Sim(42);
-    const simB = new Sim(42);
+    const { sim: simA, wolfId: wolfAId } = closeCombatSim();
+    const { sim: simB, wolfId: wolfBId } = closeCombatSim();
     const pA = simA.player();
     const pB = simB.player();
     pB.blocking = true;
-    simA.context().dealDamage(pA.id, 0, 20, 'physical');
-    simB.context().dealDamage(pB.id, 0, 20, 'physical');
+    simA.context().dealDamage(pA.id, wolfAId, 20, 'physical');
+    simB.context().dealDamage(pB.id, wolfBId, 20, 'physical');
     const lostA = pA.stats.maxHealth - pA.health;
     const lostB = pB.stats.maxHealth - pB.health;
     expect(lostB).toBeLessThan(lostA);
-    void sim1;
   });
 
   it('sneak attacks multiply damage', () => {

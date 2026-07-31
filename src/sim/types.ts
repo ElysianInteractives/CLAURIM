@@ -144,6 +144,11 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
 export type AttackKind = 'melee' | 'ranged' | 'spell';
 export type AttackPhase = 'windup' | 'active' | 'recover';
 
+export interface QueuedAttack {
+  kind: AttackKind;
+  spellId?: ContentId;
+}
+
 export interface AttackState {
   kind: AttackKind;
   phase: AttackPhase;
@@ -162,6 +167,8 @@ export interface AttackState {
   /** Damage absorbed during an interruptible telegraph; crossing
    * INTERRUPT_DAMAGE cancels the cast. */
   interruptDamage?: number;
+  /** One authoritative follow-up accepted during active/recovery. */
+  queued?: QueuedAttack;
 }
 
 export type AiState = 'idle' | 'schedule' | 'combat' | 'search' | 'flee' | 'return' | 'dead';
@@ -281,6 +288,7 @@ export interface Projectile {
 
 export type SimEvent =
   | { type: 'damage'; targetId: EntityId; sourceId: EntityId; amount: number; channel: DamageChannel; blocked: boolean }
+  | { type: 'actionRejected'; actorId: EntityId; action: AttackKind; reason: 'busy' | 'stamina' | 'weapon' | 'ammo' | 'magicka' | 'unknown' | 'incapacitated' }
   | { type: 'death'; targetId: EntityId; sourceId: EntityId; templateId: ContentId }
   | { type: 'heal'; targetId: EntityId; amount: number }
   | { type: 'itemAdded'; actorId: EntityId; itemId: ContentId; count: number }
@@ -329,7 +337,9 @@ export interface QuestState {
 // ---------------------------------------------------------------------------
 
 export const MELEE_RANGE = 2.4;
+export const MELEE_HEIGHT_TOLERANCE = 1.5;
 export const MELEE_ARC_COS = Math.cos((100 * Math.PI) / 180 / 2);
+export const BLOCK_ARC_COS = Math.cos((120 * Math.PI) / 180 / 2);
 export const MELEE_WINDUP_TICKS = 8;
 export const MELEE_ACTIVE_TICKS = 3;
 export const MELEE_RECOVER_TICKS = 10;

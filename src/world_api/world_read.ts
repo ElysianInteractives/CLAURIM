@@ -25,8 +25,21 @@ export interface ActorView {
   blocking: boolean;
   attacking: boolean;
   attackKind: string | null;
+  attackPhase: 'windup' | 'active' | 'recover' | null;
   /** Remaining telegraph ticks when winding up a telegraphed ability. */
   telegraphTicks: number;
+  /** Authoritative danger shape for a currently winding-up ability. */
+  telegraph?: {
+    kind: 'frontal_cone' | 'ground_aoe' | 'summon' | 'heal_ally';
+    ticks: number;
+    totalTicks: number;
+    interruptible: boolean;
+    range: number;
+    angleDegrees: number;
+    radius: number;
+    x: number;
+    z: number;
+  };
   isPlayer: boolean;
   /** True for player characters other than the viewing player. */
   isRemotePlayer: boolean;

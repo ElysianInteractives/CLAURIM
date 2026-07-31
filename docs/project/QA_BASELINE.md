@@ -99,6 +99,42 @@ behavior.
   [collapsed 1280x720](../screenshots/2026-07-31/plan-1-hud-collapsed-1280x720.png),
   and [scaled 1920x1080](../screenshots/2026-07-31/plan-1-hud-1920x1080-scaled.png).
 
+### Plan 2 combat correctness/readability exit
+
+- Exact short-path source copy: `npm run gate` green; 10 suites / 92 tests.
+  Production bundle: 608.66 kB JavaScript / 161.52 kB gzip.
+- Focused combat suite: 11 checks covering exact phase timing, one-slot
+  buffering, recovery-only block cancel, authoritative rejection reasons,
+  vertical/friendly melee rules, frontal blocking, pillar/interior-wall
+  projectile obstruction, and exact telegraph view data.
+- Multiplayer focus remains green for spells, interrupts, downing, revive,
+  auto-release, wipe reset, threat, phases, and loot. Server snapshots deliver
+  private rejection feedback and peak at 8,465 bytes in the four-player mine
+  guard (32,000-byte budget).
+- `npm run combat:bench -- seconds=30` records dagger 7.65 DPS, iron sword
+  12.07, steel sword 15.18, bow 5.69, and Flamebolt direct-hit 4.41 under one
+  fixed target/resource policy. `npm run mp:bench -- runs=3` remains 0/3 solo,
+  3/3 three-player, and 3/3 five-player; friendly-fire removal explains the
+  group improvement.
+- Direct 1280x720 combat layout: target frame 260x46 px at `(510, 386)`,
+  resources 310x153 px at `(24, 543)`, controls 370x260 px at `(886, 436)`.
+  All remain inside the viewport without overlap.
+- Browser states verified: exact Warden cone + interrupt notice; authoritative
+  target health; target material flash + hit marker (`380 -> 374`); frontal
+  block marker with mitigated `79/100` health; hurt marker/vignette at
+  `80/100`; and down/wipe/release transitions. A clean direct combat page
+  emitted no warning or error.
+- The temporary fixture only positions existing actors and triggers existing
+  sim actions in the short-path QA copy; it does not ship. The scaled
+  1920x1080 iframe retains the known browser-instrumentation
+  `MutationObserver` error, not emitted by the game.
+- Approved captures:
+  [telegraph 1280x720](../screenshots/2026-07-31/plan-2-combat-telegraph-1280x720.png),
+  [hit 1280x720](../screenshots/2026-07-31/plan-2-combat-hit-1280x720.png),
+  [block 1280x720](../screenshots/2026-07-31/plan-2-combat-block-1280x720.png),
+  [hurt 1280x720](../screenshots/2026-07-31/plan-2-combat-hurt-1280x720.png),
+  and [scaled 1920x1080](../screenshots/2026-07-31/plan-2-combat-1920x1080-scaled.png).
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |

@@ -142,8 +142,14 @@ describe('server-authoritative movement (D-015)', () => {
     core.sim.context().dealDamage(actor.id, 0, 100000, 'physical');
     expect(actor.downed).toBe(true);
     c.send({ t: 'cmd', kind: 'melee' });
-    ticks(core, 1);
+    ticks(core, SNAPSHOT_EVERY);
     expect(actor.attack).toBeNull();
+    expect(c.last('snapshot')!.events).toContainEqual({
+      type: 'actionRejected',
+      actorId: actor.id,
+      action: 'melee',
+      reason: 'incapacitated',
+    });
     // Invalid inventory command: equipping an item the player does not own.
     c.send({ t: 'cmd', kind: 'equip', arg: 'steel_sword' });
     ticks(core, 1);

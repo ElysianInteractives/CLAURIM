@@ -34,6 +34,8 @@ the inn ("The Fenharrow Hearth") to begin The Hollow Delve.
 ```
 npm run gate       # content gate + typecheck + all tests + production build
 npm run headless   # scripted sim run without a renderer (-- ticks=9000)
+npm run combat:bench -- seconds=30  # sustained weapon/spell comparison
+npm run mp:bench -- runs=3          # party-size boss pressure benchmark
 ```
 
 ## Repository guide

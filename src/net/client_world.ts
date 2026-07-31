@@ -311,6 +311,7 @@ export class ClientWorld implements IWorld {
       blocking: false,
       attacking: false,
       attackKind: null,
+      attackPhase: null,
       telegraphTicks: 0,
       isPlayer: true,
       isRemotePlayer: false,

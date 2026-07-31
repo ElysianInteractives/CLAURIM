@@ -56,6 +56,31 @@ export class SimWorld implements IWorld {
   private toView(a: Actor): ActorView {
     const tpl = this.sim.content.actors[a.templateId];
     const self = this.actor();
+    const attack = a.attack;
+    const ability = attack?.abilityId ? tpl?.abilities?.find((candidate) => candidate.id === attack.abilityId) : undefined;
+    let telegraph: ActorView['telegraph'];
+    if (attack?.telegraph && attack.phase === 'windup' && ability) {
+      let x = a.pos.x;
+      let z = a.pos.z;
+      if (ability.kind === 'ground_aoe' && a.brain) {
+        const target = this.sim.actors.get(a.brain.targetId);
+        if (target?.pos.spaceId === a.pos.spaceId) {
+          x = target.pos.x;
+          z = target.pos.z;
+        }
+      }
+      telegraph = {
+        kind: ability.kind,
+        ticks: attack.t,
+        totalTicks: ability.telegraphTicks,
+        interruptible: ability.interruptible,
+        range: ability.range ?? 3,
+        angleDegrees: ability.coneDegrees ?? 90,
+        radius: ability.aoeRadius ?? 1.6,
+        x,
+        z,
+      };
+    }
     return {
       id: a.id,
       templateId: a.templateId,
@@ -73,7 +98,9 @@ export class SimWorld implements IWorld {
       blocking: a.blocking,
       attacking: a.attack !== null && a.attack.phase !== 'recover',
       attackKind: a.attack?.kind ?? null,
+      attackPhase: a.attack?.phase ?? null,
       telegraphTicks: a.attack?.telegraph && a.attack.phase === 'windup' ? a.attack.t : 0,
+      telegraph,
       isPlayer: a.kind === 'player',
       isRemotePlayer: a.kind === 'player' && a.id !== self.id,
       hostileToPlayer: a.kind !== 'player' && this.sim.isHostile(self, a),
@@ -189,6 +216,8 @@ export class SimWorld implements IWorld {
         return e.charId === this.charId;
       case 'itemAdded':
       case 'itemRemoved':
+        return e.actorId === selfId;
+      case 'actionRejected':
         return e.actorId === selfId;
       case 'spaceEntered':
       case 'talkedTo':

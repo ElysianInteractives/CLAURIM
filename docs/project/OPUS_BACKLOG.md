@@ -102,18 +102,11 @@ Accept: validate green, items purchasable in shop, gate green.
 Traps: `weaponType` governs skill/slot behavior; a new weaponType is
 FABLE_REQUIRED (attack timing decisions).
 
-## OB-3 OPUS_READY - Wall-aware projectiles in interiors
-Why: KL-6.
-Inspect: `src/sim/combat/combat.ts` tickProjectiles, `src/sim/world/spaces.ts`.
-Change: `src/sim/combat/combat.ts`.
-Outline: in interiors, kill a projectile when `bodyFitsInRooms(layout, nx, nz, 0.05)`
-is false (import via spaces helpers through a ctx.ground-style seam: add a
-`ctx.isProjectilePassable(spaceId,x,z)` callback in `sim_context.ts` + `sim.ts`).
-Invariants: SimContext is append-only; determinism suites stay green.
-Tests: add to `tests/sim_core.test.ts`: bolt fired at a mine wall despawns
-without damaging an actor behind it.
-Accept: new test green, all suites green.
-Traps: keep the exterior ground check unchanged.
+## OB-3 DONE - Wall-aware projectiles in interiors
+Result: Plan 2 added a swept `projectileObstruction` SimContext query covering
+terrain, implicit room walls, and solid prop AABBs, plus earliest swept actor
+selection. Focused pillar and room-wall reproductions pass in
+`tests/combat_correctness.test.ts`.
 
 ## OB-4 OPUS_READY - Perk expansion within existing hooks (10 perks)
 Why: tree depth. Inspect: `src/sim/content/magic.ts` PERKS (bladesman chain),
@@ -140,12 +133,10 @@ Change: same file; scan `src/render`+`src/ui` for `from '../sim/sim'` /
 Result: enforced by the existing host-boundary suite in
 `tests/architecture.test.ts`.
 
-## OB-7 OPUS_READY - HUD target frame
-Why: combat readability. Inspect: `hud.ts`, `world_read.ts` ActorView.
-Change: `src/ui/hud.ts` only (IWorld already exposes actor health).
-Outline: nearest hostile living actor within 20 m and rough facing => name +
-health bar under the crosshair.
-Traps: renderer/ui stay read-only; no new sim queries needed.
+## OB-7 DONE - HUD target frame
+Result: Plan 2 added a facing-selected hostile target name/tier/accessible
+health meter, with pure selector/render tests. It consumes existing ActorView
+position/health and remains read-only.
 
 ## OB-8 FABLE_REVIEW - NPC cross-space schedule travel (KL-4)
 Door-transition pathfinding for NPCs touches brain + spaces + doors; design

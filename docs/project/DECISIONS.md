@@ -55,6 +55,13 @@ mitigation = armor DR (physical) -> resist channel -> block. Constants in
 `types.ts`. Damage flows ONLY through `dealDamage`. Sneak attacks multiply at
 resolution if the target's brain is not in combat.
 
+Plan 2 amendment: melee also validates a 1.5 m vertical envelope and hostility;
+projectiles sweep against actors, terrain, implicit interior walls, and solid
+props; block requires a blockable source in a 120-degree frontal arc. One
+follow-up input buffers during active/recovery, and block may cancel recovery
+but never windup/active. Exact rules and rejection reasons:
+`COMBAT_CONTRACT.md`.
+
 ## D-008: One modifier system for all stat changes - LOCKED
 `StatModifier {stat, op add|mul, value, source}`; composition order
 base -> adds -> muls -> clamps (`effects/modifiers.ts`). Equipment, perks,
@@ -162,6 +169,15 @@ movement (input rotated by view yaw in the sim), first person retained as a
 secondary toggle. Lock-on/soft-targeting: evaluated, deferred - free-aim
 melee arcs + threat readability suffice at current pace (revisit with ranged
 PvP). Building-occlusion camera collision is KL-12.
+
+## D-024: Authoritative combat feedback - LOCKED
+Combat presentation consumes `ActorView` plus filtered `SimEvent` data:
+facing-selected target frame, phase-aware poses, authoritative damage flashes,
+hit/block/hurt confirmation, exact data-driven danger shapes, and a minimal
+synthesized cue palette. Browser audio unlocks only from user activation and
+cannot submit intent or resolve outcomes. Broader music, ambience, spatial
+mixing, and accessibility volume controls remain open. See
+`COMBAT_CONTRACT.md`.
 
 ## D-012: Perception model - LOCKED
 Distance (template range) x night factor (outdoors 21:00-05:00: 65%) x stealth

@@ -33,7 +33,7 @@ import {
 } from './types';
 import { CONTENT, CONTENT_VERSION, PLAYER_START } from './content';
 import { validateContent, type ContentRegistry } from './content/schema';
-import { CollisionIndex, resolveMove } from './world/collision';
+import { CollisionIndex, projectileObstructionT, resolveMove } from './world/collision';
 import { groundHeight } from './world/spaces';
 import { isActiveAt } from './world/cells';
 import { createActor, recalcActorStats } from './actors/actor';
@@ -217,7 +217,8 @@ export class Sim {
       spawnFromTemplate: (templateId, spaceId, pos, summonedBy) =>
         sim.spawnFromTemplate(templateId, spaceId, pos, summonedBy),
       emit: (e) => sim.events.push(e),
-      dealDamage: (t, s, a, c) => dealDamage(sim.ctx, t, s, a, c),
+      dealDamage: (t, s, a, c, blockable, blockOrigin) =>
+        dealDamage(sim.ctx, t, s, a, c, blockable, blockOrigin),
       applyHeal: (t, amount) => {
         const actor = sim.actors.get(t);
         if (!actor || actor.dead || actor.downed) return;
@@ -254,6 +255,8 @@ export class Sim {
       isActorActive: (a) => sim.isActorActive(a),
       isHostile: (a, b) => sim.isHostile(a, b),
       ground: (spaceId, x, z) => groundHeight(sim.content, spaceId, x, z, sim.seed),
+      projectileObstruction: (spaceId, from, to) =>
+        projectileObstructionT(sim.content, sim.colliders, spaceId, from, to, sim.seed),
     };
   }
 
@@ -551,7 +554,10 @@ export class Sim {
   /** Advance one tick. Accepts a per-character input map; a bare PlayerInput
    * drives the primary character (single-player hosts, legacy tests). */
   tick(inputs: PlayerInput | Map<CharacterId, PlayerInput>): void {
-    this.events = [];
+    // Commands arrive between fixed ticks. Preserve rejection feedback until
+    // the host gets a chance to drain it; all tick-generated events remain
+    // current-tick only as before.
+    this.events = this.events.filter((event) => event.type === 'actionRejected');
     this.tickCount++;
 
     const inputMap: Map<CharacterId, PlayerInput> =
@@ -596,7 +602,10 @@ export class Sim {
     p.yaw = input.yaw;
     tr.lastYaw = input.yaw;
     p.sneaking = input.sneak;
-    p.blocking = input.block && p.stamina > 0;
+    // Defensive cancel is intentionally limited to recovery. Windup/active
+    // frames remain committed, and block can never overlap an attack.
+    if (input.block && p.attack?.phase === 'recover') p.attack = null;
+    p.blocking = input.block && p.stamina > 0 && p.attack === null;
     p.sprinting = input.sprint && p.stamina > 0 && !input.sneak;
 
     let speed = p.stats.moveSpeed;
@@ -662,7 +671,7 @@ export class Sim {
         if (p.pos.spaceId !== aoe.spaceId) continue;
         const d = Math.hypot(p.pos.x - aoe.x, p.pos.z - aoe.z);
         if (d <= aoe.radius) {
-          dealDamage(this.ctx, id, aoe.sourceId, aoe.dps * DT, aoe.channel);
+          dealDamage(this.ctx, id, aoe.sourceId, aoe.dps * DT, aoe.channel, false);
         }
       }
     }
@@ -786,20 +795,23 @@ export class Sim {
 
   meleeFor(charId: CharacterId): boolean {
     const p = this.playerActor(charId);
-    if (!p || p.downed) return false;
+    if (!p) return false;
     return startMelee(this.ctx, p.id);
   }
 
   rangedFor(charId: CharacterId): boolean {
     const p = this.playerActor(charId);
-    if (!p || p.downed) return false;
+    if (!p) return false;
     return startRanged(this.ctx, p.id);
   }
 
   castFor(charId: CharacterId, spellId: ContentId): boolean {
     const p = this.playerActor(charId);
-    if (!p || p.downed) return false;
-    if (!(this.knownSpellsBy.get(charId) ?? []).includes(spellId)) return false;
+    if (!p) return false;
+    if (!(this.knownSpellsBy.get(charId) ?? []).includes(spellId)) {
+      this.events.push({ type: 'actionRejected', actorId: p.id, action: 'spell', reason: 'unknown' });
+      return false;
+    }
     return startSpell(this.ctx, p.id, spellId);
   }
 

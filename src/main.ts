@@ -14,6 +14,7 @@ import { ClientWorld } from './net/client_world';
 import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import { Input } from './game/input';
+import { CombatAudio } from './game/combat_audio';
 import { DT } from './sim/types';
 import type { IWorld } from './world_api';
 
@@ -53,7 +54,8 @@ if (online) {
 }
 
 const renderer = new Renderer(world, canvas);
-const hud = new Hud(world);
+const combatAudio = new CombatAudio(canvas);
+const hud = new Hud(world, (events) => combatAudio.handle(events, world.player().id));
 const input = new Input(canvas);
 if (!online) input.yaw = world.player().yaw;
 
@@ -68,6 +70,7 @@ if (!online) {
     world,
     renderer,
     input,
+    combatAudio,
   };
 }
 

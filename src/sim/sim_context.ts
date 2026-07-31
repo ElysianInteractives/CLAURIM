@@ -72,6 +72,8 @@ export interface SimContext {
     sourceId: EntityId,
     amount: number,
     channel: Projectile['channel'],
+    blockable?: boolean,
+    blockOrigin?: Vec3,
   ): void;
   applyHeal(targetId: EntityId, amount: number): void;
   applyEffect(targetId: EntityId, effectId: ContentId, source: string): void;
@@ -92,4 +94,6 @@ export interface SimContext {
   isHostile(a: Actor, b: Actor): boolean;
   /** Space-aware ground height. */
   ground(spaceId: SpaceId, x: number, z: number): number;
+  /** Earliest world obstruction along a projectile step, if any. */
+  projectileObstruction(spaceId: SpaceId, from: Vec3, to: Vec3): number | null;
 }

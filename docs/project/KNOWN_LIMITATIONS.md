@@ -14,16 +14,18 @@
   in another space stays put instead of walking through doors. Bronn/Ysolde
   schedules are authored within one space per block to mask this. Fix:
   schedule-driven door transitions for NPCs.
-- KL-5 No audio at all yet (no audio system decision has been made).
-- KL-6 Projectile collision vs interior walls uses ground height only; in
-  interiors, walls stop actors but a projectile can pass a wall segment at
-  grazing angles. Fix: segment-vs-wall test in `tickProjectiles`.
+- KL-5 Audio is limited to synthesized combat feedback unlocked by a browser
+  user gesture. There is no music, ambience, spatial mix, volume UI, or asset
+  pipeline yet.
+- KL-6 Projectile sweeps now stop on implicit interior walls and solid prop
+  AABBs. Rotated solid props still inherit KL-2's conservative unrotated
+  footprint.
 - KL-7 Browser QA is now available and has a repeatable baseline
   (`QA_BASELINE.md`), but there is no automated pixel-diff or frame-pacing
   harness. Visual and interaction changes still require human review and
   captured evidence on the supported viewport matrix.
-- KL-8 Melee arc check is 2D (ignores height difference); irrelevant until
-  flying/vertical combat exists.
+- KL-8 Melee now enforces a 1.5 m vertical envelope, but attacks still have no
+  pitch/vertical aiming model. Revisit with flying or fully vertical combat.
 - KL-9 The A* open list is an array scan (fine at slice scale; heap swap is a
   bounded perf ticket).
 - KL-10 localStorage single save slot in the OFFLINE browser host (online
@@ -45,3 +47,6 @@
   the HUD yet (clients can send via the chat command; OB-M5 adds the UI).
 - KL-17 Remote players all render with the same archetype body; per-character
   appearance is future content work.
+- KL-18 The target frame uses a 20 m / 22-degree facing selection and does not
+  ray-test world occlusion, so a hostile can briefly identify through a thin
+  wall. Add a read-only world visibility query before denser interiors or PvP.

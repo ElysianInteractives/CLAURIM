@@ -2,7 +2,7 @@
 // feed, dialogue panel, shop, inventory, journal, perks, and the death screen.
 // Observes IWorld and submits intent through it; never resolves outcomes.
 
-import type { IWorld } from '../world_api';
+import type { ActorView, IWorld } from '../world_api';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
@@ -25,8 +25,20 @@ const CSS = `
   #hud .resource--magicka .bar > div { background-color: #3c6398;
     background-image: radial-gradient(circle at 4px 4px, rgba(255,255,255,.22) 0 1px, transparent 1.5px); background-size: 8px 8px; }
   #hud .crosshair { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; transform: translate(-50%,-50%);
-    border: 2px solid rgba(239,230,207,.92); border-radius: 50%; box-sizing: border-box; opacity: .9; box-shadow: 0 0 0 1px rgba(0,0,0,.75); }
-  #hud .prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 18px; text-shadow: 0 1px 3px #000; }
+    border: 2px solid rgba(239,230,207,.92); border-radius: 50%; box-sizing: border-box; opacity: .9;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.75); transition: width .06s, height .06s, border-color .06s, box-shadow .06s; }
+  #hud .crosshair--hit { width: 18px; height: 18px; border-color: #ffe08a; box-shadow: 0 0 8px rgba(255,205,80,.9); }
+  #hud .crosshair--blocked { width: 18px; height: 18px; border-color: #8ed8ff; box-shadow: 0 0 8px rgba(85,180,255,.9); }
+  #hud .crosshair--hurt { width: 16px; height: 16px; border-color: #ff7368; box-shadow: 0 0 9px rgba(255,45,35,.9); }
+  #hud .damage-vignette { position: absolute; inset: 0; box-shadow: inset 0 0 95px 28px rgba(155,12,8,.58); }
+  #hud .target-frame { position: absolute; left: 50%; top: calc(50% + 26px); width: 260px; transform: translateX(-50%);
+    padding: 6px 9px 8px; box-sizing: border-box; text-align: center; background: rgba(9,8,8,.76);
+    border: 1px solid rgba(220,193,145,.48); border-radius: 4px; text-shadow: 0 1px 2px #000; }
+  #hud .target-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+  #hud .target-name { color: #f0dfb4; font-weight: bold; }
+  #hud .target-tier { color: #c5b388; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+  #hud .target-frame .bar { height: 9px; margin-top: 4px; }
+  #hud .prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 18px; text-shadow: 0 1px 3px #000; }
   #hud .feed { position: absolute; right: 24px; top: 24px; width: 320px; text-align: right; font-size: 14px; text-shadow: 0 1px 2px #000; }
   #hud .feed div { margin-bottom: 3px; opacity: .95; }
   #hud .clockrow { position: absolute; left: 24px; top: 18px; font-size: 14px; opacity: .85; text-shadow: 0 1px 2px #000; }
@@ -87,10 +99,15 @@ export class Hud {
   private root: HTMLDivElement;
   private feedLines: { text: string; until: number }[] = [];
   private controlsOpen = true;
+  private combatPulse: 'hit' | 'blocked' | 'hurt' | null = null;
+  private combatPulseUntil = 0;
   panel: Panel = 'none';
   private time = 0;
 
-  constructor(private world: IWorld) {
+  constructor(
+    private world: IWorld,
+    private eventObserver?: (events: ReturnType<IWorld['drainEvents']>) => void,
+  ) {
     const style = document.createElement('style');
     style.textContent = CSS;
     document.head.appendChild(style);
@@ -118,9 +135,26 @@ export class Hud {
 
   update(dtSec: number): void {
     this.time += dtSec;
-    // Sim events -> notifications.
-    for (const e of this.world.drainEvents()) {
+    if (this.combatPulseUntil <= this.time) this.combatPulse = null;
+    const selfId = this.world.player().id;
+    // One authoritative drain fans out to presentation observers before the
+    // HUD translates the same events into visual feedback.
+    const events = this.world.drainEvents();
+    this.eventObserver?.(events);
+    for (const e of events) {
       switch (e.type) {
+        case 'damage':
+          if (e.targetId === selfId) {
+            this.combatPulse = e.blocked ? 'blocked' : 'hurt';
+            this.combatPulseUntil = this.time + (e.blocked ? 0.16 : 0.24);
+          } else if (e.sourceId === selfId) {
+            this.combatPulse = e.blocked ? 'blocked' : 'hit';
+            this.combatPulseUntil = this.time + 0.16;
+          }
+          break;
+        case 'actionRejected':
+          if (e.actorId === selfId) this.notify(actionRejectionText(e.action, e.reason));
+          break;
         case 'questStarted':
           this.notify('Quest started: ' + this.questName(e.questId));
           break;
@@ -163,6 +197,9 @@ export class Hud {
         case 'playerRevived':
           this.notify('Companion revived');
           break;
+        case 'playerReleased':
+          this.notify('Companion released to the recovery point');
+          break;
         case 'chat': {
           const speaker = this.world.actorsInSpace().find((a) => a.id === e.playerId);
           this.notify(`${speaker?.name ?? '???'}: ${e.text}`);
@@ -195,10 +232,14 @@ export class Hud {
     const hh = String(Math.floor(hour)).padStart(2, '0');
     const mm = String(Math.floor((hour % 1) * 60)).padStart(2, '0');
     const prompt = this.world.nearestInteractablePrompt();
+    const target = selectCombatTarget(this.world.player(), this.world.actorsInSpace());
+    const pulseClass = this.combatPulse ? ` crosshair--${this.combatPulse}` : '';
     let html = `
       <div class="clockrow">Kaldwyn Reach - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
       ${renderResourceMeters(r)}
-      <div class="crosshair" aria-hidden="true"></div>
+      <div class="crosshair${pulseClass}" aria-hidden="true"></div>
+      ${target ? renderCombatTarget(target) : ''}
+      ${this.combatPulse === 'hurt' ? '<div class="damage-vignette" aria-hidden="true"></div>' : ''}
       <div class="feed" aria-live="polite" aria-atomic="false">${this.feedLines.map((l) => `<div>${esc(l.text)}</div>`).join('')}</div>
     `;
     if (this.panel === 'none') html += renderControlsHelp(this.controlsOpen);
@@ -316,6 +357,59 @@ export class Hud {
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function actionRejectionText(
+  action: 'melee' | 'ranged' | 'spell',
+  reason: 'busy' | 'stamina' | 'weapon' | 'ammo' | 'magicka' | 'unknown' | 'incapacitated',
+): string {
+  if (reason === 'stamina') return 'Not enough stamina';
+  if (reason === 'magicka') return 'Not enough magicka';
+  if (reason === 'ammo') return 'No arrows';
+  if (reason === 'weapon') return 'Equip a bow to use a ranged attack';
+  if (reason === 'incapacitated') return 'You cannot act while downed';
+  if (reason === 'unknown') return 'That spell is not known';
+  return `${action === 'spell' ? 'Spell' : 'Attack'} is already committed`;
+}
+
+export function selectCombatTarget(
+  player: ActorView,
+  actors: readonly ActorView[],
+  maxDistance = 20,
+): ActorView | null {
+  const forwardX = Math.sin(player.yaw);
+  const forwardZ = Math.cos(player.yaw);
+  const minDot = Math.cos((22 * Math.PI) / 180);
+  let best: ActorView | null = null;
+  let bestScore = -Infinity;
+  for (const actor of actors) {
+    if (!actor.hostileToPlayer || actor.dead || actor.downed || actor.id === player.id) continue;
+    const dx = actor.x - player.x;
+    const dz = actor.z - player.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 0.01 || distance > maxDistance || Math.abs(actor.y - player.y) > 4) continue;
+    const dot = (dx / distance) * forwardX + (dz / distance) * forwardZ;
+    if (dot < minDot) continue;
+    const score = dot * 10 - distance / maxDistance;
+    if (score > bestScore) {
+      best = actor;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+export function renderCombatTarget(target: ActorView): string {
+  const current = Math.max(0, Math.round(target.health));
+  const maximum = Math.max(1, Math.round(target.maxHealth));
+  const percent = resourcePercent(target.health, target.maxHealth);
+  return `<section class="target-frame" aria-label="Combat target">
+    <div class="target-head"><span class="target-name">${esc(target.name)}</span><span class="target-tier">${esc(target.tier)}</span></div>
+    <div class="bar hp" role="meter" aria-label="${esc(target.name)} health" aria-valuemin="0" aria-valuemax="${maximum}"
+      aria-valuenow="${Math.min(current, maximum)}" aria-valuetext="${Math.min(current, maximum)} of ${maximum}">
+      <div style="width:${percent.toFixed(2)}%"></div>
+    </div>
+  </section>`;
 }
 
 export function resourcePercent(current: number, maximum: number): number {

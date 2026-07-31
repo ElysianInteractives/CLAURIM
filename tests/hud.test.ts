@@ -1,10 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import {
   renderControlsHelp,
+  renderCombatTarget,
   renderResourceMeter,
   renderResourceMeters,
   resourcePercent,
+  selectCombatTarget,
 } from '../src/ui/hud';
+import type { ActorView } from '../src/world_api';
+
+function actor(overrides: Partial<ActorView> = {}): ActorView {
+  return {
+    id: 1,
+    templateId: 'player',
+    archetype: 'player',
+    name: 'Alva',
+    x: 0,
+    y: 0,
+    z: 0,
+    yaw: 0,
+    dead: false,
+    downed: false,
+    health: 100,
+    maxHealth: 100,
+    sneaking: false,
+    blocking: false,
+    attacking: false,
+    attackKind: null,
+    attackPhase: null,
+    telegraphTicks: 0,
+    isPlayer: true,
+    isRemotePlayer: false,
+    hostileToPlayer: false,
+    hasDialogue: false,
+    tier: 'standard',
+    ...overrides,
+  };
+}
 
 describe('HUD resource readability', () => {
   it('renders named, numeric, accessible meters for all three resources', () => {
@@ -61,5 +93,37 @@ describe('HUD controls onboarding', () => {
     expect(html).toContain('aria-label="Press H to show game controls"');
     expect(html).toContain('<kbd>H</kbd> Controls');
     expect(html).not.toContain('control-grid');
+  });
+});
+
+describe('HUD combat readability', () => {
+  it('selects the hostile closest to the authoritative facing line', () => {
+    const player = actor();
+    const centered = actor({ id: 2, name: 'Centered Wolf', x: 0.4, z: 12, hostileToPlayer: true, isPlayer: false });
+    const nearEdge = actor({ id: 3, name: 'Edge Wolf', x: 1.3, z: 4, hostileToPlayer: true, isPlayer: false });
+    const friendly = actor({ id: 4, name: 'Friendly', z: 2, hostileToPlayer: false, isPlayer: false });
+    const behind = actor({ id: 5, name: 'Behind', z: -2, hostileToPlayer: true, isPlayer: false });
+
+    expect(selectCombatTarget(player, [nearEdge, friendly, behind, centered])?.id).toBe(centered.id);
+  });
+
+  it('renders an authoritative named and numeric target health meter', () => {
+    const target = actor({
+      id: 2,
+      name: 'Pale Warden',
+      health: 137,
+      maxHealth: 380,
+      tier: 'boss',
+      hostileToPlayer: true,
+      isPlayer: false,
+    });
+    const html = renderCombatTarget(target);
+
+    expect(html).toContain('aria-label="Combat target"');
+    expect(html).toContain('Pale Warden');
+    expect(html).toContain('boss');
+    expect(html).toContain('aria-valuenow="137"');
+    expect(html).toContain('aria-valuemax="380"');
+    expect(html).toContain('width:36.05%');
   });
 });
