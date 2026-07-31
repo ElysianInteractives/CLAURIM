@@ -38,4 +38,5 @@ npm run headless   # scripted sim run without a renderer (-- ticks=9000)
 ## Repository guide
 Engineering contract: `CLAUDE.md`. Project memory: `docs/project/`
 (start with `MODEL_HANDOFF.md`). Locked architecture: `docs/project/DECISIONS.md`.
-Task backlog: `docs/project/OPUS_BACKLOG.md`.
+Improvement evidence: `docs/project/DEFICIT_REGISTER.md` and
+`docs/project/QA_BASELINE.md`. Task backlog: `docs/project/OPUS_BACKLOG.md`.

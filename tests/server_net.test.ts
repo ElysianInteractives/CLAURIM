@@ -174,6 +174,28 @@ describe('interest management (D-014)', () => {
   });
 });
 
+describe('snapshot bandwidth budget', () => {
+  it('keeps a representative four-player dungeon snapshot below 32,000 bytes', () => {
+    const { core } = makeServer();
+    const clients = ['alva', 'brona', 'cadan', 'dara'].map((charId, index) => {
+      const client = new TestClient(core, `conn${index + 1}`);
+      client.hello(charId);
+      core.sim.movePlayerTo(charId, 'duskhollow_mine', -2 + index * 1.2, 8, 0);
+      return client;
+    });
+    ticks(core, SNAPSHOT_EVERY);
+
+    const sizes = clients.map((client) => {
+      const snapshot = client.last('snapshot');
+      expect(snapshot).toBeTruthy();
+      return new TextEncoder().encode(JSON.stringify(snapshot)).byteLength;
+    });
+    const maxBytes = Math.max(...sizes);
+    console.info(`[snapshot-budget] bytes=${sizes.join(',')} max=${maxBytes} limit=32000`);
+    expect(maxBytes).toBeLessThan(32_000);
+  });
+});
+
 describe('persistence + reconnect (D-016)', () => {
   it('disconnect persists the character; reconnect restores progression', () => {
     const { core, storage } = makeServer();

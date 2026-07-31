@@ -1,5 +1,16 @@
 # Model handoff - read this first in a new session
 
+## Improvement program control baseline (Plan 0)
+Behavioral changes now require an explicit locked-in scope. Read
+`DEFICIT_REGISTER.md` for evidence/status, `QA_BASELINE.md` for repeatable
+checks and current measurements, and `SIM_RESPONSIBILITY_MAP.md` before
+proposing a change to the coordinator. Plan 0 also adds the missing sim-cycle
+and snapshot-size guards plus a real two-client `npm run qa:ws` smoke.
+
+The first browser baseline confirmed NET-001: online browser boot sends
+`hello` while the WebSocket is still connecting. This is recorded with root
+cause but deliberately not fixed until the networking change plan is locked.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this

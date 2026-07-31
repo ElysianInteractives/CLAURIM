@@ -36,12 +36,13 @@ server-side.
 Accept: type -> appears in both clients' feeds (manual two-tab check +
 screenshot). Fable review: no.
 
-## OB-M3 OPUS_READY - Snapshot bandwidth guard test
+## OB-M3 DONE - Snapshot bandwidth guard test
 Why: KL-14 needs a tripwire before entity growth.
 Inspect: `src/server/core.ts` broadcastSnapshots, `tests/server_net.test.ts`.
 Change: new test: JSON.stringify(snapshot).length < 32_000 with 4 clients +
 the mine populated; log actual size.
-Accept: green with headroom; deliberate actor-flood turns it red.
+Result: Plan 0 added the four-client mine test; baseline max is 8,077 UTF-8
+bytes against the 32,000-byte limit.
 
 ## OB-M4 OPUS_READY - Veteran variants for wolves and thralls
 Why: encounter breadth on the proven tier/role/ability schema.
@@ -131,12 +132,13 @@ test clone for the new layout.
 Accept: validator + new nav test green; enterable in-game.
 Traps: unique ids; door targetYaw; add rooms so corridors are >= 3 m wide.
 
-## OB-6 OPUS_READY - Guard test: renderer/ui never import Sim
+## OB-6 DONE - Guard test: renderer/ui never import Sim
 Why: INVARIANTS gap (I-1 mirror).
 Inspect: `tests/architecture.test.ts`.
 Change: same file; scan `src/render`+`src/ui` for `from '../sim/sim'` /
 `from '../game/sim_world'` imports; allowlist nothing.
-Accept: guard green now, red when violated (prove by temp edit).
+Result: enforced by the existing host-boundary suite in
+`tests/architecture.test.ts`.
 
 ## OB-7 OPUS_READY - HUD target frame
 Why: combat readability. Inspect: `hud.ts`, `world_read.ts` ActorView.

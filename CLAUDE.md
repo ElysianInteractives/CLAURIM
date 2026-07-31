@@ -35,7 +35,7 @@ the one shared Sim - never clone the world per client.
 | `src/server/` | `core.ts` (transport-agnostic authoritative server), `ws_host.ts` (`npm run server`, :8787), `storage.ts` (StorageProvider + FileStorage; server owns online persistence). |
 | `tests/` | Vitest: architecture guards, determinism, save/migrations, quest e2e, navigation, combat. |
 | `scripts/` | `validate_content.ts` (content gate), `make_standalone.mjs` (single-file build). |
-| `docs/project/` | Charter, architecture, DECISIONS.md (locked), OPUS_BACKLOG.md, coverage matrix. Read `MODEL_HANDOFF.md` first in a new session. |
+| `docs/project/` | Charter, architecture, locked decisions, deficit register, QA baseline, responsibility map, backlog, and coverage matrix. Read `MODEL_HANDOFF.md` first in a new session. |
 
 ## Commands
 - `npm run dev` - Vite dev server on :5173. Offline by default; online:
@@ -47,6 +47,7 @@ the one shared Sim - never clone the world per client.
 - `npm run typecheck` - `tsc --noEmit` (fast; run liberally).
 - `npm run validate` - content gate.
 - `npm run headless` - headless run (`-- ticks=9000 seed=42`).
+- `npm run qa:ws` - real two-client WebSocket smoke against a running server.
 - `npm run gate` - the full pre-done gate: validate + typecheck + tests + build. Run before calling ANY change done.
 
 ## Architecture (load-bearing)

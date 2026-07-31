@@ -9,7 +9,8 @@
    cities, mounts.
 5. M4 Completeness: shouts/powers, books, housing, accessibility, settings,
    localization scaffolding.
-6. Later programs: expansion content, authoritative server, desktop packaging.
+6. Later programs: expansion content, server deployment/operations, desktop
+   packaging.
 
 Ordering rule: a milestone's SYSTEMS land before its CONTENT volume
 (PROJECT_CHARTER non-negotiable 3).

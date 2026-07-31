@@ -18,10 +18,10 @@
 - KL-6 Projectile collision vs interior walls uses ground height only; in
   interiors, walls stop actors but a projectile can pass a wall segment at
   grazing angles. Fix: segment-vs-wall test in `tickProjectiles`.
-- KL-7 No in-sandbox browser: screenshots must be captured on a dev machine
-  (`npm run dev`, or the standalone file build). The session that built this
-  could not render pixels; visual QA of the first build happened via the
-  user's browser (see MODEL_HANDOFF).
+- KL-7 Browser QA is now available and has a repeatable baseline
+  (`QA_BASELINE.md`), but there is no automated pixel-diff or frame-pacing
+  harness. Visual and interaction changes still require human review and
+  captured evidence on the supported viewport matrix.
 - KL-8 Melee arc check is 2D (ignores height difference); irrelevant until
   flying/vertical combat exists.
 - KL-9 The A* open list is an array scan (fine at slice scale; heap swap is a

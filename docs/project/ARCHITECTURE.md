@@ -62,8 +62,9 @@ See D-009 and `src/sim/save/save.ts`. The envelope carries schemaVersion +
 contentVersion + seed + rng state + full actor/quest/bookkeeping state.
 Loads validate, migrate linearly, and reject rather than half-load.
 
-## Performance envelope (measured this session)
-- Headless: ~50k ticks/s (Node 22, sandbox container) => sim budget is a
-  rounding error at slice scale.
-- Bundle: 559 kB (147 kB gzip), three.js dominant.
+## Performance envelope (Plan 0 baseline, 2026-07-31)
+- Headless: 56,962 ticks/s for `ticks=9000 seed=42` on Node 26 / Windows.
+- Bundle: 592.86 kB (156.62 kB gzip), three.js dominant.
+- Representative four-player mine snapshots: 8,077 bytes maximum against the
+  32,000-byte tripwire.
 - Terrain cell build: 33x33 vertex grid + scatter; 25 cells live worst case.

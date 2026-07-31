@@ -1,0 +1,131 @@
+# QA baseline
+
+Plan 0 establishes how Claurim deficits are reproduced and measured before a
+behavioral change is proposed. This is a control baseline, not a declaration
+that the game is polished or release-ready.
+
+## Reference run
+
+- Date: 2026-07-31
+- Source commit: `53ccaec1fa677e33c287f7ad6d256e99ba09b69a`
+- Environment: Windows, Node `v26.0.0`, npm `11.12.1`
+- Modes: offline browser, real WebSocket server, in-memory server tests,
+  headless deterministic sim
+
+### Automated baseline before Plan 0 guards
+
+- `npm run gate`: green; 7 suites / 69 tests.
+- Content validator: 17 items, 6 effects, 3 spells, 5 perks, 11 actors,
+  3 spaces, 21 props, 4 doors, 12 spawners, 3 containers, 1 quest,
+  3 dialogues.
+- Production bundle: 592.86 kB JavaScript / 156.62 kB gzip; HTML 0.87 kB.
+- Headless `ticks=9000 seed=42`: 158 ms, 56,962 ticks/sec, 9,959-byte save,
+  20 living actors.
+- Four-player mine snapshot guard: 8,060 / 8,063 / 8,077 / 8,076 bytes;
+  maximum 8,077 against a 32,000-byte limit.
+
+### Plan 0 exit gate
+
+- `npm run gate`: green; 7 suites / 72 tests.
+- Content/IP validation, typecheck, all tests, and the production build pass.
+- `npm run qa:ws`: two clients, ack sequence 30, 4.4 m authoritative
+  movement, mutual visibility, and 3,873 / 3,861-byte observed snapshots.
+
+### Encounter benchmark
+
+`npm run mp:bench -- runs=3`:
+
+| Party | Boss kills | Average successful kill | Wipes | Downs | Revives | Max phase |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0/3 | n/a | 9 | 14 | 0 | 1 |
+| 3 | 1/3 | 25 s | 6 | 104 | 0 | 2 |
+| 5 | 2/3 | 24 s | 3 | 151 | 0 | 2 |
+
+The zero-revive result and very high down counts show that these bots are a
+pressure baseline, not evidence of a good player experience or final balance.
+
+### Real WebSocket smoke
+
+With `npm run server` active, `npm run qa:ws` connected two real `ws`
+clients, received welcome + snapshot messages, moved one character 4.4 m with
+ack sequence 30, confirmed remote-player visibility, and observed snapshots
+of 3,875 and 3,863 bytes.
+
+### Browser baseline
+
+Offline at 1280x720:
+
+- The scene, renderer, HUD, inventory, journal, and perks panels loaded.
+- No console warning or error occurred on initial offline load.
+- Inventory, journal, and perks opened and closed by their documented keys.
+- The persistent help strip is small and pressed against the bottom edge.
+- Resource bars are unlabeled and depend on color alone.
+- Frame-rate sampling is not yet automated; record browser/device and observed
+  frame pacing during human runs.
+
+Online at
+`/?ws=ws://127.0.0.1:8787&char=qa_alva&name=QA%20Alva`:
+
+- Browser startup fails before the welcome/snapshot flow.
+- Console: `InvalidStateError: Failed to execute 'send' on 'WebSocket':
+  Still in CONNECTING state`.
+- Root cause is registered as NET-001. The independent `qa:ws` smoke proves
+  the server and protocol work when the client waits for the socket to open.
+
+Pointer-lock errors created by browser automation during navigation are
+harness artifacts unless reproduced in an ordinary interactive browser.
+
+## Repeatable scenario matrix
+
+| Scenario | Purpose | Procedure / automation | Evidence |
+|---|---|---|---|
+| QA-GATE | Content, types, tests, production build | `npm run gate` | Suite/test counts and bundle output |
+| QA-OFF-BOOT | Offline renderer and HUD bootstrap | `npm run dev`; open `/` | Console log, screenshot, visible HUD |
+| QA-OFF-MENUS | Inventory, journal, perks | `Tab`, `J`, `P`; open and close each | Panel content, focus, input recovery |
+| QA-OFF-TRAVERSE | Ruin -> Fenharrow -> mine route | Walk the authored road, enter/exit the mine | Stuck/clipping list, route time, screenshots |
+| QA-CMB-SMOKE | Melee, block, spells, damage, death | Falkmoor hostiles, then a mine pull | Inputs, outcomes, readable feedback |
+| QA-SIM | Deterministic speed/save baseline | `npm run headless -- ticks=9000 seed=42` | JSON metrics |
+| QA-BAL-BOSS | Party-size pressure baseline | `npm run mp:bench -- runs=3` | JSON summary |
+| QA-NET-CORE | Server protocol/state correctness | `npm test -- tests/server_net.test.ts` | Snapshot, replay, persistence assertions |
+| QA-NET-WS | Real adapter/two-client smoke | Terminal 1 `npm run server`; terminal 2 `npm run qa:ws` | Ack, movement, visibility, snapshot bytes |
+| QA-NET-BROWSER | Actual online browser boot | Start server + dev; open query URL | Welcome/HUD, logs, remote visibility |
+| QA-PST-RECONNECT | Character/world persistence | Join, mutate, disconnect, restart, rejoin | Restored character and world fields |
+
+## Browser visual-QA procedure
+
+For every visual or interaction change:
+
+1. Record commit, browser, viewport, offline/online mode, and URL.
+2. Start at Falkmoor Ruin with a fresh save or named QA character.
+3. Capture boot, HUD, relevant panel, relevant action, and result states.
+4. Repeat at 1280x720 and one larger desktop viewport.
+5. Check legibility, clipping, focus recovery, pointer lock, camera occlusion,
+   action feedback, and console warnings/errors.
+6. Store approved evidence under `docs/screenshots/YYYY-MM-DD/` when the
+   change itself is visual.
+
+## Network-condition matrix
+
+Plan 5 must lock and implement an in-repo impairment harness. Until then, use
+the following standard profiles with the chosen external development proxy or
+browser network emulator and record the mechanism:
+
+| Profile | RTT | Jitter | Loss | Purpose |
+|---|---:|---:|---:|---|
+| Local | <5 ms | 0 | 0% | Functional baseline |
+| Good WAN | 80 ms | 10 ms | 0% | Normal remote play |
+| Degraded WAN | 150 ms | 30 ms | 1% | Reconciliation/readability |
+| Severe | 250 ms | 50 ms | 3% | Failure behavior, not quality target |
+
+For each profile record connection success, disconnects, input-to-authority
+delay, correction distance, snapshot bytes/sec, and visible remote motion.
+NET-001 currently blocks browser-profile execution beyond the handshake.
+
+## Exit evidence for every later plan
+
+- Reproduction added before the fix where practical.
+- Locked acceptance checks pass in the relevant modes.
+- No invariant or unrelated system was weakened.
+- `npm run gate` passes.
+- Browser evidence exists for visual/interaction changes.
+- Real WebSocket evidence exists for online behavior changes.
