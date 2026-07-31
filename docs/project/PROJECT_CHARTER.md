@@ -32,9 +32,10 @@ data-driven expansion without engine rewrites.
 
 ## Current milestone
 The Kaldwyn Reach vertical slice (see SCOPE.md): ruined start -> wilderness
-road -> Fenharrow village -> Duskhollow Mine, with one complete multi-stage
-quest, three villagers, a merchant, three enemy archetypes plus a boss, and
-save/load at every point. Status: playable; see MODEL_HANDOFF.md.
+road -> Fenharrow village -> Duskhollow Mine, with Siltroot Burrow as a second
+interior exemplar, one complete multi-stage quest, three villagers, a
+merchant, standard and veteran enemies plus a boss, and save/load at every
+point. Status: playable; see MODEL_HANDOFF.md.
 
 ## Development model
 Fable owns architecture, seams, exemplars, and anything expensive to reverse.

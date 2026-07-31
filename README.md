@@ -34,7 +34,9 @@ Tab inventory, J journal, P perks, O party, Enter nearby chat, H controls,
 V first/third person, F5 save, F9 load.
 
 Start at Falkmoor Ruin. The road north leads to Fenharrow; talk to Maera in
-the inn ("The Fenharrow Hearth") to begin The Hollow Delve.
+the inn ("The Fenharrow Hearth") to begin The Hollow Delve. Siltroot Burrow
+opens near the river bend, while Maera stocks the expanded iron, hide, and fur
+equipment catalog.
 
 ## Verify
 ```

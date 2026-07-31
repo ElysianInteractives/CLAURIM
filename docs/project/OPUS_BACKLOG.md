@@ -31,15 +31,11 @@ the mine populated; log actual size.
 Result: Plan 0 added the four-client mine test; baseline max is 8,077 UTF-8
 bytes against the 32,000-byte limit.
 
-## OB-M4 OPUS_READY - Veteran variants for wolves and thralls
-Why: encounter breadth on the proven tier/role/ability schema.
-Inspect: `src/sim/content/actors.ts` (redclaw_reaver exemplar).
-Change: actors.ts (+frostfang_alpha with a frontal_cone howl-swipe,
-+barrow_sentinel with ground_aoe), world.ts (one spawner each in sensible
-spots), content tests.
-Invariants: validator green; NEW ability KINDS are FABLE_REVIEW - use
-existing kinds only.
-Accept: `npm run validate` + mp:bench still shows solo-viable overworld.
+## OB-M4 DONE - Veteran variants for wolves and thralls
+Plan 8 adds Rimehowl Alpha and Barrow Sentinel through the proven veteran,
+frontal-cone, and ground-AoE schemas. Their authored spawners, factions, loot,
+ability shapes, prepared-solo check, current group benchmark, browser
+telegraphs, and full gate pass without adding an ability kind.
 
 ## OB-M5 DONE - Reconnect-while-downed policy test
 Plan 7 pins the existing extract/restore policy: disconnecting while downed
@@ -73,20 +69,10 @@ Commands: `npm run gate`, `npm run dev`.
 Accept: no stepping on fast pans; gate green.
 Traps: do not lerp across space transitions (snap when spaceId changes).
 
-## OB-2 OPUS_READY - Iron-tier weapon and armor fill (12 records)
-Why: proven item schema needs catalog breadth.
-Inspect: `src/sim/content/items.ts` (iron_sword, leather_cuirass exemplars),
-`src/sim/content/schema.ts` validator.
-Change: `src/sim/content/items.ts`, `tests/` (extend a content test), optionally
-`merchant_stock` loot table.
-Outline: add iron_axe, iron_dagger, iron_mace(as 'axe' type or add type -
-NO: do not add weapon types; stay within sword/axe/dagger/bow), hide_* armor
-set, fur_* armor set; values/weights consistent with exemplars.
-Invariants: ids permanent; validator passes; no combat-formula edits.
-Commands: `npm run validate && npx vitest run tests/sim_core.test.ts`.
-Accept: validate green, items purchasable in shop, gate green.
-Traps: `weaponType` governs skill/slot behavior; a new weaponType is
-FABLE_REQUIRED (attack timing decisions).
+## OB-2 DONE - Iron-tier weapon and armor fill (12 records)
+Plan 8 adds four weapons and hide/fur armor sets without a new weapon type or
+combat formula. All twelve records are guaranteed in `merchant_stock`; the
+catalog test verifies the link and browser QA completes an Iron Axe purchase.
 
 ## OB-3 DONE - Wall-aware projectiles in interiors
 Result: Plan 2 added a swept `projectileObstruction` SimContext query covering
@@ -94,22 +80,17 @@ terrain, implicit room walls, and solid prop AABBs, plus earliest swept actor
 selection. Focused pillar and room-wall reproductions pass in
 `tests/combat_correctness.test.ts`.
 
-## OB-4 OPUS_READY - Perk expansion within existing hooks (10 perks)
-Why: tree depth. Inspect: `src/sim/content/magic.ts` PERKS (bladesman chain),
-`src/sim/progression/skills.ts`.
-Change: content/magic.ts + a validation test.
-Outline: 2-3 tier chains for archery/sneak/block/lightArmor/restoration using
-ONLY existing StatKeys.
-Traps: a perk needing a new StatKey or trigger (e.g. "power attacks cost
-less") is FABLE_REVIEW - the modifier system may need a new stat.
+## OB-4 DONE - Perk expansion within existing hooks (10 perks)
+Plan 8 adds two-tier or three-tier archery, sneak, block, light-armor, and
+restoration chains using only existing modifier hooks. Tests pin same-skill,
+increasing, acyclic prerequisites and prove the archery chain reaches the
+derived-stat modifier path.
 
-## OB-5 OPUS_READY - Marsh-rat den: second cave using proven primitives
-Why: prove dungeon repeatability (the "second exemplar" extensibility test).
-Inspect: `content/world.ts` (duskhollow rooms/spawners/doors), `tests/navigation.test.ts`.
-Change: content/world.ts (+space, door pair, spawners, container), navigation
-test clone for the new layout.
-Accept: validator + new nav test green; enterable in-game.
-Traps: unique ids; door targetYaw; add rooms so corridors are >= 3 m wide.
+## OB-5 DONE - Siltroot Burrow second cave
+Plan 8 proves the interior pattern with five connected rooms/corridors, a
+two-way exterior door, two rat encounters, and the Rootbound Cache. The
+catalog validator, exact entrance-to-brood navigation test, all-space tour,
+and 1280/1920 browser checks pass.
 
 ## OB-6 DONE - Guard test: renderer/ui never import Sim
 Why: INVARIANTS gap (I-1 mirror).
@@ -138,11 +119,8 @@ pipeline. Do not start these from a ticket; they need design.
 choice for the repo (MIT vs proprietary), distribution target (itch/steam/web),
 art direction sign-off once the GLB pipeline is proposed.
 
-## OB-11 OPUS_READY - Content test template
-Why: every new content family PR should extend one table-driven test.
-Inspect: `tests/sim_core.test.ts` content block.
-Change: new `tests/content_catalog.test.ts`: for each item/actor/spell,
-assert exemplar-derived sanity (weapon damage in [1,40], values >= 0, loot
-tables non-empty, every merchant stockTable resolves, every dialogue entry
-reachable).
-Accept: green; deliberately breaking a record turns it red.
+## OB-11 DONE - Content test template
+Plan 8 adds `tests/content_catalog.test.ts`, covering numeric envelopes,
+item/loot/merchant/actor/modifier references, perk graphs, dialogue reach,
+host-neutral space labels, veteran ability shapes, a real modifier-chain
+hook, and a deterministic prepared-solo encounter check.

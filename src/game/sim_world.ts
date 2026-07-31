@@ -45,6 +45,10 @@ export class SimWorld implements IWorld {
     return this.actor().pos.spaceId;
   }
 
+  spaceName(spaceId: string): string {
+    return this.sim.content.spaces[spaceId]?.name ?? spaceId;
+  }
+
   spaceKind(spaceId: string): 'exterior' | 'interior' {
     return this.sim.content.spaces[spaceId]?.kind ?? 'exterior';
   }

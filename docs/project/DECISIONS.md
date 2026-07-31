@@ -245,3 +245,16 @@ nearby active party rather than unrelated bystanders. Nearby chat is
 space-scoped, control-character sanitized, whitespace normalized, capped at
 200 code points, and accepted at most once per 15 ticks per connection. The
 HUD exposes party control on `O` and a focus-safe chat composer on `Enter`.
+
+## D-030: Proven-schema content depth - LOCKED
+Content version 0.2 deepens the playable slice only through the existing
+`ItemDef`, `PerkDef`, `ActorTemplate`, `AbilityKind`, `SpaceDef`, loot, and
+spawner contracts. The locked fill is twelve merchant-backed gear records,
+ten modifier-only perks, Rimehowl Alpha and Barrow Sentinel veteran variants
+using the existing frontal-cone and ground-AoE ability kinds, and Siltroot
+Burrow as the second cave exemplar. Every new content family must resolve
+through the generic catalog guard and its relevant navigation, traversal,
+balance, and browser checks. This decision adds no weapon type, ability kind,
+stat key, combat formula, save shape, or runtime content schema. The HUD's
+location label resolves the current authored space through `IWorld`; host
+implementations may not hard-code one world-space name.

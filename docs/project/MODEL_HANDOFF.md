@@ -68,6 +68,14 @@ removes the legacy automatic `fellowship`. Enter opens a focus-safe,
 sanitized/throttled nearby-chat composer. The 15-suite, 155-test gate, real
 WebSocket smoke, and two-client 1280/1920 browser flow pass.
 
+Plan 8 verifies CNT-001/PRG-001 through D-030: content v0.2 adds twelve
+merchant-backed gear records, ten modifier-only perks, Rimehowl Alpha and
+Barrow Sentinel veteran variants, and Siltroot Burrow as the second cave.
+The new generic catalog suite, all-space traversal, prepared-solo veteran
+check, unchanged combat-output comparison, current group benchmark, and
+1280/1920 browser flow pass. Browser QA also removed a hard-coded Kaldwyn
+location label by routing authored space names through `IWorld`.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -100,21 +108,27 @@ session added and TESTED:
 - Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
   check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
   all dialogue rewritten with voices + plural-adventurer framing.
+- Proven-schema content depth (D-030): content v0.2 contains 29 items, 15
+  perks, 13 actor templates, and 4 spaces; the catalog, merchant, progression,
+  encounter, interior, and location-label additions require no new runtime
+  schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 155 tests / 15 suites green (multiplayer sim, server/net,
+- `npm test`: 166 tests / 16 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
-  architecture guards incl. I-14..I-25, browser lifecycle, and impairment).
+  architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
+  the generic content catalog).
 - Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 3,852 / 3,840-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
-- `npm run ai:bench` after Plan 4 ownership/faction/scaling corrections:
-  solo 0/3 under both policies; mechanics at 3 players takes 4,714.2 damage
-  with 1/3 clears (57 s), and at 5 takes 8,108.5 with 1/3 clears (166 s).
-  It outperforms naïve pressure at both group sizes; see ENCOUNTER_DESIGN.md.
+- `npm run ai:bench` with the Plan 8 Barrow Sentinel pull: solo remains 0/3
+  under both policies; mechanics clears 1/3 at 3 players (135 s) and 1/3 at
+  5 players (75 s). See ENCOUNTER_DESIGN.md for full current metrics.
+- `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
+  headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
   build).
 
@@ -130,7 +144,7 @@ session added and TESTED:
 - `npm run net:proxy` - real WebSocket impairment relay for browser QA.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-024), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-030), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

@@ -111,6 +111,8 @@ describe('The Hollow Delve', () => {
     sim.player().gold = 100;
     expect(sim.shopBuy('healing_draught')).toBe(true);
     expect(sim.context().countItem(sim.player().id, 'healing_draught')).toBe(before + 1);
+    expect(sim.shopBuy('iron_axe')).toBe(true);
+    expect(sim.context().countItem(sim.player().id, 'iron_axe')).toBe(1);
     expect(sim.shopSell('bread')).toBe(true);
   });
 });

@@ -351,6 +351,10 @@ export class ClientWorld implements IWorld {
     return this.snapshot?.self.spaceId ?? 'kaldwyn';
   }
 
+  spaceName(spaceId: string): string {
+    return CONTENT.spaces[spaceId]?.name ?? spaceId;
+  }
+
   spaceKind(spaceId: string): 'exterior' | 'interior' {
     return CONTENT.spaces[spaceId]?.kind ?? 'exterior';
   }

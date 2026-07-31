@@ -305,6 +305,7 @@ export class Hud {
 
   private renderHtml(): string {
     const r = this.world.playerResources();
+    const spaceName = this.world.spaceName(this.world.currentSpace());
     const hour = this.world.gameHours() % 24;
     const hh = String(Math.floor(hour)).padStart(2, '0');
     const mm = String(Math.floor((hour % 1) * 60)).padStart(2, '0');
@@ -312,7 +313,7 @@ export class Hud {
     const target = selectCombatTarget(this.world.player(), this.world.actorsInSpace());
     const pulseClass = this.combatPulse ? ` crosshair--${this.combatPulse}` : '';
     let html = `
-      <div class="clockrow">Kaldwyn Reach - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
+      <div class="clockrow">${esc(spaceName)} - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
       ${this.connectionStatus ? `<div class="connection-status connection-status--${this.connectionStatus.tone}" role="status">${esc(this.connectionStatus.text)}</div>` : ''}
       ${renderResourceMeters(r)}
       <div class="crosshair${pulseClass}" aria-hidden="true"></div>

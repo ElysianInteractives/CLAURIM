@@ -38,7 +38,8 @@ encounter reset unlocks it (anti-exploit). See `AI_ENCOUNTER_CONTRACT.md`.
   (veteran, interruptible 110-degree cleave) - the interrupt/priority lesson.
 - Flooded gallery: 5 marsh rats + Mire Matron (support healer, interruptible
   heal) - the kill-the-healer-first lesson.
-- Deep corridor: 2 barrow thralls - a pull that punishes charging ahead.
+- Deep corridor: 2 barrow thralls + Barrow Sentinel (veteran, interruptible
+  gravefrost pool) - a pull that punishes charging ahead and standing still.
 - The Pale Vault: The Pale Warden (boss, 380 base HP, frost):
   - pale_breath: 1.5 s telegraphed frontal cone, 42 frost, INTERRUPTIBLE.
   - grave_chill: pools under the current target (move or melt).
@@ -47,7 +48,27 @@ encounter reset unlocks it (anti-exploit). See `AI_ENCOUNTER_CONTRACT.md`.
   - Phase 2 (<=33%): +30% damage escalation.
   - Wipe -> deterministic full reset; personal loot per party member.
 
-## Plan 4 two-policy baseline (`npm run ai:bench`, 2026-07-31)
+## Plan 8 current two-policy baseline (`npm run ai:bench`, 2026-07-31)
+
+The Barrow Sentinel is now part of the deep-corridor encounter. Both policies
+still use identical fixed seeds, iron sword/shield, three draughts, and the
+same Warden endpoint. The prepared solo catalog check separately proves that
+Rimehowl Alpha remains beatable with an iron sword/shield and two draughts.
+
+| policy | party | kills | avg kill | wipes | downs | revives | blocks | damage taken |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| naive | 1 | 0/3 | - | 5 | 23 | 0 | 0 | 1,840.8 |
+| mechanics | 1 | 0/3 | - | 9 | 15 | 0 | 15 | 1,115.2 |
+| naive | 3 | 1/3 | 191 s | 7 | 83 | 47 | 0 | 5,691.0 |
+| mechanics | 3 | 1/3 | 135 s | 7 | 63 | 28 | 78 | 5,392.4 |
+| naive | 5 | 1/3 | 53 s | 7 | 108 | 67 | 0 | 7,883.4 |
+| mechanics | 5 | 1/3 | 75 s | 2 | 92 | 31 | 64 | 7,297.1 |
+
+The locked envelope remains intact: neither solo policy clears, while both
+group sizes can clear. This is a regression boundary for authored pressure,
+not a final difficulty verdict; the simple fixed-seed bots remain KL-13.
+
+## Plan 4 historical two-policy baseline (`npm run ai:bench`, 2026-07-31)
 
 Correct faction allegiance means the Warden and its thralls are allies rather
 than damaging one another. The prior +60% health/+12% damage extra-player

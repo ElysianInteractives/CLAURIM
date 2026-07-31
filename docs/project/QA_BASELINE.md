@@ -305,6 +305,41 @@ guild, trade, PvP, or dungeon-instancing scope.
   harness retains the known instrumentation-only MutationObserver/pointer-lock
   errors and does not ship.
 
+### Plan 8 content/progression exit
+
+Plan 8 resolves CNT-001/PRG-001 and locks D-030. It adds content depth only
+through proven schemas: twelve gear records, ten perks, two veteran variants,
+and the second cave exemplar.
+
+- The exact short-path source gate is green at 16 suites / 166 tests and a
+  651.32 kB JavaScript / 172.62 kB gzip production bundle. Content validation
+  reports 29 items, 6
+  effects, 3 spells, 15 perks, 13 actor templates, 4 spaces, 22 props, 6
+  doors, 16 spawners, 4 containers, 1 quest, and 3 dialogues; the IP scan is
+  clean.
+- `tests/content_catalog.test.ts` pins numeric envelopes, cross-catalog
+  references, perk graph integrity, dialogue reachability, current-space
+  naming, veteran ability shapes, one real modifier-chain path, and a
+  deterministic prepared-solo Rimehowl Alpha clear. Maera's stock resolves
+  all twelve new records and the quest/shop playthrough buys an Iron Axe.
+- `npm run world:tour` passes all 4 authored spaces, 23 routes, and 43
+  placements. Focused routes reach Siltroot's exterior entrance from the road
+  and its brood chamber from the interior door; both door directions and every
+  new encounter/cache anchor validate.
+- The fixed-seed `ai:bench` preserves the intended dungeon envelope: solo
+  parties clear 0/3 under both policies, while 3- and 5-player parties each
+  clear 1/3. Current policy metrics are recorded in `ENCOUNTER_DESIGN.md`.
+  The sustained combat baseline is unchanged.
+- Headless `ticks=9000 seed=42` completes 13 game hours at 45,455 ticks/sec
+  (198 ms), with 26 living actors and a 13,372-byte save.
+- Direct 1280x720 browser QA confirms the Rimehowl cone/interrupt warning,
+  Siltroot geometry/rat targeting, all 15 perks, all twelve stocked items,
+  and an Iron Axe purchase reducing gold from 1,000 to 965. It also reproduced
+  and fixed the hard-coded Kaldwyn HUD label; both offline and online hosts now
+  resolve `Siltroot Burrow` through `IWorld.spaceName`.
+- A true 1920x1080 Siltroot check has 1920x1080 document dimensions with no
+  overflow. Final browser warning/error logs are empty.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -323,6 +358,7 @@ guild, trade, PvP, or dungeon-instancing scope.
 | QA-PST-RECONNECT | Character/world persistence | Join, mutate, disconnect, restart, rejoin | Restored character and world fields |
 | QA-AUTH | Account/session/ownership and secure browser boundary | `tests/authentication.test.ts`, real `qa:ws`, create/login/reload/insecure-URL browser flow | Hash/session/ownership assertions, rotation/replay result, sign-in captures and logs |
 | QA-SOC | Party consent/persistence and nearby chat | `tests/multiplayer_sim.test.ts`, `tests/server_net.test.ts`, `tests/save.test.ts`; two authenticated browser clients at 1280 and 1920 | Solo start, invite/accept/leave, reconnect/offline frame, chat focus/delivery, layout and logs |
+| QA-CNT | Proven-schema content and progression depth | `tests/content_catalog.test.ts`, `tests/navigation.test.ts`, `tests/quest_playthrough.test.ts`, `npm run world:tour`, `npm run ai:bench`; offline browser at 1280 and 1920 | Catalog links/envelopes, perk graph/hook, veteran shape/solo envelope, merchant purchase, all-space traversal, current location, layout and logs |
 
 ## Browser visual-QA procedure
 

@@ -39,6 +39,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   ownership, and secure remote browser transport boundary (D-028).
 - Player-controlled five-character parties with durable membership, scoped
   cooperative benefits, and sanitized/throttled nearby chat (D-029).
+- Proven-schema content depth: catalog-safe gear/perk fills, veteran variants,
+  repeatable interior authoring, and host-neutral space naming (D-030).
 
 Not locked (open design space): weather, music/ambience/spatial audio and
 mixing, crafting, followers, crime,

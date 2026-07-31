@@ -57,8 +57,8 @@ boundary. Swimming requires its own later locked movement/animation package.
 `npm run world:tour` checks seed 42 by default:
 
 - Falkmoor start and all seven Kaldwyn road legs;
-- the Fenharrow inn and Duskhollow entrance branches;
-- every room in Duskhollow Mine and the Fenharrow inn;
+- the Fenharrow inn, Duskhollow, and Siltroot entrance branches;
+- every room in Duskhollow Mine, Siltroot Burrow, and the Fenharrow inn;
 - every player start, door/target, spawner anchor, NPC schedule anchor, and
   container placement;
 - coverage of every authored space.

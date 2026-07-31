@@ -1,5 +1,5 @@
 // Deterministic Plan 3 traversal tour. This is the repeatable environment
-// acceptance harness: authored exterior routes, both interiors, door targets,
+// acceptance harness: authored exterior routes, all interiors, door targets,
 // spawns, schedules, and interaction anchors must all be physically valid.
 
 import { CONTENT, PLAYER_START } from '../sim/content';
@@ -42,6 +42,12 @@ const legs: Leg[] = [
     label: 'Mine road to entrance',
     from: ROAD_POINTS[ROAD_POINTS.length - 1],
     to: CONTENT.doors.find((door) => door.id === 'door_mine_in')!,
+  },
+  {
+    spaceId: 'kaldwyn',
+    label: 'River road to Siltroot entrance',
+    from: ROAD_POINTS[4],
+    to: CONTENT.doors.find((door) => door.id === 'door_siltroot_in')!,
   },
 ];
 

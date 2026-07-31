@@ -86,6 +86,8 @@ export interface WorldReadFacet {
   seed(): number;
   /** Space the viewing player currently occupies. */
   currentSpace(): SpaceId;
+  /** Display name for an authored space. */
+  spaceName(spaceId: SpaceId): string;
   spaceKind(spaceId: SpaceId): 'exterior' | 'interior';
   gameHours(): number;
   /** Actors in the viewing player's space (renderer culls further). */

@@ -44,6 +44,23 @@ describe('interior navigation (Duskhollow Mine)', () => {
   });
 });
 
+describe('second interior exemplar (Siltroot Burrow)', () => {
+  it('routes from the nearby road bend to the exterior entrance', () => {
+    const entrance = CONTENT.doors.find((door) => door.id === 'door_siltroot_in')!;
+    const path = findPath(CONTENT, colliders, 'kaldwyn', { x: 0, y: 0, z: 60 }, entrance, SEED);
+    expect(path).not.toBeNull();
+  });
+
+  it('routes from the entrance through every chamber to the brood hollow', () => {
+    const path = findPath(CONTENT, colliders, 'siltroot_burrow', { x: 0, y: 0, z: 2 }, { x: 0, z: 52 }, SEED);
+    expect(path).not.toBeNull();
+    const layout = interiorOf(CONTENT, 'siltroot_burrow')!;
+    for (const waypoint of path!) {
+      expect(insideRooms(layout, waypoint.x, waypoint.z), `waypoint ${waypoint.x},${waypoint.z} in burrow`).toBe(true);
+    }
+  });
+});
+
 describe('exterior walkability', () => {
   it('the settlement is walkable, the high rim is not', () => {
     expect(isTerrainWalkable(CONTENT, 'kaldwyn', 40, 150, SEED)).toBe(true);

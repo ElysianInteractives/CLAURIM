@@ -1,8 +1,9 @@
 # Roadmap
 
 1. M1 Kaldwyn Reach slice - implemented; exit: visual QA + balance pass.
-2. M1.5 Hardening: OB-1..OB-7 (interpolation, guards, catalog fills, second
-   dungeon, HUD target frame), audio architecture decision.
+2. M1.5 Hardening: Plan 8 completes the catalog fills, second cave, and
+   generic content guard; interpolation and the audio architecture decision
+   remain.
 3. M2 Systems depth: crafting, weather, followers, crime, radiant templates,
    map/menus, GLB pipeline.
 4. M3 Province: multi-region streaming, main arc, faction line, dragons,
