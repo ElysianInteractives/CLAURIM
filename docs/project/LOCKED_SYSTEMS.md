@@ -17,5 +17,20 @@ amendment; "a later model prefers a different shape" is not a defect.
   improve behind the same factories).
 - Perception model (D-012).
 
+Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
+- Multiplayer state model: one Sim, many characters, per-char keyed state (D-013).
+- Server-authoritative WebSocket protocol v1 + interest-scoped 10 Hz snapshots (D-014).
+- Client prediction/reconciliation via sequenced intent (D-015).
+- StorageProvider persistence: server-owned characters + world (D-016).
+- Threat tables with decay + switch hysteresis (D-017).
+- Data-driven encounter tiers/roles/abilities/phases + locked scaling (D-018).
+- Loot ownership: shared standard corpses, personal elite/boss + containers (D-019).
+- Per-character quest ownership + 60 m party kill credit (D-020).
+- Downed/revive/release + wipe reset (D-021).
+- Naming/dialogue originality regime + automated IP gate (D-022).
+- Third-person primary camera with collision (D-023).
+
 Not locked (open design space): weather, audio, crafting, followers, crime,
-dragons/flight, multi-region streaming, radiant generation, GLB pipeline.
+dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
+accounts/authentication service, explicit party UI/matchmaking, dungeon
+instancing (current dungeon is shared-world), guilds/trading.

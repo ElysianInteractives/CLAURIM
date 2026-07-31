@@ -15,9 +15,12 @@ if (!js) throw new Error('no built js found; run vite build first');
 const code = readFileSync(join(assets, js), 'utf8');
 let html = readFileSync(join(dist, 'index.html'), 'utf8');
 html = html.replace(/<script type="module"[^>]*><\/script>/, '');
+// NOTE: the replacement MUST be a function. Minified bundles contain `$&`,
+// `$'`, and backtick-dollar sequences that String.replace would otherwise
+// interpret as substitution patterns and corrupt the output.
 html = html.replace(
   '</body>',
-  `<script type="module">${code.replace(/<\/script>/g, '<\\/script>')}</script></body>`,
+  () => `<script type="module">${code.replace(/<\/script/g, '<\\/script')}</script></body>`,
 );
 writeFileSync(join(dist, 'claurim-standalone.html'), html);
 console.log('wrote dist/claurim-standalone.html', (html.length / 1024).toFixed(0) + 'kB');

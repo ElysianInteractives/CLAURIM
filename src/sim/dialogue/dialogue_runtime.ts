@@ -1,7 +1,10 @@
 // Dialogue runtime: condition evaluation, entry-node selection, choice
-// filtering, and action execution. Dialogue trees are DATA (content/quests.ts).
+// filtering, and action execution. PER-CHARACTER (D-013/D-020): every session
+// belongs to one character; conditions read that character's journal,
+// inventory, and skills. Multiple characters may hold independent parallel
+// sessions with the same NPC (MMO phase-style conversation).
 
-import type { ContentId, EntityId } from '../types';
+import type { CharacterId, ContentId, EntityId } from '../types';
 import type { SimContext } from '../sim_context';
 import type {
   DialogueActionDef,
@@ -11,31 +14,39 @@ import type {
 } from '../content/schema';
 import { startQuest } from '../quests/quest_runtime';
 
-export function evalCondition(ctx: SimContext, cond: DialogueConditionDef): boolean {
+export function evalCondition(ctx: SimContext, charId: CharacterId, cond: DialogueConditionDef): boolean {
+  const actor = ctx.actorByCharId(charId);
+  if (!actor) return false;
+  const log = ctx.questLogOf(charId);
   switch (cond.kind) {
     case 'questAtStage': {
-      const q = ctx.quests.get(cond.questId);
+      const q = log.get(cond.questId);
       return !!q && !q.completed && q.stageId === cond.stageId;
     }
     case 'questNotStarted':
-      return !ctx.quests.has(cond.questId);
+      return !log.has(cond.questId);
     case 'questCompleted': {
-      const q = ctx.quests.get(cond.questId);
+      const q = log.get(cond.questId);
       return !!q && q.completed;
     }
     case 'hasItem':
-      return ctx.countItem(ctx.playerId(), cond.itemId) >= cond.count;
+      return ctx.countItem(actor.id, cond.itemId) >= cond.count;
     case 'skillAtLeast':
-      return ctx.player().skills[cond.skill].level >= cond.level;
+      return actor.skills[cond.skill].level >= cond.level;
   }
 }
 
-export function evalConditions(ctx: SimContext, conds: DialogueConditionDef[] | undefined): boolean {
+export function evalConditions(
+  ctx: SimContext,
+  charId: CharacterId,
+  conds: DialogueConditionDef[] | undefined,
+): boolean {
   if (!conds) return true;
-  return conds.every((c) => evalCondition(ctx, c));
+  return conds.every((c) => evalCondition(ctx, charId, c));
 }
 
 export interface DialogueSession {
+  charId: CharacterId;
   npcId: EntityId;
   dialogueId: ContentId;
   nodeId: string;
@@ -43,20 +54,21 @@ export interface DialogueSession {
   shopRequested: boolean;
 }
 
-/** Begin talking to an NPC. Emits 'talkedTo' (quest credit) and returns the
- * session, or null when the NPC has no dialogue. */
-export function beginDialogue(ctx: SimContext, npcId: EntityId): DialogueSession | null {
+/** Begin talking to an NPC as a specific character. Emits 'talkedTo' (quest
+ * credit for that character only). */
+export function beginDialogue(ctx: SimContext, charId: CharacterId, npcId: EntityId): DialogueSession | null {
   const npc = ctx.actors.get(npcId);
-  if (!npc || npc.dead) return null;
+  const playerActor = ctx.actorByCharId(charId);
+  if (!npc || npc.dead || !playerActor) return null;
   const tpl = ctx.content.actors[npc.templateId];
   if (!tpl?.dialogueId) return null;
   const def = ctx.content.dialogues[tpl.dialogueId];
   if (!def) return null;
-  ctx.emit({ type: 'talkedTo', npcTemplateId: npc.templateId });
-  ctx.onQuestEvent({ type: 'talkedTo', npcTemplateId: npc.templateId });
+  ctx.emit({ type: 'talkedTo', playerId: playerActor.id, npcTemplateId: npc.templateId });
+  ctx.onQuestEvent({ type: 'talkedTo', playerId: playerActor.id, npcTemplateId: npc.templateId });
   for (const entry of def.entries) {
-    if (evalConditions(ctx, entry.conditions)) {
-      return { npcId, dialogueId: def.id, nodeId: entry.node, shopRequested: false };
+    if (evalConditions(ctx, charId, entry.conditions)) {
+      return { charId, npcId, dialogueId: def.id, nodeId: entry.node, shopRequested: false };
     }
   }
   return null;
@@ -67,40 +79,39 @@ export function currentNode(ctx: SimContext, session: DialogueSession): Dialogue
   return def?.nodes.find((n) => n.id === session.nodeId) ?? null;
 }
 
-/** Choices visible for the current node (conditions applied). */
+/** Choices visible for the current node (conditions applied per character). */
 export function visibleChoices(ctx: SimContext, session: DialogueSession): DialogueChoiceDef[] {
   const node = currentNode(ctx, session);
   if (!node) return [];
-  return node.choices.filter((c) => evalConditions(ctx, c.conditions));
+  return node.choices.filter((c) => evalConditions(ctx, session.charId, c.conditions));
 }
 
 function runAction(ctx: SimContext, session: DialogueSession, action: DialogueActionDef): void {
-  const pid = ctx.playerId();
+  const actor = ctx.actorByCharId(session.charId);
+  if (!actor) return;
   switch (action.kind) {
     case 'startQuest':
-      startQuest(ctx, action.questId);
+      startQuest(ctx, session.charId, action.questId);
       break;
     case 'advanceQuest': {
-      const q = ctx.quests.get(action.questId);
-      if (q && !q.completed) {
-        q.stageId = action.stageId;
-      }
+      const q = ctx.questLogOf(session.charId).get(action.questId);
+      if (q && !q.completed) q.stageId = action.stageId;
       break;
     }
     case 'giveItem':
-      ctx.addItem(pid, action.itemId, action.count);
+      ctx.addItem(actor.id, action.itemId, action.count);
       break;
     case 'takeItem':
-      ctx.removeItem(pid, action.itemId, action.count);
+      ctx.removeItem(actor.id, action.itemId, action.count);
       break;
     case 'giveGold':
-      ctx.player().gold += action.amount;
+      actor.gold += action.amount;
       break;
     case 'openShop':
       session.shopRequested = true;
       break;
     case 'trainSkillXp':
-      ctx.trainSkill(pid, action.skill, action.amount);
+      ctx.trainSkill(actor.id, action.skill, action.amount);
       break;
   }
 }

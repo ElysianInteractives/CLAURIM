@@ -1,11 +1,16 @@
 # Claurim - Project Charter
 
-## What
-A full-scale, browser-playable open-world action RPG evoking the experience of
-a classic northern-province fantasy epic (the Skyrim category of play),
+## What (updated 2026-07-31: MMO pivot)
+A browser-playable, THIRD-PERSON, SERVER-AUTHORITATIVE, persistent
+multiplayer online action RPG set in an original northern fantasy province,
 executed in the compact, code-authored, verification-disciplined style of
-World of ClaudeCraft. Single-player first; the deterministic core keeps
-authoritative-server and headless hosting open.
+World of ClaudeCraft. One deterministic sim runs the offline host, the
+dedicated server, and headless tools; the server is authoritative for every
+persistent multiplayer outcome. The experience target: an MMO's structure
+(parties, group dungeons, shared world, persistent characters) with the
+freedom, exploration, and environmental storytelling of a classic northern
+fantasy RPG. Combat stays third-person ACTION combat, not tab-targeting.
+An offline single-player mode remains supported by the same core.
 
 ## Non-negotiables
 1. Clean-room IP boundary: original code, original prose, original assets,

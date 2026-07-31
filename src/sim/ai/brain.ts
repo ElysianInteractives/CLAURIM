@@ -5,7 +5,10 @@
 
 import {
   DT,
+  ENGAGE_RADIUS,
   MELEE_RANGE,
+  THREAT_DECAY_PER_SEC,
+  THREAT_SWITCH_FACTOR,
   type Actor,
   type EntityId,
   type Vec3,
@@ -15,6 +18,7 @@ import type { CollisionIndex } from '../world/collision';
 import { resolveMove } from '../world/collision';
 import { findPath, lineWalkable } from '../navigation/navgrid';
 import { startMelee, startRanged } from '../combat/combat';
+import { availableAbilities, startAbility, tickAbilityCooldowns, updatePhase } from './abilities';
 import type { ContentRegistry, ScheduleEntry } from '../content/schema';
 
 const SEARCH_SECONDS = 8;
@@ -35,6 +39,10 @@ export function makeBrain(home: Actor['pos']): NonNullable<Actor['brain']> {
     pathIdx: 0,
     repathCooldown: 0,
     alertness: 0,
+    threat: {},
+    scaledFor: 0,
+    abilityCooldowns: {},
+    phase: 0,
   };
 }
 
@@ -154,6 +162,88 @@ function currentScheduleEntry(ctx: SimContext, a: Actor): ScheduleEntry | null {
 }
 
 // ---------------------------------------------------------------------------
+// Threat + encounter helpers (D-017 / D-018)
+// ---------------------------------------------------------------------------
+
+/** Highest-threat perceivable target with switch hysteresis. */
+function selectThreatTarget(ctx: SimContext, a: Actor): EntityId {
+  const brain = a.brain!;
+  let bestId = 0;
+  let bestThreat = -1;
+  for (const [idStr, threat] of Object.entries(brain.threat)) {
+    const id = Number(idStr);
+    const cand = ctx.actors.get(id);
+    if (!cand || cand.dead || cand.downed) continue;
+    if (cand.pos.spaceId !== a.pos.spaceId) continue;
+    if (threat > bestThreat) {
+      bestThreat = threat;
+      bestId = id;
+    }
+  }
+  const current = ctx.actors.get(brain.targetId);
+  const currentValid = current && !current.dead && !current.downed && current.pos.spaceId === a.pos.spaceId;
+  if (!currentValid) return bestId;
+  const currentThreat = brain.threat[brain.targetId] ?? 0;
+  // Switch only when a rival meaningfully out-threatens the current target.
+  if (bestId !== brain.targetId && bestThreat > currentThreat * THREAT_SWITCH_FACTOR) return bestId;
+  return brain.targetId;
+}
+
+function decayThreat(a: Actor): void {
+  const brain = a.brain!;
+  const decay = 1 - THREAT_DECAY_PER_SEC * DT;
+  for (const key of Object.keys(brain.threat)) {
+    brain.threat[key as unknown as number] *= decay;
+    if (brain.threat[key as unknown as number] < 0.5) delete brain.threat[key as unknown as number];
+  }
+}
+
+/** Lock encounter scaling to the engaged party size at first aggro; also
+ * pull same-spawner allies into the fight (group aggro). */
+function engage(ctx: SimContext, a: Actor, targetId: EntityId): void {
+  const brain = a.brain!;
+  if (brain.state !== 'combat') {
+    brain.state = 'combat';
+    brain.targetId = targetId;
+    brain.threat[targetId] = Math.max(brain.threat[targetId] ?? 0, 5);
+    if (brain.scaledFor === 0) {
+      // Count players in this space within ENGAGE_RADIUS: the locked scale.
+      let n = 0;
+      for (const charId of ctx.playerCharIds()) {
+        const p = ctx.actorByCharId(charId);
+        if (!p || p.dead) continue;
+        if (p.pos.spaceId !== a.pos.spaceId) continue;
+        if (Math.hypot(p.pos.x - a.pos.x, p.pos.z - a.pos.z) <= ENGAGE_RADIUS) n++;
+      }
+      brain.scaledFor = Math.max(1, n);
+      const frac = a.stats.maxHealth > 0 ? a.health / a.stats.maxHealth : 1;
+      ctx.recalcStats(a.id);
+      a.health = a.stats.maxHealth * frac;
+    }
+    // Group aggro: allies from the same spawner within 20 m join.
+    if (a.spawnerId) {
+      for (const ally of ctx.actors.values()) {
+        if (ally.id === a.id || ally.dead || !ally.brain) continue;
+        if (ally.spawnerId !== a.spawnerId) continue;
+        if (ally.pos.spaceId !== a.pos.spaceId) continue;
+        if (Math.hypot(ally.pos.x - a.pos.x, ally.pos.z - a.pos.z) > 20) continue;
+        if (ally.brain.state !== 'combat') {
+          ally.brain.state = 'combat';
+          ally.brain.targetId = targetId;
+          ally.brain.threat[targetId] = (ally.brain.threat[targetId] ?? 0) + 3;
+          if (ally.brain.scaledFor === 0) {
+            ally.brain.scaledFor = brain.scaledFor;
+            const f = ally.stats.maxHealth > 0 ? ally.health / ally.stats.maxHealth : 1;
+            ctx.recalcStats(ally.id);
+            ally.health = ally.stats.maxHealth * f;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The state machine
 // ---------------------------------------------------------------------------
 
@@ -168,17 +258,19 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
   if (a.attack) return; // committed to a swing
 
   const tpl = content.actors[a.templateId];
+  tickAbilityCooldowns(a);
+  decayThreat(a);
 
-  // Perception scan: hostiles only (aggressive actors scan for the player and
-  // opposing factions; villagers only fight back via damage events).
+  // Perception scan: hostiles only (aggressive actors scan for every hostile
+  // actor including all player characters; villagers only fight back via
+  // damage-event threat).
   if (brain.state === 'idle' || brain.state === 'schedule' || brain.state === 'search') {
     if (tpl?.aggressive) {
       for (const other of ctx.actors.values()) {
-        if (other.id === a.id || other.dead) continue;
+        if (other.id === a.id || other.dead || other.downed) continue;
         if (!ctx.isHostile(a, other)) continue;
         if (canPerceive(ctx, a, other)) {
-          brain.state = 'combat';
-          brain.targetId = other.id;
+          engage(ctx, a, other.id);
           brain.lastKnownPos = { ...other.pos };
           break;
         }
@@ -214,10 +306,15 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
     }
 
     case 'combat': {
+      updatePhase(ctx, a);
+      // Threat-based target selection with hysteresis (D-017).
+      brain.targetId = selectThreatTarget(ctx, a);
       const target = ctx.actors.get(brain.targetId);
-      if (!target || target.dead) {
+      if (!target || target.dead || target.downed) {
+        // No valid threat left: everyone is dead, downed, or gone.
         brain.state = 'return';
         brain.targetId = 0;
+        brain.threat = {};
         break;
       }
       // Leash.
@@ -239,10 +336,35 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
         brain.timer = Math.round(SEARCH_SECONDS / DT);
         break;
       }
+      // Template abilities: elites/bosses/supports prefer a ready ability.
+      const abilities = availableAbilities(ctx, a);
+      if (abilities.length > 0 && brain.timer <= 0) {
+        for (const ability of abilities) {
+          if ((brain.abilityCooldowns[ability.id] ?? 0) > 0) continue;
+          if (startAbility(ctx, a, ability)) {
+            brain.timer = ctx.rng.int(ATTACK_PAUSE_TICKS_MIN, ATTACK_PAUSE_TICKS_MAX);
+            break;
+          }
+        }
+        if (a.attack) break;
+      }
       const dx = target.pos.x - a.pos.x;
       const dz = target.pos.z - a.pos.z;
       const dist = Math.hypot(dx, dz);
-      const ranged = tpl?.attack === 'ranged';
+      const role = tpl?.role ?? (tpl?.attack === 'ranged' ? 'ranged' : 'melee');
+      if (role === 'support') {
+        // Supports hang back and rely on their abilities (heals). Keep range.
+        a.yaw = Math.atan2(dx, dz);
+        if (dist < 10) {
+          const away = { x: a.pos.x - dx, z: a.pos.z - dz };
+          moveToward(ctx, content, colliders, a, away);
+        } else if (dist > 24) {
+          moveToward(ctx, content, colliders, a, target.pos);
+        }
+        if (brain.timer > 0) brain.timer--;
+        break;
+      }
+      const ranged = role === 'ranged';
       if (ranged) {
         a.yaw = Math.atan2(dx, dz);
         if (dist > RANGED_PREFERRED_DIST + 6) {
@@ -302,11 +424,18 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
     case 'return': {
       const arrived = moveToward(ctx, content, colliders, a, brain.homePos);
       if (arrived) {
+        // Full encounter reset (D-018/D-021): heal, clear threat, unlock
+        // scaling, drop back to base phase. Deterministic anti-exploit: the
+        // NEXT engagement re-locks scaling for the party actually present.
         brain.state = 'idle';
         brain.targetId = 0;
         brain.lastKnownPos = null;
-        // Out-of-combat recovery.
-        a.health = Math.min(a.stats.maxHealth, a.health + a.stats.maxHealth * 0.5);
+        brain.threat = {};
+        brain.phase = 0;
+        brain.abilityCooldowns = {};
+        brain.scaledFor = 0;
+        ctx.recalcStats(a.id);
+        a.health = a.stats.maxHealth;
       }
       break;
     }

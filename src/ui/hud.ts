@@ -28,6 +28,11 @@ const CSS = `
   #hud .death { position: absolute; inset: 0; background: rgba(20,0,0,.72); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
   #hud .death h1 { font-size: 44px; color: #c9b880; }
   #hud .done { color: #7a9a5f; }
+  #hud .partyframes { position: absolute; left: 24px; top: 52px; width: 180px; }
+  #hud .pmember { margin-bottom: 8px; font-size: 13px; text-shadow: 0 1px 2px #000; }
+  #hud .pmember .bar { height: 8px; margin-top: 2px; }
+  #hud .pdowntag { color: #d05040; font-weight: bold; }
+  #hud .pdown span { opacity: .7; }
 `;
 
 type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks';
@@ -84,21 +89,46 @@ export class Hud {
           this.notify(`Level up! You are now level ${e.level}`);
           break;
         case 'itemAdded':
-          if (e.actorId === this.world.player().id) this.notify(`+ ${e.count} ${e.itemId}`);
+          this.notify(`+ ${e.count} ${e.itemId}`);
           break;
         case 'death':
-          if (e.targetId !== this.world.player().id) this.notify('Slain: ' + e.templateId);
+          this.notify('Slain: ' + e.templateId);
           break;
+        case 'telegraph':
+          this.notify(e.interruptible ? '! Interruptible cast incoming !' : '! Dangerous attack incoming !');
+          break;
+        case 'interrupted':
+          this.notify('Cast interrupted!');
+          break;
+        case 'bossPhase':
+          this.notify(`The enemy grows more dangerous (phase ${e.phase + 1})`);
+          break;
+        case 'encounterWipe':
+          this.notify('Your party has fallen. The encounter resets.');
+          break;
+        case 'playerDowned':
+          this.notify('A companion is down!');
+          break;
+        case 'playerRevived':
+          this.notify('Companion revived');
+          break;
+        case 'chat': {
+          const speaker = this.world.actorsInSpace().find((a) => a.id === e.playerId);
+          this.notify(`${speaker?.name ?? '???'}: ${e.text}`);
+          break;
+        }
         default:
           break;
       }
     }
     this.feedLines = this.feedLines.filter((l) => l.until > this.time);
 
-    // Dialogue/shop panels follow sim state.
+    // Dialogue/shop panels follow authoritative state, not local history:
+    // an open shop view forces the shop panel even if the dialogue frame was
+    // never rendered (frame skips, online snapshot gaps).
     if (this.world.dialogueView()) this.panel = 'dialogue';
-    else if (this.panel === 'dialogue') this.panel = this.world.shopView() ? 'shop' : 'none';
-    if (this.panel === 'shop' && !this.world.shopView()) this.panel = 'none';
+    else if (this.world.shopView()) this.panel = 'shop';
+    else if (this.panel === 'dialogue' || this.panel === 'shop') this.panel = 'none';
 
     this.root.innerHTML = this.renderHtml();
     this.bindPanelClicks();
@@ -125,8 +155,19 @@ export class Hud {
       <div class="feed">${this.feedLines.map((l) => `<div>${esc(l.text)}</div>`).join('')}</div>
     `;
     if (prompt && this.panel === 'none') html += `<div class="prompt">[E] ${esc(prompt)}</div>`;
-    if (this.world.playerDead()) {
-      html += `<div class="death"><h1>You have fallen.</h1><div class="row" data-act="respawn">Rise again at Falkmoor Ruin</div></div>`;
+    // Party frames (multiplayer presence).
+    const party = this.world.party();
+    if (party.length > 1) {
+      html += `<div class="partyframes">`;
+      for (const m of party) {
+        if (m.isSelf) continue;
+        html += `<div class="pmember${m.downed ? ' pdown' : ''}"><span>${esc(m.name)}</span><div class="bar hp"><div style="width:${(100 * m.health) / m.maxHealth}%"></div></div>${m.downed ? '<span class="pdowntag">DOWN</span>' : ''}</div>`;
+      }
+      html += `</div>`;
+    }
+    if (this.world.playerDowned()) {
+      const secs = Math.ceil(this.world.downedTicksLeft() / 30);
+      html += `<div class="death"><h1>You are down.</h1><div class="row static">A party member can revive you. Auto-release in ${secs}s.</div><div class="row" data-act="respawn">Release now</div></div>`;
       return html;
     }
     switch (this.panel) {

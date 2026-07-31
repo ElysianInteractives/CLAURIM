@@ -10,15 +10,19 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "validate": "tsx scripts/validate_content.ts",
+    "validate": "tsx scripts/validate_content.ts && tsx scripts/check_ip.ts",
     "headless": "tsx src/headless/run.ts",
+    "server": "tsx src/server/ws_host.ts",
+    "mp:bench": "tsx src/headless/mp_bench.ts",
     "standalone": "vite build && node scripts/make_standalone.mjs",
     "gate": "npm run validate && npm run typecheck && vitest run && vite build"
   },
   "dependencies": {
-    "three": "^0.165.0"
+    "three": "^0.165.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "@types/node": "^22.0.0",
     "@types/three": "^0.165.0",
     "tsx": "^4.19.0",

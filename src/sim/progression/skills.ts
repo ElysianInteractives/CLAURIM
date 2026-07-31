@@ -20,7 +20,7 @@ export function trainSkill(ctx: SimContext, actorId: EntityId, skill: SkillId, x
     st.xp -= skillXpForLevel(st.level);
     st.level += 1;
     leveled = true;
-    ctx.emit({ type: 'skillUp', skill, level: st.level });
+    ctx.emit({ type: 'skillUp', playerId: actorId, skill, level: st.level });
     grantCharacterXp(ctx, actorId, CHARACTER_XP_PER_SKILL_UP);
   }
   if (leveled) ctx.recalcStats(actorId);
@@ -34,7 +34,7 @@ export function grantCharacterXp(ctx: SimContext, actorId: EntityId, xp: number)
     a.characterXp -= xpForLevel(a.level);
     a.level += 1;
     a.perkPoints += 1;
-    ctx.emit({ type: 'levelUp', level: a.level });
+    ctx.emit({ type: 'levelUp', playerId: actorId, level: a.level });
     ctx.recalcStats(actorId);
     // Level-up refills resources (rest moment).
     a.health = a.stats.maxHealth;

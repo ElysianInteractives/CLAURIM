@@ -8,12 +8,16 @@
 
 import type {
   Actor,
+  CharacterId,
   ContentId,
   EntityId,
+  PartyId,
   QuestState,
 } from '../types';
 
-export const SAVE_SCHEMA_VERSION = 1;
+/** v2: multiplayer world saves (D-013). v1 single-player saves migrate:
+ * the sole player becomes character 'p1' in the default party. */
+export const SAVE_SCHEMA_VERSION = 2;
 
 export interface ActorSave {
   id: EntityId;
@@ -32,6 +36,8 @@ export interface ActorSave {
   effects: { effectId: string; remaining: number; stacks: number; source: string }[];
   spawnerId: string | null;
   lootRolled: boolean;
+  downed?: boolean;
+  downedTicks?: number;
   brainState?: {
     state: string;
     homePos: { spaceId: string; x: number; y: number; z: number };
@@ -51,13 +57,19 @@ export interface SaveGame {
   tick: number;
   rngState: number;
   nextEntityId: number;
-  playerId: EntityId;
+  /** Characters resident in this world save. */
+  players: { charId: CharacterId; entityId: EntityId }[];
+  primaryCharId: CharacterId | null;
   actors: ActorSave[];
-  quests: QuestState[];
+  /** Per-character quest journals (D-020). */
+  questLogs: { charId: CharacterId; quests: QuestState[] }[];
+  /** Per-character known spells. */
+  knownSpells: { charId: CharacterId; spells: ContentId[] }[];
+  /** Per-character looted-container sets (D-019 personal container loot). */
+  containersLootedBy: { charId: CharacterId; ids: string[] }[];
+  parties: { partyId: PartyId; members: CharacterId[] }[];
   /** Spawner ids that have already produced their actors. */
   spawnersSpawned: string[];
-  /** Container ids already looted (their loot is rolled exactly once). */
-  containersLooted: string[];
 }
 
 export type MigrationFn = (raw: Record<string, unknown>) => Record<string, unknown>;
@@ -74,6 +86,30 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
       containersLooted: raw.containersLooted ?? [],
       spawnersSpawned: raw.spawnersSpawned ?? [],
     };
+  },
+  // v1 -> v2: single-player -> multiplayer world save (D-013). The sole
+  // player becomes character 'p1'; its journal, known spells, and looted
+  // containers become per-character records; a default party is created.
+  1: (raw) => {
+    const playerId = raw.playerId as number;
+    const quests = (raw.quests as unknown[]) ?? [];
+    const looted = (raw.containersLooted as string[]) ?? [];
+    const spells = (raw.playerKnownSpells as string[]) ?? ['flamebolt', 'mend_wounds'];
+    const out: Record<string, unknown> = {
+      ...raw,
+      schemaVersion: 2,
+      players: [{ charId: 'p1', entityId: playerId }],
+      primaryCharId: 'p1',
+      questLogs: [{ charId: 'p1', quests }],
+      knownSpells: [{ charId: 'p1', spells }],
+      containersLootedBy: [{ charId: 'p1', ids: looted }],
+      parties: [{ partyId: 'fellowship', members: ['p1'] }],
+    };
+    delete out.playerId;
+    delete out.quests;
+    delete out.containersLooted;
+    delete out.playerKnownSpells;
+    return out;
   },
 };
 
@@ -107,19 +143,85 @@ export function parseSave(json: string): SaveGame {
     ['tick', 'number'],
     ['rngState', 'number'],
     ['nextEntityId', 'number'],
-    ['playerId', 'number'],
     ['contentVersion', 'string'],
   ];
   for (const [key, type] of required) {
     if (typeof raw[key] !== type) throw new SaveError(`corrupt save: bad ${key}`);
   }
-  if (!Array.isArray(raw.actors)) throw new SaveError('corrupt save: bad actors');
-  if (!Array.isArray(raw.quests)) throw new SaveError('corrupt save: bad quests');
-  if (!Array.isArray(raw.spawnersSpawned)) throw new SaveError('corrupt save: bad spawnersSpawned');
-  if (!Array.isArray(raw.containersLooted)) throw new SaveError('corrupt save: bad containersLooted');
+  for (const key of ['actors', 'players', 'questLogs', 'knownSpells', 'containersLootedBy', 'parties', 'spawnersSpawned']) {
+    if (!Array.isArray(raw[key])) throw new SaveError(`corrupt save: bad ${key}`);
+  }
   const save = raw as unknown as SaveGame;
-  if (!save.actors.some((a) => a.id === save.playerId)) {
-    throw new SaveError('corrupt save: player actor missing');
+  for (const p of save.players) {
+    if (typeof p.charId !== 'string' || typeof p.entityId !== 'number') {
+      throw new SaveError('corrupt save: bad player record');
+    }
+    if (!save.actors.some((a) => a.id === p.entityId)) {
+      throw new SaveError(`corrupt save: actor missing for character ${p.charId}`);
+    }
   }
   return save;
+}
+
+// ---------------------------------------------------------------------------
+// Per-character persistence (server-owned; D-016). A CharacterSave is the
+// durable record for one character independent of any world save, restored
+// on (re)connect. Versioned separately from the world schema.
+// ---------------------------------------------------------------------------
+
+export const CHARACTER_SCHEMA_VERSION = 1;
+
+export interface CharacterSave {
+  schemaVersion: number;
+  contentVersion: string;
+  charId: CharacterId;
+  name: string;
+  pos: { spaceId: string; x: number; y: number; z: number };
+  yaw: number;
+  health: number;
+  stamina: number;
+  magicka: number;
+  inventory: { itemId: string; count: number }[];
+  equipment: Record<string, string>;
+  gold: number;
+  effects: { effectId: string; remaining: number; stacks: number; source: string }[];
+  skills: Record<string, { level: number; xp: number }>;
+  perks: string[];
+  level: number;
+  characterXp: number;
+  perkPoints: number;
+  knownSpells: ContentId[];
+  quests: QuestState[];
+  containersLooted: string[];
+}
+
+export const CHARACTER_MIGRATIONS: Record<number, MigrationFn> = {};
+
+export function parseCharacterSave(json: string): CharacterSave {
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    throw new SaveError('corrupt character save: not valid JSON');
+  }
+  let version = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 0;
+  if (version > CHARACTER_SCHEMA_VERSION) {
+    throw new SaveError(`character schema ${version} newer than supported ${CHARACTER_SCHEMA_VERSION}`);
+  }
+  while (version < CHARACTER_SCHEMA_VERSION) {
+    const migrate = CHARACTER_MIGRATIONS[version];
+    if (!migrate) throw new SaveError(`no character migration path from ${version}`);
+    raw = migrate(raw);
+    const v = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : version;
+    if (v <= version) throw new SaveError('character migration did not advance');
+    version = v;
+  }
+  if (typeof raw.charId !== 'string' || typeof raw.name !== 'string') {
+    throw new SaveError('corrupt character save: bad identity');
+  }
+  if (typeof raw.pos !== 'object' || raw.pos === null) throw new SaveError('corrupt character save: bad pos');
+  for (const key of ['inventory', 'perks', 'quests', 'containersLooted', 'knownSpells']) {
+    if (!Array.isArray(raw[key])) throw new SaveError(`corrupt character save: bad ${key}`);
+  }
+  return raw as unknown as CharacterSave;
 }

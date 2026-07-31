@@ -3,7 +3,7 @@
 // active effect mods, composed by effects/modifiers.deriveStats.
 
 import type { Actor, ActorKind, ContentId, EntityId, Position, SkillId, Stats } from '../types';
-import { SKILL_IDS, BASE_WALK_SPEED } from '../types';
+import { SKILL_IDS, BASE_WALK_SPEED, SCALE_DMG_PER_PLAYER, SCALE_HP_PER_PLAYER } from '../types';
 import type { ContentRegistry } from '../content/schema';
 import { deriveStats, type StatModifier } from '../effects/modifiers';
 
@@ -74,6 +74,9 @@ export function createActor(
     perkPoints: 0,
     brain: null,
     factionId: null,
+    downed: false,
+    downedTicks: 0,
+    summonedBy: 0,
     spawnerId: null,
     lootRolled: false,
     moveIntent: { x: 0, z: 0 },
@@ -134,6 +137,16 @@ export function collectModifiers(content: ContentRegistry, a: Actor): StatModifi
     { stat: 'stealth', op: 'mul', value: 1 + (sk.sneak.level - 1) * 0.05, source: 'skill:sneak' },
     { stat: 'blockMitigation', op: 'add', value: (sk.block.level - 1) * 0.01, source: 'skill:block' },
   );
+  // Encounter scaling (D-018): locked at first aggro to the engaged party
+  // size; expressed through the one modifier system like everything else.
+  if (a.brain && a.brain.scaledFor > 1) {
+    const extra = a.brain.scaledFor - 1;
+    mods.push(
+      { stat: 'maxHealth', op: 'mul', value: 1 + SCALE_HP_PER_PLAYER * extra, source: `scale:party${a.brain.scaledFor}` },
+      { stat: 'meleeDamage', op: 'mul', value: 1 + SCALE_DMG_PER_PLAYER * extra, source: `scale:party${a.brain.scaledFor}` },
+      { stat: 'rangedDamage', op: 'mul', value: 1 + SCALE_DMG_PER_PLAYER * extra, source: `scale:party${a.brain.scaledFor}` },
+    );
+  }
   // Active effects.
   for (const ef of a.effects) {
     const def = content.effects[ef.effectId];

@@ -125,8 +125,13 @@ export const SPAWNERS: SpawnerDef[] = [
   // Mine gate camp (quest stage: clear the entrance)
   { id: 'sp_gate_raiders', spaceId: 'kaldwyn', x: 108, z: 324, actorId: 'redclaw_raider', count: 2, radius: 8, respawnGameHours: 'never' },
   { id: 'sp_gate_archer', spaceId: 'kaldwyn', x: 114, z: 328, actorId: 'redclaw_archer', count: 1, radius: 6, respawnGameHours: 'never' },
-  // Mine interior
-  { id: 'sp_mine_rats', spaceId: 'duskhollow_mine', x: 0, z: 33, actorId: 'marsh_rat', count: 3, radius: 6, respawnGameHours: 'never' },
+  // Mine gate veteran (target-priority + interrupt teaching pull)
+  { id: 'sp_gate_reaver', spaceId: 'kaldwyn', x: 111, z: 327, actorId: 'redclaw_reaver', count: 1, radius: 3, respawnGameHours: 'never' },
+  // Mine interior: rat pack guarded by a healing matron (priority target)
+  { id: 'sp_mine_rats', spaceId: 'duskhollow_mine', x: 0, z: 33, actorId: 'marsh_rat', count: 5, radius: 6, respawnGameHours: 'never' },
+  { id: 'sp_mine_matron', spaceId: 'duskhollow_mine', x: -5, z: 36, actorId: 'mire_matron', count: 1, radius: 2, respawnGameHours: 'never' },
+  // Deep corridor thralls (multi-enemy pull before the vault)
+  { id: 'sp_mine_thralls', spaceId: 'duskhollow_mine', x: 0, z: 46, actorId: 'barrow_thrall', count: 2, radius: 3, respawnGameHours: 'never' },
   { id: 'sp_mine_boss', spaceId: 'duskhollow_mine', x: 0, z: 60, actorId: 'barrow_wight', count: 1, radius: 2, respawnGameHours: 'never' },
   // Villagers (spawned via schedule system, one per spawner)
   { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 3, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },

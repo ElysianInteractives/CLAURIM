@@ -35,7 +35,7 @@ function stripComments(src: string): string {
 
 const IMPORT_RE = /\b(?:import|export)\b[^;'"]*?\bfrom\s*['"]([^'"]+)['"]/g;
 const DOM_GLOBAL_RE = /\b(document|window|navigator|localStorage|sessionStorage|requestAnimationFrame)\s*[.([]/;
-const NONDETERMINISM_RE = /\b(Math\.random|Date\.now|performance\.now)\b/;
+const NONDETERMINISM_RE = /\b(Math\.random|Date\.now|performance\.now|new\s+Date\s*\()/;
 
 function importsOf(src: string): string[] {
   const out: string[] = [];
@@ -76,6 +76,39 @@ describe('architecture: src/sim is the host-agnostic deterministic core', () => 
       const hit = src.match(NONDETERMINISM_RE);
       expect(hit, `${file}: ${hit?.[0] ?? ''}`).toBeNull();
     }
+  });
+});
+
+describe('architecture: hosts observe through IWorld, never through Sim', () => {
+  it('render/ui never import the concrete Sim or its adapter', () => {
+    for (const dir of ['render', 'ui']) {
+      const files = walk(join(repoRoot, 'src', dir));
+      expect(files.length).toBeGreaterThan(0);
+      for (const file of files) {
+        const src = stripComments(readFileSync(file, 'utf8'));
+        for (const spec of importsOf(src)) {
+          expect(spec, `${file} imports ${spec}`).not.toMatch(/sim\/sim$/);
+          expect(spec, `${file} imports ${spec}`).not.toMatch(/game\/sim_world$/);
+          expect(spec, `${file} imports ${spec}`).not.toMatch(/net\/client_world$/);
+          expect(spec, `${file} imports ${spec}`).not.toMatch(/(?:^|\/)server\//);
+        }
+      }
+    }
+  });
+
+  it('the sim never imports the server or client network layers', () => {
+    for (const file of walk(simRoot)) {
+      const src = stripComments(readFileSync(file, 'utf8'));
+      for (const spec of importsOf(src)) {
+        expect(spec, `${file} imports ${spec}`).not.toMatch(/(?:^|\/)(server|net)(\/|$)/);
+      }
+    }
+  });
+
+  it('the wire protocol stays free of runtime sim/server imports (types only)', () => {
+    const src = readFileSync(join(repoRoot, 'src', 'net', 'protocol.ts'), 'utf8');
+    const valueImports = [...src.matchAll(/^import\s+(?!type\b)[^;]*from\s*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+    expect(valueImports, `protocol.ts value-imports: ${valueImports.join(', ')}`).toEqual([]);
   });
 });
 

@@ -6,6 +6,73 @@ exemplar, invariants, steps, tests, commands, acceptance, traps.
 
 ---
 
+# Multiplayer-era tickets (2026-07-31 pivot)
+
+## OB-M1 OPUS_READY - Explicit party commands (invite/leave) on the party model
+Why: milestone auto-party ('fellowship') must become player-controlled.
+Inspect: `src/sim/sim.ts` (joinParty/partyOf/partyMembersOf, DEFAULT_PARTY),
+`src/net/protocol.ts` (CommandKind), `src/server/core.ts` handleCommand,
+`tests/multiplayer_sim.test.ts` party suite.
+Change: sim.ts (partyInvite/partyLeave methods, pending-invite map),
+protocol.ts (+2 command kinds + validation), core.ts (dispatch), hud.ts
+(invite prompt rows), tests.
+Exemplar: existing joinParty + the cmd dispatch table.
+Invariants: I-19 (per-char isolation), D-020 credit rules unchanged; party
+state persists in world save (extend serialize/load symmetric to parties).
+Tests: invite/accept/leave; credit follows the NEW party; save round-trip.
+Commands: `npx vitest run tests/multiplayer_sim.test.ts`, `npm run gate`.
+Accept: two characters can form/leave a party in a server test.
+Traps: do not let a character be in two parties; keep DEFAULT_PARTY only as
+new-character fallback.
+
+## OB-M2 OPUS_READY - Chat input box in the HUD
+Why: KL-16; the chat plumbing (cmd + event + feed render) already works.
+Inspect: `src/ui/hud.ts` (feed + CSS), `src/game/input.ts` (Enter key),
+`src/world_api/player_intent.ts` chat().
+Change: hud.ts (input row toggled by Enter, calls world.chat), input.ts
+(Enter opens, Escape closes; suppress game keys while typing).
+Invariants: renderer/ui observe IWorld only; 200-char limit already enforced
+server-side.
+Accept: type -> appears in both clients' feeds (manual two-tab check +
+screenshot). Fable review: no.
+
+## OB-M3 OPUS_READY - Snapshot bandwidth guard test
+Why: KL-14 needs a tripwire before entity growth.
+Inspect: `src/server/core.ts` broadcastSnapshots, `tests/server_net.test.ts`.
+Change: new test: JSON.stringify(snapshot).length < 32_000 with 4 clients +
+the mine populated; log actual size.
+Accept: green with headroom; deliberate actor-flood turns it red.
+
+## OB-M4 OPUS_READY - Veteran variants for wolves and thralls
+Why: encounter breadth on the proven tier/role/ability schema.
+Inspect: `src/sim/content/actors.ts` (redclaw_reaver exemplar).
+Change: actors.ts (+frostfang_alpha with a frontal_cone howl-swipe,
++barrow_sentinel with ground_aoe), world.ts (one spawner each in sensible
+spots), content tests.
+Invariants: validator green; NEW ability KINDS are FABLE_REVIEW - use
+existing kinds only.
+Accept: `npm run validate` + mp:bench still shows solo-viable overworld.
+
+## OB-M5 OPUS_READY - Reconnect-while-downed policy test
+Why: pin the edge: disconnect while downed must not dodge death.
+Inspect: `src/sim/sim.ts` extractCharacter (downed -> release-health rule),
+`tests/server_net.test.ts` reconnect suite.
+Change: add test: down a character, disconnect, reconnect; expect released
+state (alive, reduced resources, at recovery point or stored pos).
+Accept: documents + pins the policy; no sim change unless the test exposes a
+real hole (then FABLE_REVIEW).
+
+## OB-M6 FABLE_REVIEW - Blocking/interrupting bot policy for mp_bench
+Smarter bots (block telegraphs, spread from cleaves, prioritize matron/
+thralls, actually revive) to bound difficulty from above. Policy code is
+mechanical; reviewing the resulting balance conclusions is Fable's.
+
+## OB-M7 FABLE_REQUIRED - Accounts + authentication service (KL-11),
+dungeon instancing, delta-encoded snapshots, guild/trade/matchmaking
+systems, multi-realm sharding. Do not start from tickets; these need design.
+
+---
+
 ## OB-1 OPUS_READY - Renderer interpolation between sim ticks
 Why: KL-1; smooths motion at 30 Hz sim.
 Inspect: `src/main.ts` (loop), `src/render/renderer.ts` (updateActors/updateCamera).

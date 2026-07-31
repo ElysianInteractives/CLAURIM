@@ -112,6 +112,46 @@ export interface LootTableDef {
 // Actors
 // ---------------------------------------------------------------------------
 
+// Encounter tiers and data-driven abilities (D-018). Abilities are template
+// DATA interpreted by ai/abilities.ts; boss phases gate abilities and mods.
+
+export type EncounterTier = 'standard' | 'veteran' | 'elite' | 'boss';
+export type CombatRole = 'melee' | 'ranged' | 'support';
+
+export type AbilityKind = 'frontal_cone' | 'ground_aoe' | 'summon' | 'heal_ally';
+
+export interface AbilityDef {
+  id: string;
+  kind: AbilityKind;
+  /** Telegraph windup in ticks (visible cast). */
+  telegraphTicks: number;
+  interruptible: boolean;
+  cooldownTicks: number;
+  damage?: number;
+  channel?: import('../types').DamageChannel;
+  /** frontal_cone: half-angle degrees + range. */
+  coneDegrees?: number;
+  range?: number;
+  /** ground_aoe: pool radius, dps, and lifetime. */
+  aoeRadius?: number;
+  aoeDps?: number;
+  aoeTicks?: number;
+  /** summon */
+  summonActorId?: string;
+  summonCount?: number;
+  /** heal_ally */
+  healAmount?: number;
+}
+
+export interface PhaseDef {
+  /** Phase begins when health fraction drops to this value or below. */
+  healthFrac: number;
+  /** Ability ids unlocked in this phase (must exist on the template). */
+  unlockAbilities?: string[];
+  damageMult?: number;
+  moveSpeedMult?: number;
+}
+
 export interface ScheduleEntry {
   fromHour: number;
   toHour: number;
@@ -142,6 +182,16 @@ export interface ActorTemplate {
   archetype: string;
   respawnGameHours: number | 'never';
   moveSpeed?: number;
+  /** Encounter tier (default 'standard'). Governs scaling + threat rules. */
+  tier?: EncounterTier;
+  /** Combat role for composition design (default matches attack kind). */
+  role?: CombatRole;
+  /** Data-driven abilities (telegraphs, summons, pools, heals). */
+  abilities?: AbilityDef[];
+  /** Boss phases, ordered by descending healthFrac. */
+  phases?: PhaseDef[];
+  /** Crowd-control / interrupt resistance: immune to telegraph interruption. */
+  interruptImmune?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -385,6 +435,31 @@ export function validateContent(c: ContentRegistry): string[] {
   for (const [id, a] of Object.entries(c.actors)) {
     uniq('actor', id);
     if (a.id !== id) err(`actor ${id}: id mismatch`);
+    const abilityIds = new Set<string>();
+    for (const ab of a.abilities ?? []) {
+      if (abilityIds.has(ab.id)) err(`actor ${id}: duplicate ability ${ab.id}`);
+      abilityIds.add(ab.id);
+      if (ab.telegraphTicks < 0) err(`actor ${id}: ability ${ab.id} negative telegraph`);
+      if (ab.cooldownTicks < 1) err(`actor ${id}: ability ${ab.id} cooldown must be >= 1`);
+      if (ab.kind === 'frontal_cone' && (!ab.damage || !ab.range || !ab.coneDegrees))
+        err(`actor ${id}: ability ${ab.id} frontal_cone needs damage/range/coneDegrees`);
+      if (ab.kind === 'ground_aoe' && (!ab.aoeRadius || !ab.aoeDps || !ab.aoeTicks))
+        err(`actor ${id}: ability ${ab.id} ground_aoe needs aoeRadius/aoeDps/aoeTicks`);
+      if (ab.kind === 'summon' && (!ab.summonActorId || !ab.summonCount))
+        err(`actor ${id}: ability ${ab.id} summon needs summonActorId/summonCount`);
+      if (ab.kind === 'summon' && ab.summonActorId && !c.actors[ab.summonActorId])
+        err(`actor ${id}: ability ${ab.id} unknown summon actor ${ab.summonActorId}`);
+      if (ab.kind === 'heal_ally' && !ab.healAmount)
+        err(`actor ${id}: ability ${ab.id} heal_ally needs healAmount`);
+    }
+    let prevFrac = 1.01;
+    for (const ph of a.phases ?? []) {
+      if (ph.healthFrac >= prevFrac) err(`actor ${id}: phases must have descending healthFrac`);
+      prevFrac = ph.healthFrac;
+      for (const abId of ph.unlockAbilities ?? []) {
+        if (!abilityIds.has(abId)) err(`actor ${id}: phase unlocks unknown ability ${abId}`);
+      }
+    }
     if (a.lootTable && !c.lootTables[a.lootTable]) err(`actor ${id}: unknown lootTable`);
     if (a.dialogueId && !c.dialogues[a.dialogueId]) err(`actor ${id}: unknown dialogue`);
     if (a.merchant && !c.lootTables[a.merchant.stockTable]) err(`actor ${id}: unknown stockTable`);

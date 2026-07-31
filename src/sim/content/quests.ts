@@ -1,7 +1,14 @@
 // Quest + dialogue content for the vertical slice. All prose is original.
-// Exemplar shapes: multi-stage quest with kill/collect/talkTo/reach objectives,
-// an optional objective, conditional dialogue entries, quest acquisition and
-// turn-in through dialogue, and a merchant shop hook.
+// Exemplar shapes: multi-stage group quest with kill/collect/talkTo/reach
+// objectives, an optional objective, conditional dialogue entries, quest
+// acquisition and turn-in through dialogue, and a merchant shop hook.
+//
+// Dialogue voices (docs/project/IP_STYLE_GUIDE.md): Maera is a practical
+// innkeep who talks in stew, ledgers, and understatement; Brandvar is a smith
+// of few words who respects work, not titles; Eydris is a dry-humored hunter
+// who narrates the reach like weather. All three treat adventurers as a
+// familiar TRADE passing through Fenharrow: the world has many, and no one is
+// addressed as a singular chosen hero (multiplayer-aware framing, D-020).
 
 import type { DialogueDef, QuestDef } from './schema';
 
@@ -13,9 +20,9 @@ export const QUESTS: Record<string, QuestDef> = {
       {
         id: 'entrance',
         journal:
-          'Maera Fenn asked me to find Hadrin, a prospector who never returned from Duskhollow Mine. Redclaw raiders have camped at the mine gate.',
+          'Maera Fenn is paying crews to find Hadrin, a prospector who never came back from Duskhollow Mine. Redclaw raiders hold the mine gate; she advises against going alone.',
         objectives: [
-          { id: 'clear_gate', kind: 'kill', target: 'redclaw_raider', count: 2, text: 'Drive off the Redclaw raiders at the mine gate' },
+          { id: 'clear_gate', kind: 'kill', target: 'redclaw_raider', count: 2, text: 'Drive the Redclaw raiders from the mine gate' },
           { id: 'reach_mine', kind: 'reach', target: 'kaldwyn:118:338:10', count: 1, text: 'Reach the entrance of Duskhollow Mine' },
         ],
         next: 'delve',
@@ -23,9 +30,9 @@ export const QUESTS: Record<string, QuestDef> = {
       {
         id: 'delve',
         journal:
-          'The mine gate is clear. I should search Duskhollow Mine for any trace of Hadrin.',
+          'The gate is clear. Somewhere in Duskhollow Mine there may be a trace of what became of Hadrin.',
         objectives: [
-          { id: 'find_journal', kind: 'collect', target: 'prospectors_journal', count: 1, text: "Find a trace of Hadrin in Duskhollow Mine" },
+          { id: 'find_journal', kind: 'collect', target: 'prospectors_journal', count: 1, text: 'Find a trace of Hadrin in Duskhollow Mine' },
           { id: 'ore_sample', kind: 'collect', target: 'duskhollow_ore', count: 1, text: 'Recover a pale ore sample (optional)', optional: true },
         ],
         next: 'warden',
@@ -33,7 +40,7 @@ export const QUESTS: Record<string, QuestDef> = {
       {
         id: 'warden',
         journal:
-          "Hadrin's journal tells of a pale thing that walks the deep vault. Whatever took him is still down here.",
+          "Hadrin's journal tells of a pale thing that walks the deep vault, and of picks dropped and men gone quiet. Whatever took him is still down here, and it is not weakening.",
         objectives: [
           { id: 'slay_warden', kind: 'kill', target: 'barrow_wight', count: 1, text: 'Destroy the Pale Warden' },
         ],
@@ -42,7 +49,7 @@ export const QUESTS: Record<string, QuestDef> = {
       {
         id: 'return',
         journal:
-          'The Pale Warden is destroyed. Maera deserves to know what became of Hadrin.',
+          'The Pale Warden is destroyed. Maera keeps her ledger honest; she will want the whole account.',
         objectives: [
           { id: 'tell_maera', kind: 'talkTo', target: 'maera', count: 1, text: 'Return to Maera Fenn' },
         ],
@@ -50,9 +57,9 @@ export const QUESTS: Record<string, QuestDef> = {
       },
     ],
     reward: {
-      gold: 100,
-      items: [{ itemId: 'healing_draught', count: 2 }],
-      xp: 120,
+      gold: 150,
+      items: [{ itemId: 'healing_draught', count: 3 }],
+      xp: 200,
     },
   },
 };
@@ -71,29 +78,29 @@ export const DIALOGUES: Record<string, DialogueDef> = {
     nodes: [
       {
         id: 'greet',
-        text: "Welcome to the Hearth, stranger. Warm yourself. Though I'll not pretend all is well here: a friend of mine went up to Duskhollow and never came back.",
+        text: "Stew's on, coin's fair, and the fire doesn't care where you're from. You have the look of another blade come north for work. Good. Work is the one thing Fenharrow has too much of.",
         choices: [
-          { text: 'Tell me about your friend.', next: 'offer' },
+          { text: 'What kind of work?', next: 'offer' },
           { text: 'Let me see your goods.', actions: [{ kind: 'openShop' }], next: 'end' },
-          { text: 'Just passing through.', next: 'end' },
+          { text: 'Just the fire, thanks.', next: 'end' },
         ],
       },
       {
         id: 'offer',
-        text: "Hadrin. A prospector, stubborn as stone. He swore the old mine held pale ore worth a fortune. That was nine days ago. Now Redclaw banners hang at the gate. Will you look for him? I can pay.",
+        text: "Hadrin. A prospector, stubborn as a mule in mud. Swore Duskhollow held pale ore worth a season's trade. Nine days gone, and now Redclaw banners hang at the gate he walked through. I'm paying any crew that finds him, and I do mean crew. The last one who went up alone came back as a rumor.",
         choices: [
-          { text: "I'll find him.", actions: [{ kind: 'startQuest', questId: 'hollow_delve' }], next: 'accepted' },
-          { text: 'Not my trouble.', next: 'end' },
+          { text: "We'll take the job.", actions: [{ kind: 'startQuest', questId: 'hollow_delve' }], next: 'accepted' },
+          { text: 'Not our trouble.', next: 'end' },
         ],
       },
       {
         id: 'accepted',
-        text: 'Thank you. The mine lies northeast, past the last bend of the road. Mind the raiders, they do not bargain.',
-        choices: [{ text: 'I will return.', next: 'end' }],
+        text: "Northeast, past the last bend of the road. Mind the raiders; they don't bargain, and the archer on the rocks earns her keep. Come back whole. I hate wasted stew.",
+        choices: [{ text: 'We will.', next: 'end' }],
       },
       {
         id: 'progress',
-        text: 'Any word of Hadrin? The road northeast, past the bend. I keep the stew warm for him, fool that I am.',
+        text: "Still nothing of Hadrin. Other crews have poked at the gate and thought better of it. If yours gets past the Redclaws, watch the deep vault; miners never liked that end of the tunnel even before all this.",
         choices: [
           { text: 'Still searching.', next: 'end' },
           { text: 'Let me see your goods.', actions: [{ kind: 'openShop' }], next: 'end' },
@@ -101,19 +108,19 @@ export const DIALOGUES: Record<string, DialogueDef> = {
       },
       {
         id: 'turnin',
-        text: 'You came back. Your face tells me half of it. Say the rest.',
+        text: 'Back, and standing. Your face does half the telling. Give me the rest for the ledger.',
         choices: [
           { text: 'Hadrin is dead. The thing that killed him is destroyed.', next: 'reward' },
         ],
       },
       {
         id: 'reward',
-        text: 'Then he rests, and the mine is clean. That is worth more than coin, but take the coin anyway. Fenharrow remembers its friends.',
+        text: "Then he rests, and the mine is clean, and I can stop lying to his sister in my letters. Take the coin; you and yours earned it. Fenharrow keeps accounts, and it remembers its friends.",
         choices: [{ text: 'Thank you, Maera.', next: 'end' }],
       },
       {
         id: 'after',
-        text: 'The Hearth is yours whenever you pass, friend of Fenharrow.',
+        text: 'The Hearth is yours whenever you pass, friends of Fenharrow. First bowl is on the house. The second goes in the ledger.',
         choices: [
           { text: 'Let me see your goods.', actions: [{ kind: 'openShop' }], next: 'end' },
           { text: 'Farewell.', next: 'end' },
@@ -128,16 +135,22 @@ export const DIALOGUES: Record<string, DialogueDef> = {
     nodes: [
       {
         id: 'greet',
-        text: 'Mind the sparks. Bronn Hale, smith of Fenharrow. If you mean to walk the north road, walk it in good steel.',
+        text: "Mind the sparks. Brandvar Hale. If you're another of Maera's hired blades, get your edges seen to before you walk north. Steel doesn't care how brave you are.",
         choices: [
           { text: 'Any advice for a fighter?', next: 'advice' },
+          { text: 'What do you think of Fenharrow?', next: 'town' },
           { text: 'Farewell.', next: 'end' },
         ],
       },
       {
         id: 'advice',
-        text: 'Keep your shield up and your feet under you. A blade you cannot lift is worse than no blade at all.',
-        choices: [{ text: 'I will remember.', next: 'end' }],
+        text: "Shield up, feet under you, and when a big one winds up a swing you can see coming, that's your window; hit it hard enough and you'll spoil the blow. Fighting beside others? Pick your targets so you're not all hammering one nail while three more work loose.",
+        choices: [{ text: 'Sound counsel.', next: 'end' }],
+      },
+      {
+        id: 'town',
+        text: "Timber, ore, and stubbornness; that's the whole town. My mother helped raise the palisade. I'd rather sharpen plows than swords, but the road keeps sending me swords.",
+        choices: [{ text: 'May it send you plows again.', next: 'end' }],
       },
     ],
   },
@@ -151,12 +164,12 @@ export const DIALOGUES: Record<string, DialogueDef> = {
     nodes: [
       {
         id: 'greet',
-        text: 'Ysolde. I hunt the reach. Wolves grow bold near the river bend lately, so keep an arrow nocked.',
-        choices: [{ text: 'Thanks for the warning.', next: 'end' }],
+        text: "Eydris. I hunt the reach and sell what it gives up. Wolves are bold by the river bend this season, so keep an arrow nocked and a friend in earshot. The reach doesn't eat careful people. Often.",
+        choices: [{ text: 'Noted. Thanks.', next: 'end' }],
       },
       {
         id: 'hint',
-        text: 'Headed for Duskhollow? The Redclaws post an archer on the rocks above the gate. Put her down first, or she will put you down.',
+        text: "Duskhollow, is it? Then a free scrap of scouting: the Redclaws keep an archer on the rocks above the gate and a big brute they're all scared of by the fire. Put the archer down first or she'll pick your crew apart while the brute keeps you busy.",
         choices: [{ text: 'Good eyes. Thank you.', next: 'end' }],
       },
     ],

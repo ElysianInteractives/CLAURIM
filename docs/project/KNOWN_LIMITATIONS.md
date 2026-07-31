@@ -26,4 +26,22 @@
   flying/vertical combat exists.
 - KL-9 The A* open list is an array scan (fine at slice scale; heap swap is a
   bounded perf ticket).
-- KL-10 localStorage single save slot in the browser host.
+- KL-10 localStorage single save slot in the OFFLINE browser host (online
+  characters are server-persisted, D-016).
+- KL-11 No real authentication: charId is the identity token. Anyone who
+  knows a charId can play that character. Accounts service is FABLE_REQUIRED
+  before any public deployment.
+- KL-12 Camera collision handles terrain/floors via ray-march; building/prop
+  occlusion is not yet handled (camera can clip through walls at odd angles).
+- KL-13 Difficulty numbers are bounded from below by naive bots (never
+  block, cluster in cleaves, rarely revive). Real-party validation and a
+  smarter bot policy are open benchmark work (OB-M6).
+- KL-14 Snapshots are full (self-contained) JSON at 10 Hz; fine at slice
+  scale, needs delta encoding before hundreds of visible entities.
+- KL-15 The shared-world dungeon has no instancing: two parties in the mine
+  share one boss (lockout = 'never respawns' after a kill). Instancing is a
+  declared later system (LOCKED_SYSTEMS open list).
+- KL-16 Chat renders in the notification feed; there is no chat input box in
+  the HUD yet (clients can send via the chat command; OB-M5 adds the UI).
+- KL-17 Remote players all render with the same archetype body; per-character
+  appearance is future content work.

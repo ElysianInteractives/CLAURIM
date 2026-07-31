@@ -99,7 +99,7 @@ export function buildCharacter(archetype: string): THREE.Group {
 
 /** Per-frame posing: walk bob, attack arm raise, sneak crouch, death fall. */
 export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: number): void {
-  if (view.dead) {
+  if (view.dead || view.downed) {
     group.rotation.x = -Math.PI / 2;
     group.position.y = view.y + 0.25;
     return;

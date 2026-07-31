@@ -1,15 +1,26 @@
-// Quest runtime: an explicit, testable state machine. Quest logic is DATA
-// (content/quests.ts); this module interprets it. Progression is event-driven:
-// Sim feeds SimEvents into onQuestEvent, objectives accumulate, stages advance
-// when all non-optional objectives complete, rewards grant on 'done'.
+// Quest runtime: explicit, testable state machines interpreted from content
+// data. MULTIPLAYER MODEL (D-020): journals are PER-CHARACTER. Credit rules:
+//   kill      killer's journal + party members within ENGAGE_RADIUS, same space
+//   collect   personal (tracks that character's inventory)
+//   talkTo    personal
+//   reach     personal (positional poll per character)
+//   interact  personal (the interacting character), party-shared for doors
+// Rewards grant to the completing character only.
 
-import type { ContentId, QuestState, SimEvent } from '../types';
+import {
+  ENGAGE_RADIUS,
+  type CharacterId,
+  type ContentId,
+  type QuestState,
+  type SimEvent,
+} from '../types';
 import type { SimContext } from '../sim_context';
 import type { ObjectiveDef, QuestStageDef } from '../content/schema';
 import { grantCharacterXp } from '../progression/skills';
 
-export function startQuest(ctx: SimContext, questId: ContentId): boolean {
-  if (ctx.quests.has(questId)) return false;
+export function startQuest(ctx: SimContext, charId: CharacterId, questId: ContentId): boolean {
+  const log = ctx.questLogOf(charId);
+  if (log.has(questId)) return false;
   const def = ctx.content.quests[questId];
   if (!def) return false;
   const first = def.stages[0];
@@ -21,11 +32,10 @@ export function startQuest(ctx: SimContext, questId: ContentId): boolean {
     failed: false,
   };
   initStageObjectives(state, first);
-  ctx.quests.set(questId, state);
-  ctx.emit({ type: 'questStarted', questId });
-  // Retroactive credit: items already carried count for collect objectives.
-  recheckCollectObjectives(ctx, state);
-  maybeAdvance(ctx, state);
+  log.set(questId, state);
+  ctx.emit({ type: 'questStarted', charId, questId });
+  recheckCollectObjectives(ctx, charId, state);
+  maybeAdvance(ctx, charId, state);
   return true;
 }
 
@@ -42,13 +52,20 @@ function currentStage(ctx: SimContext, state: QuestState): QuestStageDef | null 
   return def.stages.find((s) => s.id === state.stageId) ?? null;
 }
 
-function creditObjective(ctx: SimContext, state: QuestState, obj: ObjectiveDef, amount: number): void {
+function creditObjective(
+  ctx: SimContext,
+  charId: CharacterId,
+  state: QuestState,
+  obj: ObjectiveDef,
+  amount: number,
+): void {
   const prog = state.objectives[obj.id];
   if (!prog || prog.done) return;
   prog.count = Math.min(obj.count, prog.count + amount);
   if (prog.count >= obj.count) prog.done = true;
   ctx.emit({
     type: 'objectiveProgress',
+    charId,
     questId: state.questId,
     objectiveId: obj.id,
     progress: prog.count,
@@ -56,20 +73,22 @@ function creditObjective(ctx: SimContext, state: QuestState, obj: ObjectiveDef, 
   });
 }
 
-/** Collect objectives track CURRENT possession, so recheck from inventory. */
-function recheckCollectObjectives(ctx: SimContext, state: QuestState): void {
+/** Collect objectives track CURRENT possession of that character. */
+function recheckCollectObjectives(ctx: SimContext, charId: CharacterId, state: QuestState): void {
   const stage = currentStage(ctx, state);
-  if (!stage) return;
+  const actor = ctx.actorByCharId(charId);
+  if (!stage || !actor) return;
   for (const obj of stage.objectives) {
     if (obj.kind !== 'collect') continue;
     const prog = state.objectives[obj.id];
     if (!prog || prog.done) continue;
-    const have = ctx.countItem(ctx.playerId(), obj.target);
+    const have = ctx.countItem(actor.id, obj.target);
     if (have !== prog.count) {
       prog.count = Math.min(obj.count, have);
       if (prog.count >= obj.count) prog.done = true;
       ctx.emit({
         type: 'objectiveProgress',
+        charId,
         questId: state.questId,
         objectiveId: obj.id,
         progress: prog.count,
@@ -79,107 +98,157 @@ function recheckCollectObjectives(ctx: SimContext, state: QuestState): void {
   }
 }
 
-function maybeAdvance(ctx: SimContext, state: QuestState): void {
+function maybeAdvance(ctx: SimContext, charId: CharacterId, state: QuestState): void {
   const stage = currentStage(ctx, state);
   if (!stage) return;
   for (const obj of stage.objectives) {
     if (obj.optional) continue;
     if (!state.objectives[obj.id]?.done) return;
   }
-  // Advance.
   if (stage.next === 'done') {
     state.completed = true;
     state.stageId = 'done';
     const def = ctx.content.quests[state.questId]!;
-    const pid = ctx.playerId();
-    const player = ctx.player();
-    player.gold += def.reward.gold;
-    for (const it of def.reward.items) ctx.addItem(pid, it.itemId, it.count);
-    grantCharacterXp(ctx, pid, def.reward.xp);
-    ctx.emit({ type: 'questCompleted', questId: state.questId });
+    const actor = ctx.actorByCharId(charId);
+    if (actor) {
+      actor.gold += def.reward.gold;
+      for (const it of def.reward.items) ctx.addItem(actor.id, it.itemId, it.count);
+      grantCharacterXp(ctx, actor.id, def.reward.xp);
+    }
+    ctx.emit({ type: 'questCompleted', charId, questId: state.questId });
   } else {
     const def = ctx.content.quests[state.questId]!;
     const next = def.stages.find((s) => s.id === stage.next);
     if (!next) return;
     state.stageId = next.id;
     initStageObjectives(state, next);
-    ctx.emit({ type: 'questAdvanced', questId: state.questId, stageId: next.id });
-    recheckCollectObjectives(ctx, state);
-    maybeAdvance(ctx, state); // cascades if the next stage is already satisfied
+    ctx.emit({ type: 'questAdvanced', charId, questId: state.questId, stageId: next.id });
+    recheckCollectObjectives(ctx, charId, state);
+    maybeAdvance(ctx, charId, state);
   }
+}
+
+/** Characters eligible for shared kill credit: the killer plus party members
+ * in the same space within ENGAGE_RADIUS. */
+function killCreditRecipients(ctx: SimContext, killerEntityId: number): CharacterId[] {
+  const killerChar = ctx.charIdOf(killerEntityId);
+  if (!killerChar) return [];
+  const killer = ctx.actorByCharId(killerChar);
+  if (!killer) return [];
+  const out: CharacterId[] = [];
+  for (const member of ctx.partyMembersOf(killerChar)) {
+    const actor = ctx.actorByCharId(member);
+    if (!actor || actor.dead) continue;
+    if (member !== killerChar) {
+      if (actor.pos.spaceId !== killer.pos.spaceId) continue;
+      const d = Math.hypot(actor.pos.x - killer.pos.x, actor.pos.z - killer.pos.z);
+      if (d > ENGAGE_RADIUS) continue;
+    }
+    out.push(member);
+  }
+  return out;
 }
 
 /** The event feed. Sim calls this for kill / item / talk / reach / interact. */
 export function onQuestEvent(ctx: SimContext, e: SimEvent): void {
-  for (const state of ctx.quests.values()) {
-    if (state.completed || state.failed) continue;
-    const stage = currentStage(ctx, state);
-    if (!stage) continue;
-    let touched = false;
-    for (const obj of stage.objectives) {
-      switch (obj.kind) {
-        case 'kill':
-          if (e.type === 'death' && e.templateId === obj.target && e.sourceId === ctx.playerId()) {
-            creditObjective(ctx, state, obj, 1);
-            touched = true;
-          }
-          break;
-        case 'collect':
-          if ((e.type === 'itemAdded' || e.type === 'itemRemoved') && e.actorId === ctx.playerId() && e.itemId === obj.target) {
-            recheckCollectObjectives(ctx, state);
-            touched = true;
-          }
-          break;
-        case 'talkTo':
-          if (e.type === 'talkedTo' && e.npcTemplateId === obj.target) {
-            creditObjective(ctx, state, obj, 1);
-            touched = true;
-          }
-          break;
-        case 'reach':
-          if (e.type === 'spaceEntered') {
-            // reach targets are checked positionally by tickReachObjectives.
-          }
-          break;
-        case 'interact':
-          if (e.type === 'interacted' && e.targetId === obj.target) {
-            creditObjective(ctx, state, obj, 1);
-            touched = true;
-          }
-          break;
-      }
+  // Resolve which characters this event can credit.
+  let recipients: CharacterId[] = [];
+  switch (e.type) {
+    case 'death':
+      recipients = killCreditRecipients(ctx, e.sourceId);
+      break;
+    case 'itemAdded':
+    case 'itemRemoved': {
+      const c = ctx.charIdOf(e.actorId);
+      if (c) recipients = [c];
+      break;
     }
-    if (touched) maybeAdvance(ctx, state);
+    case 'talkedTo': {
+      const c = ctx.charIdOf(e.playerId);
+      if (c) recipients = [c];
+      break;
+    }
+    case 'interacted': {
+      const c = ctx.charIdOf(e.actorId);
+      if (c) recipients = [c];
+      break;
+    }
+    default:
+      return;
+  }
+  for (const charId of recipients) {
+    const log = ctx.questLogOf(charId);
+    for (const state of log.values()) {
+      if (state.completed || state.failed) continue;
+      const stage = currentStage(ctx, state);
+      if (!stage) continue;
+      let touched = false;
+      for (const obj of stage.objectives) {
+        switch (obj.kind) {
+          case 'kill':
+            if (e.type === 'death' && e.templateId === obj.target) {
+              creditObjective(ctx, charId, state, obj, 1);
+              touched = true;
+            }
+            break;
+          case 'collect':
+            if ((e.type === 'itemAdded' || e.type === 'itemRemoved') && e.itemId === obj.target) {
+              recheckCollectObjectives(ctx, charId, state);
+              touched = true;
+            }
+            break;
+          case 'talkTo':
+            if (e.type === 'talkedTo' && e.npcTemplateId === obj.target) {
+              creditObjective(ctx, charId, state, obj, 1);
+              touched = true;
+            }
+            break;
+          case 'interact':
+            if (e.type === 'interacted' && e.targetId === obj.target) {
+              creditObjective(ctx, charId, state, obj, 1);
+              touched = true;
+            }
+            break;
+          case 'reach':
+            break;
+        }
+      }
+      if (touched) maybeAdvance(ctx, charId, state);
+    }
   }
 }
 
-/** Positional 'reach' objectives, polled by Sim every few ticks. */
+/** Positional 'reach' objectives, polled by Sim every few ticks, per character. */
 export function tickReachObjectives(ctx: SimContext): void {
-  const player = ctx.player();
-  for (const state of ctx.quests.values()) {
-    if (state.completed || state.failed) continue;
-    const stage = currentStage(ctx, state);
-    if (!stage) continue;
-    let touched = false;
-    for (const obj of stage.objectives) {
-      if (obj.kind !== 'reach') continue;
-      const prog = state.objectives[obj.id];
-      if (!prog || prog.done) continue;
-      const [spaceId, xs, zs, rs] = obj.target.split(':');
-      if (player.pos.spaceId !== spaceId) continue;
-      const dx = player.pos.x - Number(xs);
-      const dz = player.pos.z - Number(zs);
-      if (dx * dx + dz * dz <= Number(rs) * Number(rs)) {
-        creditObjective(ctx, state, obj, 1);
-        touched = true;
+  for (const charId of ctx.playerCharIds()) {
+    const actor = ctx.actorByCharId(charId);
+    if (!actor || actor.dead) continue;
+    const log = ctx.questLogOf(charId);
+    for (const state of log.values()) {
+      if (state.completed || state.failed) continue;
+      const stage = currentStage(ctx, state);
+      if (!stage) continue;
+      let touched = false;
+      for (const obj of stage.objectives) {
+        if (obj.kind !== 'reach') continue;
+        const prog = state.objectives[obj.id];
+        if (!prog || prog.done) continue;
+        const [spaceId, xs, zs, rs] = obj.target.split(':');
+        if (actor.pos.spaceId !== spaceId) continue;
+        const dx = actor.pos.x - Number(xs);
+        const dz = actor.pos.z - Number(zs);
+        if (dx * dx + dz * dz <= Number(rs) * Number(rs)) {
+          creditObjective(ctx, charId, state, obj, 1);
+          touched = true;
+        }
       }
+      if (touched) maybeAdvance(ctx, charId, state);
     }
-    if (touched) maybeAdvance(ctx, state);
   }
 }
 
-/** Journal view: current stage text + objective progress for the UI. */
-export function journalFor(ctx: SimContext): {
+/** Journal view for one character. */
+export function journalFor(ctx: SimContext, charId: CharacterId): {
   questId: ContentId;
   name: string;
   stageJournal: string;
@@ -187,7 +256,7 @@ export function journalFor(ctx: SimContext): {
   objectives: { text: string; progress: number; required: number; done: boolean; optional: boolean }[];
 }[] {
   const out = [];
-  for (const state of ctx.quests.values()) {
+  for (const state of ctx.questLogOf(charId).values()) {
     const def = ctx.content.quests[state.questId];
     if (!def) continue;
     if (state.completed) {

@@ -1,25 +1,35 @@
 // The Sim coordinator: owns world state, the tick-phase order, the SimContext
-// binding, player command entry points, and save/load. System behavior lives
-// in the sibling modules (combat/, ai/, quests/, inventory/, ...) behind the
-// SimContext seam; this file stays a thin conductor. LOCKED D-001/D-002.
+// binding, player command entry points, and save/load. MULTIPLAYER MODEL
+// (D-013): one authoritative Sim hosts MANY player characters; every
+// per-player concern (input, journal, dialogue, shop, spells, container loot,
+// downed state) is keyed by CharacterId. Single-player hosts and legacy tests
+// use the primary-character wrappers, which delegate to the same paths.
 
 import { Rng } from './rng';
 import {
+  DOWNED_TICKS,
   DT,
+  ENGAGE_RADIUS,
   GAME_HOURS_PER_SECOND,
+  NO_ENTITY,
+  RELEASE_HEALTH_FRAC,
+  REVIVE_HEALTH_FRAC,
   SPRINT_MULT,
   SPRINT_STAMINA_PER_SEC,
   SNEAK_MULT,
-  NO_ENTITY,
+  THREAT_PER_HEAL,
   type Actor,
+  type CharacterId,
   type ContentId,
   type DamageChannel,
   type EntityId,
+  type PartyId,
   type Position,
   type QuestState,
   type SimEvent,
   type SkillId,
   type SpaceId,
+  type Vec3,
 } from './types';
 import { CONTENT, CONTENT_VERSION, PLAYER_START } from './content';
 import { validateContent, type ContentRegistry } from './content/schema';
@@ -58,12 +68,26 @@ import {
   currentNode,
   type DialogueSession,
 } from './dialogue/dialogue_runtime';
-import type { SimContext } from './sim_context';
-import { SAVE_SCHEMA_VERSION, parseSave, type ActorSave, type SaveGame } from './save/save';
+import type { GroundAoe, SimContext } from './sim_context';
+import {
+  CHARACTER_SCHEMA_VERSION,
+  SAVE_SCHEMA_VERSION,
+  parseSave,
+  type ActorSave,
+  type CharacterSave,
+  type SaveGame,
+} from './save/save';
 
 /** Factions hostile to each other (symmetric). Wild creatures (factionId null,
- * aggressive) are hostile to everything but their own template. */
-const HOSTILE_PAIRS: ReadonlySet<string> = new Set(['redclaw|fenharrow', 'fenharrow|redclaw', 'redclaw|player', 'player|redclaw']);
+ * aggressive) are hostile to everything but their own faction. */
+const HOSTILE_PAIRS: ReadonlySet<string> = new Set([
+  'redclaw|fenharrow',
+  'fenharrow|redclaw',
+  'redclaw|player',
+  'player|redclaw',
+]);
+
+export const DEFAULT_PARTY: PartyId = 'fellowship';
 
 export interface PlayerInput {
   /** Normalized move intent in the player's local heading space. */
@@ -76,6 +100,22 @@ export interface PlayerInput {
   jump: boolean;
 }
 
+export const IDLE_INPUT: PlayerInput = {
+  moveX: 0,
+  moveZ: 0,
+  yaw: 0,
+  sprint: false,
+  sneak: false,
+  block: false,
+  jump: false,
+};
+
+interface PlayerTransient {
+  vy: number;
+  airborne: boolean;
+  lastYaw: number;
+}
+
 export class Sim {
   readonly content: ContentRegistry;
   readonly seed: number;
@@ -83,25 +123,33 @@ export class Sim {
   readonly colliders: CollisionIndex;
   readonly actors = new Map<EntityId, Actor>();
   readonly projectiles: import('./types').Projectile[] = [];
-  readonly quests = new Map<ContentId, QuestState>();
+  readonly groundAoes: GroundAoe[] = [];
   /** Events emitted during the most recent tick (hosts consume, sim clears). */
   events: SimEvent[] = [];
   tickCount = 0;
   nextEntityId = 1;
-  playerIdValue: EntityId = NO_ENTITY;
-  playerKnownSpells: ContentId[] = [];
+
+  // --- per-character state (D-013) -----------------------------------------
+  readonly players = new Map<CharacterId, EntityId>();
+  primaryCharId: CharacterId | null = null;
+  readonly questLogs = new Map<CharacterId, Map<ContentId, QuestState>>();
+  readonly knownSpellsBy = new Map<CharacterId, ContentId[]>();
+  readonly containersLootedByChar = new Map<CharacterId, Set<string>>();
+  readonly parties = new Map<PartyId, CharacterId[]>();
+  readonly dialogueSessions = new Map<CharacterId, DialogueSession>();
+  readonly shopMerchantBy = new Map<CharacterId, EntityId>();
+  private transientBy = new Map<CharacterId, PlayerTransient>();
+
   spawnersSpawned = new Set<string>();
-  containersLooted = new Set<string>();
   /** Per-spawner game-hour when its last actor died (respawn bookkeeping). */
   spawnerClearedAt = new Map<string, number>();
-  dialogue: DialogueSession | null = null;
-  /** Merchant the open shop belongs to (0 = closed). */
-  shopMerchantId: EntityId = NO_ENTITY;
-  private playerVy = 0;
-  private playerAirborne = false;
   private readonly ctx: SimContext;
 
-  constructor(seed: number, content: ContentRegistry = CONTENT, opts: { skipSpawn?: boolean } = {}) {
+  constructor(
+    seed: number,
+    content: ContentRegistry = CONTENT,
+    opts: { skipSpawn?: boolean; noDefaultPlayer?: boolean } = {},
+  ) {
     const errors = validateContent(content);
     if (errors.length > 0) {
       throw new Error(`content validation failed:\n${errors.join('\n')}`);
@@ -113,8 +161,8 @@ export class Sim {
     resetProjectileIds();
     this.ctx = this.buildContext();
     if (!opts.skipSpawn) {
-      this.spawnPlayer();
       this.spawnWorld();
+      if (!opts.noDefaultPlayer) this.addPlayer('p1', 'Wanderer');
     }
   }
 
@@ -143,23 +191,54 @@ export class Sim {
       get projectiles() {
         return sim.projectiles;
       },
-      get quests() {
-        return sim.quests;
+      get groundAoes() {
+        return sim.groundAoes;
       },
       get events() {
         return sim.events;
       },
       gameHours: () => sim.gameHours(),
-      playerId: () => sim.playerIdValue,
+      tickCount: () => sim.tickCount,
+      playerId: () => sim.primaryEntityId(),
       player: () => sim.player(),
+      playerCharIds: () => [...sim.players.keys()],
+      actorByCharId: (charId) => {
+        const id = sim.players.get(charId);
+        return id !== undefined ? (sim.actors.get(id) ?? null) : null;
+      },
+      charIdOf: (entityId) => {
+        for (const [charId, id] of sim.players) if (id === entityId) return charId;
+        return null;
+      },
+      partyMembersOf: (charId) => sim.partyMembersOf(charId),
+      questLogOf: (charId) => sim.questLogOf(charId),
+      knownSpellsOf: (charId) => sim.knownSpellsBy.get(charId) ?? [],
+      containersLootedBy: (charId) => sim.containersLootedOf(charId),
+      spawnFromTemplate: (templateId, spaceId, pos, summonedBy) =>
+        sim.spawnFromTemplate(templateId, spaceId, pos, summonedBy),
       emit: (e) => sim.events.push(e),
       dealDamage: (t, s, a, c) => dealDamage(sim.ctx, t, s, a, c),
       applyHeal: (t, amount) => {
         const actor = sim.actors.get(t);
-        if (!actor || actor.dead) return;
+        if (!actor || actor.dead || actor.downed) return;
         const before = actor.health;
         actor.health = Math.min(actor.stats.maxHealth, actor.health + amount);
-        if (actor.health > before) sim.events.push({ type: 'heal', targetId: t, amount: actor.health - before });
+        const healed = actor.health - before;
+        if (healed > 0) {
+          sim.events.push({ type: 'heal', targetId: t, amount: healed });
+          // Healing threat (D-017): enemies fighting the healed actor add
+          // threat against the healed target's allies is out of scope; the
+          // simple, predictable rule: enemies targeting the healed actor gain
+          // threat toward the HEALED actor (staying on their patient), which
+          // keeps healers safe but keeps tanks sticky.
+          for (const enemy of sim.actors.values()) {
+            if (!enemy.brain || enemy.dead) continue;
+            if (enemy.brain.state !== 'combat') continue;
+            if (enemy.pos.spaceId !== actor.pos.spaceId) continue;
+            if (!sim.isHostile(enemy, actor)) continue;
+            enemy.brain.threat[t] = (enemy.brain.threat[t] ?? 0) + healed * THREAT_PER_HEAL;
+          }
+        }
       },
       applyEffect: (t, e, s) => applyEffect(sim.ctx, t, e, s),
       recalcStats: (id) => {
@@ -171,6 +250,7 @@ export class Sim {
       countItem: (a, i) => countItem(sim.ctx, a, i),
       trainSkill: (a, s, xp) => trainSkill(sim.ctx, a, s, xp),
       onQuestEvent: (e) => onQuestEvent(sim.ctx, e),
+      resetEncounter: (bossId) => sim.resetEncounter(bossId),
       isActorActive: (a) => sim.isActorActive(a),
       isHostile: (a, b) => sim.isHostile(a, b),
       ground: (spaceId, x, z) => groundHeight(sim.content, spaceId, x, z, sim.seed),
@@ -185,33 +265,6 @@ export class Sim {
   // -------------------------------------------------------------------------
   // World construction
   // -------------------------------------------------------------------------
-
-  private spawnPlayer(): void {
-    const id = this.nextEntityId++;
-    const pos: Position = {
-      spaceId: PLAYER_START.spaceId,
-      x: PLAYER_START.x,
-      y: 0,
-      z: PLAYER_START.z,
-    };
-    pos.y = groundHeight(this.content, pos.spaceId, pos.x, pos.z, this.seed);
-    const player = createActor(id, 'player', 'player', 'Wanderer', pos);
-    player.yaw = PLAYER_START.yaw;
-    player.factionId = 'player';
-    player.gold = 25;
-    this.actors.set(id, player);
-    this.playerIdValue = id;
-    recalcActorStats(this.content, player);
-    // Starting kit.
-    addItem(this.ctx, id, 'worn_dagger', 1);
-    addItem(this.ctx, id, 'bread', 2);
-    addItem(this.ctx, id, 'healing_draught', 1);
-    equipItem(this.ctx, id, 'worn_dagger');
-    this.playerKnownSpells = ['flamebolt', 'mend_wounds'];
-    player.health = player.stats.maxHealth;
-    player.stamina = player.stats.maxStamina;
-    player.magicka = player.stats.maxMagicka;
-  }
 
   private spawnWorld(): void {
     for (const spawner of this.content.spawners) {
@@ -238,47 +291,244 @@ export class Sim {
     if (!tpl) return;
     const rng = this.rng.fork(hashString(spawner.id));
     for (let i = 0; i < spawner.count; i++) {
-      const id = this.nextEntityId++;
       const x = spawner.x + (spawner.count > 1 ? rng.range(-spawner.radius, spawner.radius) : 0);
       const z = spawner.z + (spawner.count > 1 ? rng.range(-spawner.radius, spawner.radius) : 0);
-      const pos: Position = {
-        spaceId: spawner.spaceId,
-        x,
-        y: groundHeight(this.content, spawner.spaceId, x, z, this.seed),
-        z,
-      };
-      const actor = createActor(id, tpl.kind, tpl.id, tpl.name, pos);
-      actor.factionId = tpl.factionId ?? null;
-      actor.spawnerId = spawner.id;
-      actor.brain = makeBrain(pos);
-      this.actors.set(id, actor);
-      recalcActorStats(this.content, actor);
-      actor.health = actor.stats.maxHealth;
-      actor.stamina = actor.stats.maxStamina;
-      actor.magicka = actor.stats.maxMagicka;
+      const id = this.spawnFromTemplate(
+        tpl.id,
+        spawner.spaceId,
+        { x, y: 0, z },
+        0,
+      );
+      const actor = this.actors.get(id);
+      if (actor) actor.spawnerId = spawner.id;
     }
     this.spawnersSpawned.add(spawner.id);
+  }
+
+  spawnFromTemplate(templateId: ContentId, spaceId: SpaceId, pos: Vec3, summonedBy: EntityId): EntityId {
+    const tpl = this.content.actors[templateId];
+    if (!tpl) return NO_ENTITY;
+    const id = this.nextEntityId++;
+    const position: Position = {
+      spaceId,
+      x: pos.x,
+      y: groundHeight(this.content, spaceId, pos.x, pos.z, this.seed),
+      z: pos.z,
+    };
+    const actor = createActor(id, tpl.kind, tpl.id, tpl.name, position);
+    actor.factionId = tpl.factionId ?? null;
+    actor.brain = makeBrain(position);
+    actor.summonedBy = summonedBy;
+    this.actors.set(id, actor);
+    recalcActorStats(this.content, actor);
+    actor.health = actor.stats.maxHealth;
+    actor.stamina = actor.stats.maxStamina;
+    actor.magicka = actor.stats.maxMagicka;
+    // Summons join the summoner's fight immediately.
+    if (summonedBy !== NO_ENTITY) {
+      const owner = this.actors.get(summonedBy);
+      if (owner?.brain && actor.brain) {
+        actor.brain.state = 'combat';
+        actor.brain.targetId = owner.brain.targetId;
+        actor.brain.threat = { ...owner.brain.threat };
+        actor.brain.scaledFor = owner.brain.scaledFor;
+        recalcActorStats(this.content, actor);
+        actor.health = actor.stats.maxHealth;
+      }
+    }
+    return id;
+  }
+
+  // -------------------------------------------------------------------------
+  // Player lifecycle (D-013 / D-016)
+  // -------------------------------------------------------------------------
+
+  addPlayer(charId: CharacterId, name: string, restore?: CharacterSave): EntityId {
+    if (this.players.has(charId)) throw new Error(`character ${charId} already present`);
+    const id = this.nextEntityId++;
+    const pos: Position = restore
+      ? { spaceId: restore.pos.spaceId, x: restore.pos.x, y: restore.pos.y, z: restore.pos.z }
+      : { spaceId: PLAYER_START.spaceId, x: PLAYER_START.x, y: 0, z: PLAYER_START.z };
+    if (!this.content.spaces[pos.spaceId]) {
+      pos.spaceId = PLAYER_START.spaceId;
+      pos.x = PLAYER_START.x;
+      pos.z = PLAYER_START.z;
+    }
+    pos.y = groundHeight(this.content, pos.spaceId, pos.x, pos.z, this.seed);
+    const player = createActor(id, 'player', 'player', restore?.name ?? name, pos);
+    player.factionId = 'player';
+    this.actors.set(id, player);
+    this.players.set(charId, id);
+    if (!this.primaryCharId) this.primaryCharId = charId;
+    this.transientBy.set(charId, { vy: 0, airborne: false, lastYaw: restore?.yaw ?? PLAYER_START.yaw });
+    player.yaw = restore?.yaw ?? PLAYER_START.yaw;
+
+    if (restore) {
+      player.inventory = restore.inventory.map((s) => ({ ...s }));
+      player.equipment = { ...restore.equipment } as Actor['equipment'];
+      player.gold = restore.gold;
+      player.effects = restore.effects.map((e) => ({ ...e }));
+      player.skills = JSON.parse(JSON.stringify(restore.skills));
+      player.perks = [...restore.perks];
+      player.level = restore.level;
+      player.characterXp = restore.characterXp;
+      player.perkPoints = restore.perkPoints;
+      this.knownSpellsBy.set(charId, [...restore.knownSpells]);
+      const log = new Map<ContentId, QuestState>();
+      for (const q of restore.quests) log.set(q.questId, JSON.parse(JSON.stringify(q)));
+      this.questLogs.set(charId, log);
+      this.containersLootedByChar.set(charId, new Set(restore.containersLooted));
+      recalcActorStats(this.content, player);
+      player.health = Math.min(Math.max(1, restore.health), player.stats.maxHealth);
+      player.stamina = Math.min(restore.stamina, player.stats.maxStamina);
+      player.magicka = Math.min(restore.magicka, player.stats.maxMagicka);
+    } else {
+      player.gold = 25;
+      recalcActorStats(this.content, player);
+      addItem(this.ctx, id, 'worn_dagger', 1);
+      addItem(this.ctx, id, 'bread', 2);
+      addItem(this.ctx, id, 'healing_draught', 1);
+      equipItem(this.ctx, id, 'worn_dagger');
+      this.knownSpellsBy.set(charId, ['flamebolt', 'mend_wounds']);
+      player.health = player.stats.maxHealth;
+      player.stamina = player.stats.maxStamina;
+      player.magicka = player.stats.maxMagicka;
+    }
+
+    // Milestone party policy (D-020): everyone joins one deterministic party.
+    this.joinParty(charId, DEFAULT_PARTY);
+    return id;
+  }
+
+  /** Remove a character from the live world, returning its durable record. */
+  removePlayer(charId: CharacterId): CharacterSave | null {
+    const id = this.players.get(charId);
+    if (id === undefined) return null;
+    const record = this.extractCharacter(charId);
+    this.actors.delete(id);
+    this.players.delete(charId);
+    this.dialogueSessions.delete(charId);
+    this.shopMerchantBy.delete(charId);
+    this.transientBy.delete(charId);
+    const partyId = this.partyOf(charId);
+    if (partyId) {
+      const members = this.parties.get(partyId)!.filter((m) => m !== charId);
+      if (members.length > 0) this.parties.set(partyId, members);
+      else this.parties.delete(partyId);
+    }
+    if (this.primaryCharId === charId) {
+      this.primaryCharId = this.players.size > 0 ? [...this.players.keys()][0] : null;
+    }
+    return record;
+  }
+
+  /** Durable per-character record (server persistence, D-016). */
+  extractCharacter(charId: CharacterId): CharacterSave | null {
+    const id = this.players.get(charId);
+    const a = id !== undefined ? this.actors.get(id) : undefined;
+    if (!a) return null;
+    return {
+      schemaVersion: CHARACTER_SCHEMA_VERSION,
+      contentVersion: CONTENT_VERSION,
+      charId,
+      name: a.name,
+      pos: { spaceId: a.pos.spaceId, x: a.pos.x, y: a.pos.y, z: a.pos.z },
+      yaw: a.yaw,
+      health: a.downed ? a.stats.maxHealth * RELEASE_HEALTH_FRAC : a.health,
+      stamina: a.stamina,
+      magicka: a.magicka,
+      inventory: a.inventory.map((s) => ({ ...s })),
+      equipment: { ...(a.equipment as Record<string, string>) },
+      gold: a.gold,
+      effects: a.effects.map((e) => ({ ...e })),
+      skills: JSON.parse(JSON.stringify(a.skills)),
+      perks: [...a.perks],
+      level: a.level,
+      characterXp: a.characterXp,
+      perkPoints: a.perkPoints,
+      knownSpells: [...(this.knownSpellsBy.get(charId) ?? [])],
+      quests: JSON.parse(JSON.stringify([...this.questLogOf(charId).values()])),
+      containersLooted: [...this.containersLootedOf(charId)],
+    };
+  }
+
+  joinParty(charId: CharacterId, partyId: PartyId): void {
+    const current = this.partyOf(charId);
+    if (current === partyId) return;
+    if (current) {
+      this.parties.set(current, this.parties.get(current)!.filter((m) => m !== charId));
+    }
+    const members = this.parties.get(partyId) ?? [];
+    members.push(charId);
+    this.parties.set(partyId, members);
+  }
+
+  partyOf(charId: CharacterId): PartyId | null {
+    for (const [pid, members] of this.parties) {
+      if (members.includes(charId)) return pid;
+    }
+    return null;
+  }
+
+  partyMembersOf(charId: CharacterId): CharacterId[] {
+    const pid = this.partyOf(charId);
+    if (!pid) return [charId];
+    return [...this.parties.get(pid)!];
+  }
+
+  questLogOf(charId: CharacterId): Map<ContentId, QuestState> {
+    let log = this.questLogs.get(charId);
+    if (!log) {
+      log = new Map();
+      this.questLogs.set(charId, log);
+    }
+    return log;
+  }
+
+  containersLootedOf(charId: CharacterId): Set<string> {
+    let set = this.containersLootedByChar.get(charId);
+    if (!set) {
+      set = new Set();
+      this.containersLootedByChar.set(charId, set);
+    }
+    return set;
   }
 
   // -------------------------------------------------------------------------
   // Queries
   // -------------------------------------------------------------------------
 
+  primaryEntityId(): EntityId {
+    return this.primaryCharId ? (this.players.get(this.primaryCharId) ?? NO_ENTITY) : NO_ENTITY;
+  }
+
+  /** Primary character's actor (offline host + legacy tests). */
   player(): Actor {
-    const p = this.actors.get(this.playerIdValue);
-    if (!p) throw new Error('player missing');
+    const p = this.actors.get(this.primaryEntityId());
+    if (!p) throw new Error('no primary player');
     return p;
+  }
+
+  playerActor(charId: CharacterId): Actor | null {
+    const id = this.players.get(charId);
+    return id !== undefined ? (this.actors.get(id) ?? null) : null;
   }
 
   gameHours(): number {
     return 8 + this.tickCount * DT * GAME_HOURS_PER_SECOND;
   }
 
+  /** Active = within the streaming window of ANY player character. */
   isActorActive(a: Actor): boolean {
-    const player = this.actors.get(this.playerIdValue);
-    if (!player) return false;
-    const exterior = this.content.spaces[player.pos.spaceId]?.kind === 'exterior';
-    return isActiveAt(player.pos.spaceId, player.pos.x, player.pos.z, a.pos.spaceId, a.pos.x, a.pos.z, exterior);
+    for (const id of this.players.values()) {
+      const p = this.actors.get(id);
+      if (!p) continue;
+      const exterior = this.content.spaces[p.pos.spaceId]?.kind === 'exterior';
+      if (isActiveAt(p.pos.spaceId, p.pos.x, p.pos.z, a.pos.spaceId, a.pos.x, a.pos.z, exterior)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   isHostile(a: Actor, b: Actor): boolean {
@@ -287,7 +537,6 @@ export class Sim {
     const fb = b.factionId ?? `wild:${b.templateId}`;
     if (fa === fb) return false;
     if (HOSTILE_PAIRS.has(`${fa}|${fb}`)) return true;
-    // Wild aggressive creatures attack everyone outside their own template.
     const ta = this.content.actors[a.templateId];
     const tb = this.content.actors[b.templateId];
     if (a.factionId === null && ta?.aggressive) return true;
@@ -299,33 +548,53 @@ export class Sim {
   // Tick
   // -------------------------------------------------------------------------
 
-  tick(input: PlayerInput): void {
+  /** Advance one tick. Accepts a per-character input map; a bare PlayerInput
+   * drives the primary character (single-player hosts, legacy tests). */
+  tick(inputs: PlayerInput | Map<CharacterId, PlayerInput>): void {
     this.events = [];
     this.tickCount++;
 
-    this.tickPlayer(input);
+    const inputMap: Map<CharacterId, PlayerInput> =
+      inputs instanceof Map
+        ? inputs
+        : new Map(this.primaryCharId ? [[this.primaryCharId, inputs]] : []);
 
-    // Deterministic actor order: ascending entity id (Map preserves insertion,
-    // which is ascending here; sort defensively after loads).
+    // Deterministic player order: sorted character id.
+    const charIds = [...this.players.keys()].sort();
+    for (const charId of charIds) {
+      this.tickPlayer(charId, inputMap.get(charId) ?? { ...IDLE_INPUT, yaw: this.playerActor(charId)?.yaw ?? 0 });
+    }
+
+    // Deterministic actor order: ascending entity id.
     const ids = [...this.actors.keys()].sort((a, b) => a - b);
     for (const id of ids) {
       const a = this.actors.get(id);
       if (!a || a.dead) continue;
       tickEffects(this.ctx, id);
       if (a.kind !== 'player') tickBrain(this.ctx, id);
-      tickAttack(this.ctx, id);
+      if (!a.downed) tickAttack(this.ctx, id);
       this.tickRegen(a);
     }
     tickProjectiles(this.ctx);
+    this.tickGroundAoes();
+    this.tickDownedAndWipes();
 
     if (this.tickCount % 10 === 0) tickReachObjectives(this.ctx);
     if (this.tickCount % 300 === 0) this.tickRespawns();
   }
 
-  private tickPlayer(input: PlayerInput): void {
-    const p = this.player();
-    if (p.dead) return;
+  private tickPlayer(charId: CharacterId, input: PlayerInput): void {
+    const p = this.playerActor(charId);
+    const tr = this.transientBy.get(charId);
+    if (!p || !tr || p.dead) return;
+    if (p.downed) {
+      p.moveIntent.x = 0;
+      p.moveIntent.z = 0;
+      if (p.interactCooldown > 0) p.interactCooldown--;
+      return;
+    }
     p.yaw = input.yaw;
+    tr.lastYaw = input.yaw;
     p.sneaking = input.sneak;
     p.blocking = input.block && p.stamina > 0;
     p.sprinting = input.sprint && p.stamina > 0 && !input.sneak;
@@ -339,13 +608,12 @@ export class Sim {
     if (len > 0.01) {
       const nx = input.moveX / Math.max(1, len);
       const nz = input.moveZ / Math.max(1, len);
-      // Rotate local intent into world space by yaw.
       const wx = nx * Math.cos(p.yaw) + nz * Math.sin(p.yaw);
       const wz = -nx * Math.sin(p.yaw) + nz * Math.cos(p.yaw);
       const moved = resolveMove(this.content, this.colliders, p.pos.spaceId, p.pos, wx * speed * DT, wz * speed * DT, this.seed);
       p.pos.x = moved.x;
       p.pos.z = moved.z;
-      if (!this.playerAirborne) p.pos.y = moved.y;
+      if (!tr.airborne) p.pos.y = moved.y;
       if (p.sprinting) {
         p.stamina = Math.max(0, p.stamina - SPRINT_STAMINA_PER_SEC * DT);
         if (p.stamina === 0) p.sprinting = false;
@@ -353,20 +621,19 @@ export class Sim {
       if (p.sneaking && this.tickCount % 30 === 0) trainSkill(this.ctx, p.id, 'sneak', 1);
     }
 
-    // Jump / gravity.
     const ground = groundHeight(this.content, p.pos.spaceId, p.pos.x, p.pos.z, this.seed);
-    if (input.jump && !this.playerAirborne && p.stamina >= 5) {
-      this.playerVy = 5.2;
-      this.playerAirborne = true;
+    if (input.jump && !tr.airborne && p.stamina >= 5) {
+      tr.vy = 5.2;
+      tr.airborne = true;
       p.stamina -= 5;
     }
-    if (this.playerAirborne) {
-      this.playerVy -= 14 * DT;
-      p.pos.y += this.playerVy * DT;
+    if (tr.airborne) {
+      tr.vy -= 14 * DT;
+      p.pos.y += tr.vy * DT;
       if (p.pos.y <= ground) {
         p.pos.y = ground;
-        this.playerVy = 0;
-        this.playerAirborne = false;
+        tr.vy = 0;
+        tr.airborne = false;
       }
     } else {
       p.pos.y = ground;
@@ -376,10 +643,120 @@ export class Sim {
   }
 
   private tickRegen(a: Actor): void {
-    if (a.dead) return;
+    if (a.dead || a.downed) return;
     a.health = Math.min(a.stats.maxHealth, a.health + a.stats.healthRegen * DT);
     if (!a.sprinting) a.stamina = Math.min(a.stats.maxStamina, a.stamina + a.stats.staminaRegen * DT);
     a.magicka = Math.min(a.stats.maxMagicka, a.magicka + a.stats.magickaRegen * DT);
+  }
+
+  private tickGroundAoes(): void {
+    for (let i = this.groundAoes.length - 1; i >= 0; i--) {
+      const aoe = this.groundAoes[i];
+      if (this.tickCount >= aoe.expiresAtTick) {
+        this.groundAoes.splice(i, 1);
+        continue;
+      }
+      for (const id of this.players.values()) {
+        const p = this.actors.get(id);
+        if (!p || p.dead || p.downed) continue;
+        if (p.pos.spaceId !== aoe.spaceId) continue;
+        const d = Math.hypot(p.pos.x - aoe.x, p.pos.z - aoe.z);
+        if (d <= aoe.radius) {
+          dealDamage(this.ctx, id, aoe.sourceId, aoe.dps * DT, aoe.channel);
+        }
+      }
+    }
+  }
+
+  private tickDownedAndWipes(): void {
+    // Downed timers.
+    for (const [charId, entityId] of this.players) {
+      const p = this.actors.get(entityId);
+      if (!p || !p.downed) continue;
+      p.downedTicks--;
+      if (p.downedTicks <= 0) this.releasePlayer(charId);
+    }
+    // Wipe detection (per space): if a boss is engaged and every player in
+    // its space is downed or absent, the encounter resets and the downed
+    // players release immediately (D-021).
+    if (this.tickCount % 15 !== 0) return;
+    for (const boss of this.actors.values()) {
+      const tpl = this.content.actors[boss.templateId];
+      if (!tpl || (tpl.tier !== 'boss' && tpl.tier !== 'elite')) continue;
+      if (!boss.brain || boss.brain.state !== 'combat' || boss.dead) continue;
+      let anyUp = false;
+      const downedHere: CharacterId[] = [];
+      for (const [charId, entityId] of this.players) {
+        const p = this.actors.get(entityId);
+        if (!p || p.pos.spaceId !== boss.pos.spaceId) continue;
+        if (p.downed) downedHere.push(charId);
+        else if (!p.dead) anyUp = true;
+      }
+      if (!anyUp && downedHere.length > 0) {
+        this.events.push({ type: 'encounterWipe', bossId: boss.id });
+        this.resetEncounter(boss.id);
+        for (const charId of downedHere) this.releasePlayer(charId);
+      }
+    }
+  }
+
+  /** Reset an encounter: heal + rehome the anchor and its spawner-mates,
+   * despawn its summons, clear its pools (D-018/D-021). */
+  resetEncounter(bossId: EntityId): void {
+    const boss = this.actors.get(bossId);
+    if (!boss) return;
+    const group = [...this.actors.values()].filter(
+      (a) => a.id === bossId || (boss.spawnerId !== null && a.spawnerId === boss.spawnerId),
+    );
+    for (const a of group) {
+      if (a.dead || !a.brain) continue;
+      a.brain.state = 'idle';
+      a.brain.targetId = 0;
+      a.brain.threat = {};
+      a.brain.phase = 0;
+      a.brain.abilityCooldowns = {};
+      a.brain.scaledFor = 0;
+      a.attack = null;
+      a.pos.x = a.brain.homePos.x;
+      a.pos.z = a.brain.homePos.z;
+      a.pos.y = groundHeight(this.content, a.pos.spaceId, a.pos.x, a.pos.z, this.seed);
+      recalcActorStats(this.content, a);
+      a.health = a.stats.maxHealth;
+    }
+    // Despawn summons belonging to the boss.
+    for (const [id, a] of [...this.actors]) {
+      if (a.summonedBy === bossId) this.actors.delete(id);
+    }
+    for (let i = this.groundAoes.length - 1; i >= 0; i--) {
+      if (this.groundAoes[i].sourceId === bossId) this.groundAoes.splice(i, 1);
+    }
+  }
+
+  /** Downed player releases: teleport to the space's recovery point with
+   * reduced resources. */
+  releasePlayer(charId: CharacterId): void {
+    const p = this.playerActor(charId);
+    if (!p || !p.downed) return;
+    p.downed = false;
+    p.downedTicks = 0;
+    recalcActorStats(this.content, p);
+    p.health = p.stats.maxHealth * RELEASE_HEALTH_FRAC;
+    p.stamina = p.stats.maxStamina * 0.5;
+    p.magicka = p.stats.maxMagicka * 0.5;
+    const respawn = this.respawnPosition(p.pos.spaceId);
+    this.movePlayerTo(charId, respawn.spaceId, respawn.x, respawn.z, respawn.yaw);
+    this.events.push({ type: 'playerReleased', playerId: p.id });
+  }
+
+  /** Recovery point: interiors release at their exit door; exteriors at the
+   * starting ruin (the milestone's one graveyard-equivalent). */
+  respawnPosition(spaceId: SpaceId): { spaceId: SpaceId; x: number; z: number; yaw: number } {
+    const space = this.content.spaces[spaceId];
+    if (space?.kind === 'interior') {
+      const exit = this.content.doors.find((d) => d.spaceId === spaceId);
+      if (exit) return { spaceId, x: exit.x, z: exit.z + 1.2, yaw: 0 };
+    }
+    return { spaceId: PLAYER_START.spaceId, x: PLAYER_START.x, z: PLAYER_START.z, yaw: PLAYER_START.yaw };
   }
 
   private tickRespawns(): void {
@@ -394,7 +771,6 @@ export class Sim {
         continue;
       }
       if (now - clearedAt >= spawner.respawnGameHours) {
-        // Remove old corpses of this spawner, then respawn.
         for (const [id, a] of [...this.actors]) {
           if (a.spawnerId === spawner.id) this.actors.delete(id);
         }
@@ -405,68 +781,98 @@ export class Sim {
   }
 
   // -------------------------------------------------------------------------
-  // Player commands (hosts call these; the renderer never resolves outcomes)
+  // Per-character commands (hosts submit intent; sim resolves outcomes)
   // -------------------------------------------------------------------------
 
-  playerMelee(): boolean {
-    return startMelee(this.ctx, this.playerIdValue);
+  meleeFor(charId: CharacterId): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed) return false;
+    return startMelee(this.ctx, p.id);
   }
 
-  playerRanged(): boolean {
-    return startRanged(this.ctx, this.playerIdValue);
+  rangedFor(charId: CharacterId): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed) return false;
+    return startRanged(this.ctx, p.id);
   }
 
-  playerCast(spellId: ContentId): boolean {
-    if (!this.playerKnownSpells.includes(spellId)) return false;
-    return startSpell(this.ctx, this.playerIdValue, spellId);
+  castFor(charId: CharacterId, spellId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed) return false;
+    if (!(this.knownSpellsBy.get(charId) ?? []).includes(spellId)) return false;
+    return startSpell(this.ctx, p.id, spellId);
   }
 
-  playerUseItem(itemId: ContentId): boolean {
-    return useItem(this.ctx, this.playerIdValue, itemId);
+  useItemFor(charId: CharacterId, itemId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed) return false;
+    return useItem(this.ctx, p.id, itemId);
   }
 
-  playerEquip(itemId: ContentId): boolean {
-    return equipItem(this.ctx, this.playerIdValue, itemId);
+  equipFor(charId: CharacterId, itemId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed) return false;
+    return equipItem(this.ctx, p.id, itemId);
   }
 
-  playerTakePerk(perkId: ContentId): boolean {
-    return takePerk(this.ctx, this.playerIdValue, perkId);
+  takePerkFor(charId: CharacterId, perkId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    if (!p) return false;
+    return takePerk(this.ctx, p.id, perkId);
   }
 
-  playerCanTakePerk(perkId: ContentId): { ok: boolean; reason: string } {
-    return canTakePerk(this.ctx, this.playerIdValue, perkId);
+  canTakePerkFor(charId: CharacterId, perkId: ContentId): { ok: boolean; reason: string } {
+    const p = this.playerActor(charId);
+    if (!p) return { ok: false, reason: 'no character' };
+    return canTakePerk(this.ctx, p.id, perkId);
   }
 
-  playerStartQuest(questId: ContentId): boolean {
-    return startQuest(this.ctx, questId);
+  startQuestFor(charId: CharacterId, questId: ContentId): boolean {
+    return startQuest(this.ctx, charId, questId);
   }
 
-  journal() {
-    return journalFor(this.ctx);
+  journalOf(charId: CharacterId) {
+    return journalFor(this.ctx, charId);
   }
 
-  /** The nearest interactable within reach: door, container, npc, or corpse. */
-  nearestInteractable(): { kind: 'door' | 'container' | 'npc' | 'corpse'; id: string; name: string } | null {
-    const p = this.player();
+  chatFrom(charId: CharacterId, text: string): void {
+    const p = this.playerActor(charId);
+    if (!p) return;
+    const clean = text.slice(0, 200);
+    this.events.push({ type: 'chat', playerId: p.id, text: clean });
+  }
+
+  /** The nearest interactable within reach for one character: door,
+   * container (not yet looted BY THIS CHARACTER), npc, corpse, or a downed
+   * party member (revive). */
+  nearestInteractableFor(
+    charId: CharacterId,
+  ): { kind: 'door' | 'container' | 'npc' | 'corpse' | 'revive'; id: string; name: string } | null {
+    const p = this.playerActor(charId);
+    if (!p) return null;
     const reach = 3.0;
-    let best: { kind: 'door' | 'container' | 'npc' | 'corpse'; id: string; name: string; d: number } | null = null;
+    const looted = this.containersLootedOf(charId);
+    let best: { kind: 'door' | 'container' | 'npc' | 'corpse' | 'revive'; id: string; name: string; d: number } | null =
+      null;
     for (const door of this.content.doors) {
       if (door.spaceId !== p.pos.spaceId) continue;
       const d = Math.hypot(door.x - p.pos.x, door.z - p.pos.z);
       if (d < reach && (!best || d < best.d)) best = { kind: 'door', id: door.id, name: door.name, d };
     }
     for (const c of this.content.containers) {
-      if (c.spaceId !== p.pos.spaceId || this.containersLooted.has(c.id)) continue;
+      if (c.spaceId !== p.pos.spaceId || looted.has(c.id)) continue;
       const d = Math.hypot(c.x - p.pos.x, c.z - p.pos.z);
       if (d < reach && (!best || d < best.d)) best = { kind: 'container', id: c.id, name: c.name, d };
     }
     for (const a of this.actors.values()) {
-      if (a.id === this.playerIdValue || a.pos.spaceId !== p.pos.spaceId) continue;
+      if (a.id === p.id || a.pos.spaceId !== p.pos.spaceId) continue;
       const d = Math.hypot(a.pos.x - p.pos.x, a.pos.z - p.pos.z);
       if (d >= reach) continue;
-      if (a.dead && (a.inventory.length > 0 || a.gold > 0)) {
+      if (a.kind === 'player' && a.downed) {
+        if (!best || d < best.d) best = { kind: 'revive', id: String(a.id), name: a.name, d };
+      } else if (a.dead && (a.inventory.length > 0 || a.gold > 0)) {
         if (!best || d < best.d) best = { kind: 'corpse', id: String(a.id), name: a.name, d };
-      } else if (!a.dead && a.kind === 'npc' && !this.isHostile(this.player(), a)) {
+      } else if (!a.dead && a.kind === 'npc' && !this.isHostile(p, a)) {
         if (!best || d < best.d) best = { kind: 'npc', id: String(a.id), name: a.name, d };
       }
     }
@@ -474,17 +880,17 @@ export class Sim {
     return { kind: best.kind, id: best.id, name: best.name };
   }
 
-  /** Execute the context interaction. Returns what happened for the host UI. */
-  interact(): 'none' | 'door' | 'container' | 'dialogue' | 'loot' {
-    const p = this.player();
-    if (p.dead || p.interactCooldown > 0) return 'none';
-    const target = this.nearestInteractable();
+  /** Execute the context interaction for one character. */
+  interactFor(charId: CharacterId): 'none' | 'door' | 'container' | 'dialogue' | 'loot' | 'revive' {
+    const p = this.playerActor(charId);
+    if (!p || p.dead || p.downed || p.interactCooldown > 0) return 'none';
+    const target = this.nearestInteractableFor(charId);
     if (!target) return 'none';
     p.interactCooldown = 8;
     switch (target.kind) {
       case 'door': {
         const door = this.content.doors.find((d) => d.id === target.id)!;
-        this.transitionTo(door.targetSpaceId, door.targetX, door.targetZ, door.targetYaw);
+        this.movePlayerTo(charId, door.targetSpaceId, door.targetX, door.targetZ, door.targetYaw);
         this.events.push({ type: 'interacted', actorId: p.id, targetKind: 'door', targetId: door.id });
         onQuestEvent(this.ctx, { type: 'interacted', actorId: p.id, targetKind: 'door', targetId: door.id });
         return 'door';
@@ -493,11 +899,13 @@ export class Sim {
         const c = this.content.containers.find((x) => x.id === target.id)!;
         const table = this.content.lootTables[c.lootTable];
         if (table) {
-          const rolled = rollLoot(this.rng, table);
+          // Personal container loot (D-019): deterministic per character via a
+          // forked stream keyed by container + character.
+          const rolled = rollLoot(this.rng.fork(hashString(c.id + ':' + charId)), table);
           for (const it of rolled.items) addItem(this.ctx, p.id, it.itemId, it.count);
           p.gold += rolled.gold;
         }
-        this.containersLooted.add(c.id);
+        this.containersLootedOf(charId).add(c.id);
         this.events.push({ type: 'interacted', actorId: p.id, targetKind: 'container', targetId: c.id });
         onQuestEvent(this.ctx, { type: 'interacted', actorId: p.id, targetKind: 'container', targetId: c.id });
         return 'container';
@@ -506,10 +914,20 @@ export class Sim {
         lootActor(this.ctx, p.id, Number(target.id));
         return 'loot';
       }
+      case 'revive': {
+        const downed = this.actors.get(Number(target.id));
+        if (downed?.downed) {
+          downed.downed = false;
+          downed.downedTicks = 0;
+          downed.health = downed.stats.maxHealth * REVIVE_HEALTH_FRAC;
+          this.events.push({ type: 'playerRevived', playerId: downed.id, by: p.id });
+        }
+        return 'revive';
+      }
       case 'npc': {
-        const session = beginDialogue(this.ctx, Number(target.id));
+        const session = beginDialogue(this.ctx, charId, Number(target.id));
         if (session) {
-          this.dialogue = session;
+          this.dialogueSessions.set(charId, session);
           return 'dialogue';
         }
         return 'none';
@@ -517,69 +935,179 @@ export class Sim {
     }
   }
 
-  transitionTo(spaceId: SpaceId, x: number, z: number, yaw: number): void {
-    const p = this.player();
+  movePlayerTo(charId: CharacterId, spaceId: SpaceId, x: number, z: number, yaw: number): void {
+    const p = this.playerActor(charId);
+    const tr = this.transientBy.get(charId);
+    if (!p) return;
     p.pos.spaceId = spaceId;
     p.pos.x = x;
     p.pos.z = z;
     p.pos.y = groundHeight(this.content, spaceId, x, z, this.seed);
     p.yaw = yaw;
-    this.playerAirborne = false;
-    this.playerVy = 0;
-    this.events.push({ type: 'spaceEntered', spaceId });
-    onQuestEvent(this.ctx, { type: 'spaceEntered', spaceId });
-  }
-
-  // Dialogue passthroughs for hosts.
-  dialogueNode() {
-    return this.dialogue ? currentNode(this.ctx, this.dialogue) : null;
-  }
-
-  dialogueChoices() {
-    return this.dialogue ? visibleChoices(this.ctx, this.dialogue) : [];
-  }
-
-  dialogueChoose(index: number): void {
-    if (!this.dialogue) return;
-    const npcId = this.dialogue.npcId;
-    const alive = chooseOption(this.ctx, this.dialogue, index);
-    if (this.dialogue.shopRequested) {
-      this.shopMerchantId = npcId;
+    if (tr) {
+      tr.airborne = false;
+      tr.vy = 0;
     }
-    if (!alive) this.dialogue = null;
+    this.events.push({ type: 'spaceEntered', playerId: p.id, spaceId });
+    onQuestEvent(this.ctx, { type: 'spaceEntered', playerId: p.id, spaceId });
   }
 
-  dialogueEnd(): void {
-    this.dialogue = null;
+  // Dialogue/shop per character.
+  dialogueNodeFor(charId: CharacterId) {
+    const session = this.dialogueSessions.get(charId);
+    return session ? currentNode(this.ctx, session) : null;
   }
 
-  shopBuy(itemId: ContentId): boolean {
-    if (this.shopMerchantId === NO_ENTITY) return false;
-    return buyFromMerchant(this.ctx, this.playerIdValue, this.shopMerchantId, itemId);
+  dialogueChoicesFor(charId: CharacterId) {
+    const session = this.dialogueSessions.get(charId);
+    return session ? visibleChoices(this.ctx, session) : [];
   }
 
-  shopSell(itemId: ContentId): boolean {
-    if (this.shopMerchantId === NO_ENTITY) return false;
-    return sellToMerchant(this.ctx, this.playerIdValue, this.shopMerchantId, itemId);
+  dialogueChooseFor(charId: CharacterId, index: number): void {
+    const session = this.dialogueSessions.get(charId);
+    if (!session) return;
+    const npcId = session.npcId;
+    const alive = chooseOption(this.ctx, session, index);
+    if (session.shopRequested) {
+      this.shopMerchantBy.set(charId, npcId);
+    }
+    if (!alive) this.dialogueSessions.delete(charId);
   }
 
-  shopClose(): void {
-    this.shopMerchantId = NO_ENTITY;
+  dialogueEndFor(charId: CharacterId): void {
+    this.dialogueSessions.delete(charId);
   }
 
-  /** Respawn after death: back to the start, resources restored, gold kept. */
-  respawnPlayer(): void {
-    const p = this.player();
-    if (!p.dead) return;
-    p.dead = false;
-    p.health = p.stats.maxHealth * 0.5;
-    p.stamina = p.stats.maxStamina;
-    p.magicka = p.stats.maxMagicka;
-    this.transitionTo(PLAYER_START.spaceId, PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw);
+  shopBuyFor(charId: CharacterId, itemId: ContentId): boolean {
+    const merchantId = this.shopMerchantBy.get(charId);
+    const p = this.playerActor(charId);
+    if (!merchantId || !p) return false;
+    return buyFromMerchant(this.ctx, p.id, merchantId, itemId);
+  }
+
+  shopSellFor(charId: CharacterId, itemId: ContentId): boolean {
+    const merchantId = this.shopMerchantBy.get(charId);
+    const p = this.playerActor(charId);
+    if (!merchantId || !p) return false;
+    return sellToMerchant(this.ctx, p.id, merchantId, itemId);
+  }
+
+  shopCloseFor(charId: CharacterId): void {
+    this.shopMerchantBy.delete(charId);
   }
 
   // -------------------------------------------------------------------------
-  // Save / load
+  // Legacy single-player wrappers (primary character). Kept so the offline
+  // host and the original test fixtures keep exercising the same code paths.
+  // -------------------------------------------------------------------------
+
+  private primary(): CharacterId {
+    if (!this.primaryCharId) throw new Error('no primary character');
+    return this.primaryCharId;
+  }
+
+  playerMelee(): boolean {
+    return this.meleeFor(this.primary());
+  }
+
+  playerRanged(): boolean {
+    return this.rangedFor(this.primary());
+  }
+
+  playerCast(spellId: ContentId): boolean {
+    return this.castFor(this.primary(), spellId);
+  }
+
+  playerUseItem(itemId: ContentId): boolean {
+    return this.useItemFor(this.primary(), itemId);
+  }
+
+  playerEquip(itemId: ContentId): boolean {
+    return this.equipFor(this.primary(), itemId);
+  }
+
+  playerTakePerk(perkId: ContentId): boolean {
+    return this.takePerkFor(this.primary(), perkId);
+  }
+
+  playerCanTakePerk(perkId: ContentId): { ok: boolean; reason: string } {
+    return this.canTakePerkFor(this.primary(), perkId);
+  }
+
+  playerStartQuest(questId: ContentId): boolean {
+    return this.startQuestFor(this.primary(), questId);
+  }
+
+  journal() {
+    return this.journalOf(this.primary());
+  }
+
+  nearestInteractable() {
+    return this.nearestInteractableFor(this.primary());
+  }
+
+  interact() {
+    return this.interactFor(this.primary());
+  }
+
+  transitionTo(spaceId: SpaceId, x: number, z: number, yaw: number): void {
+    this.movePlayerTo(this.primary(), spaceId, x, z, yaw);
+  }
+
+  /** Back-compat view used by the offline host. */
+  get dialogue(): DialogueSession | null {
+    return this.dialogueSessions.get(this.primary()) ?? null;
+  }
+
+  set dialogue(session: DialogueSession | null) {
+    if (session) this.dialogueSessions.set(this.primary(), session);
+    else this.dialogueSessions.delete(this.primary());
+  }
+
+  get shopMerchantId(): EntityId {
+    return this.shopMerchantBy.get(this.primary()) ?? NO_ENTITY;
+  }
+
+  get playerKnownSpells(): ContentId[] {
+    return this.knownSpellsBy.get(this.primary()) ?? [];
+  }
+
+  dialogueNode() {
+    return this.dialogueNodeFor(this.primary());
+  }
+
+  dialogueChoices() {
+    return this.dialogueChoicesFor(this.primary());
+  }
+
+  dialogueChoose(index: number): void {
+    this.dialogueChooseFor(this.primary(), index);
+  }
+
+  dialogueEnd(): void {
+    this.dialogueEndFor(this.primary());
+  }
+
+  shopBuy(itemId: ContentId): boolean {
+    return this.shopBuyFor(this.primary(), itemId);
+  }
+
+  shopSell(itemId: ContentId): boolean {
+    return this.shopSellFor(this.primary(), itemId);
+  }
+
+  shopClose(): void {
+    this.shopCloseFor(this.primary());
+  }
+
+  /** Offline host: instant release when downed (no party to revive). */
+  respawnPlayer(): void {
+    const p = this.player();
+    if (p.downed) this.releasePlayer(this.primary());
+  }
+
+  // -------------------------------------------------------------------------
+  // Save / load (world save, schema v2)
   // -------------------------------------------------------------------------
 
   serialize(): SaveGame {
@@ -603,6 +1131,10 @@ export class Sim {
         spawnerId: a.spawnerId,
         lootRolled: a.lootRolled,
       };
+      if (a.downed) {
+        save.downed = true;
+        save.downedTicks = a.downedTicks;
+      }
       if (a.brain) {
         save.brainState = { state: a.brain.state, homePos: { ...a.brain.homePos } };
       }
@@ -622,13 +1154,17 @@ export class Sim {
       tick: this.tickCount,
       rngState: this.rng.getState(),
       nextEntityId: this.nextEntityId,
-      playerId: this.playerIdValue,
+      players: [...this.players].map(([charId, entityId]) => ({ charId, entityId })),
+      primaryCharId: this.primaryCharId,
       actors,
-      quests: JSON.parse(JSON.stringify([...this.quests.values()])),
+      questLogs: [...this.questLogs].map(([charId, log]) => ({
+        charId,
+        quests: JSON.parse(JSON.stringify([...log.values()])),
+      })),
+      knownSpells: [...this.knownSpellsBy].map(([charId, spells]) => ({ charId, spells: [...spells] })),
+      containersLootedBy: [...this.containersLootedByChar].map(([charId, ids]) => ({ charId, ids: [...ids] })),
+      parties: [...this.parties].map(([partyId, members]) => ({ partyId, members: [...members] })),
       spawnersSpawned: [...this.spawnersSpawned],
-      containersLooted: [...this.containersLooted],
-      // Extension field (not schema-critical): known spells.
-      ...({ playerKnownSpells: [...this.playerKnownSpells] } as object),
     };
   }
 
@@ -642,13 +1178,9 @@ export class Sim {
     sim.tickCount = save.tick;
     sim.rng.setState(save.rngState);
     sim.nextEntityId = save.nextEntityId;
-    sim.playerIdValue = save.playerId;
+    sim.primaryCharId = save.primaryCharId;
     sim.spawnersSpawned = new Set(save.spawnersSpawned);
-    sim.containersLooted = new Set(save.containersLooted);
-    const extra = save as unknown as { playerKnownSpells?: string[] };
-    sim.playerKnownSpells = extra.playerKnownSpells ?? ['flamebolt', 'mend_wounds'];
     for (const as of save.actors) {
-      // Skip actors whose template no longer exists (content removal safety).
       if (as.kind !== 'player' && !content.actors[as.templateId]) continue;
       const actor = createActor(as.id, as.kind, as.templateId, as.name, {
         spaceId: as.pos.spaceId,
@@ -658,6 +1190,8 @@ export class Sim {
       });
       actor.yaw = as.yaw;
       actor.dead = as.dead;
+      actor.downed = as.downed ?? false;
+      actor.downedTicks = as.downedTicks ?? 0;
       actor.inventory = as.inventory.map((s) => ({ ...s }));
       actor.equipment = { ...as.equipment } as Actor['equipment'];
       actor.gold = as.gold;
@@ -687,8 +1221,23 @@ export class Sim {
       actor.stamina = Math.min(as.stamina, actor.stats.maxStamina);
       actor.magicka = Math.min(as.magicka, actor.stats.maxMagicka);
     }
-    for (const q of save.quests) {
-      sim.quests.set(q.questId, JSON.parse(JSON.stringify(q)));
+    for (const p of save.players) {
+      sim.players.set(p.charId, p.entityId);
+      sim.transientBy.set(p.charId, { vy: 0, airborne: false, lastYaw: 0 });
+    }
+    for (const entry of save.questLogs) {
+      const log = new Map<ContentId, QuestState>();
+      for (const q of entry.quests) log.set(q.questId, JSON.parse(JSON.stringify(q)));
+      sim.questLogs.set(entry.charId, log);
+    }
+    for (const entry of save.knownSpells) {
+      sim.knownSpellsBy.set(entry.charId, [...entry.spells]);
+    }
+    for (const entry of save.containersLootedBy) {
+      sim.containersLootedByChar.set(entry.charId, new Set(entry.ids));
+    }
+    for (const entry of save.parties) {
+      sim.parties.set(entry.partyId, [...entry.members]);
     }
     return sim;
   }
@@ -703,4 +1252,4 @@ function hashString(s: string): number {
   return h >>> 0;
 }
 
-export type { DamageChannel, SkillId };
+export type { DamageChannel, SkillId, CharacterId };

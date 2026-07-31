@@ -1,41 +1,63 @@
 # Model handoff - read this first in a new session
 
-## State as of 2026-07-30 (Fable bootstrap session)
-The Kaldwyn Reach vertical slice is implemented and tested:
-- Deterministic 30 Hz sim core with guard tests (52+ tests green: run `npm test`).
-- World: authored 1 km exterior (ruin -> road -> Fenharrow -> Duskhollow Mine),
-  2 interiors, cells/streaming, collision, A* navigation.
-- Gameplay: melee/ranged/spell combat with phase state machines, blocking,
-  sneak attacks, modifier/effect system, use-based skills + perks, inventory/
-  equipment/loot/merchant, NPC AI (perceive/combat/search/flee/return +
-  schedules), quest + dialogue runtimes.
-- The Hollow Delve quest end-to-end (with save/load at every stage boundary,
-  pinned by tests/quest_playthrough.test.ts).
-- Save schema v1 + migration framework + corruption rejection.
-- Browser host (Three.js renderer, HUD, input), headless host (~50k ticks/s).
-- `npm run gate` = validate + typecheck + tests + build: green at handoff.
+## State as of 2026-07-31 (Fable MMO-pivot session)
+Claurim is now a third-person, server-authoritative multiplayer action RPG.
+On top of the 2026-07-30 single-player foundation (still green), this
+session added and TESTED:
+
+- Multiplayer sim core (D-013): many characters in one Sim; per-character
+  journals/spells/sessions/container-loot; parties; downed/revive/release;
+  world save schema v2 with a tested v1->v2 migration; per-character
+  persistence records (schema v1).
+- MMO combat (D-017/D-018): threat tables with hysteresis, group aggro,
+  locked encounter scaling through the modifier system, data-driven
+  abilities (telegraphed cones, ground pools, summons, support heals),
+  interrupts, boss phases; The Pale Warden converted into a 3-phase group
+  boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
+  pulls); personal loot for elite/boss tiers (D-019).
+- Authoritative server (D-014): transport-agnostic ServerCore + ws host on
+  :8787; protocol v1 with full inbound validation; 10 Hz interest-scoped
+  snapshots over the cell system; per-client event filtering; reconnect
+  takeover; StorageProvider persistence (FileStorage, atomic writes).
+- Online client (D-015): ClientWorld implements IWorld over snapshots with
+  sequenced-input prediction + reconciliation and remote smoothing; browser
+  host runs offline (default) or online (?ws=ws://localhost:8787&char=alva).
+- Third-person primary camera with terrain collision (D-023); telegraph
+  rings, ground-pool rendering, downed poses, party frames HUD.
+- Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
+  check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
+  all dialogue rewritten with voices + plural-adventurer framing.
+
+## Verification evidence (this session)
+- `npm test`: 69 tests / 7 suites green (multiplayer sim, server/net,
+  saves+migrations, quest e2e, nav, determinism, architecture guards incl.
+  new I-14..I-22).
+- Live ws smoke: server + 2 real WebSocket clients: welcome, 25 snapshots
+  per client per 2.5 s, server-side movement (ack seq 74), mutual remote
+  visibility, shared party, characters persisted on disconnect.
+- `npm run mp:bench` (naive bot parties vs boss): solo 0/3 kills (9 wipes),
+  3-party 1/3 (25 s), 5-party 2/3 (24 s). See ENCOUNTER_DESIGN.md.
+- `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
+  build).
+
+## Commands
+- `npm run server` - authoritative server (CLAURIM_PORT / CLAURIM_DATA_DIR).
+- `npm run dev` then open `/?ws=ws://localhost:8787&char=<id>&name=<name>`
+  in two tabs for two clients; no query = offline single-player.
+- `npm run mp:bench -- runs=5` - dungeon difficulty measurement.
 
 ## How to continue
-1. Read CLAUDE.md (contract), DECISIONS.md (locked), INVARIANTS.md.
-2. Pick work from OPUS_BACKLOG.md respecting labels.
-3. Every change: tests + `npm run gate` before done.
-4. Never weaken a guard test to make something pass.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-023), INVARIANTS.md.
+2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
+3. Tests + `npm run gate` before done; never weaken a guard.
 
-## Session verification evidence
-- Tests: 5 files, 52 tests passing (vitest run, this session).
-- Headless: `npm run headless -- ticks=3000` => ~50k ticks/s, sim stable.
-- Build: vite production build 559 kB (147 kB gzip).
-- Visual: sandbox had no browser (KL-7); a standalone single-file build
-  (`npm run standalone`) exists for file:// inspection; first-render QA
-  is the top verification priority for the next session with a browser.
-
-## Watch items for the next model
-- The renderer has had at most one visual inspection; expect polish issues
-  (see KNOWN_LIMITATIONS). Do not assume art quality is final; the palette
-  and silhouettes are the locked direction, not the final asset quality.
-- `terrain_mesh.ts` has a triple-duplicated `mesh.position.set` line
-  (harmless; clean up on next touch).
-- `sim_world.ts` holds a `void countItem` keep-import; remove when a real
-  use lands.
-- Balance numbers (damage, xp curves) are first-pass; tune only with
-  headless measurement, not by feel.
+## Watch items
+- KL-11: charId IS identity; accounts/auth is FABLE_REQUIRED pre-deployment.
+- Bench bots are naive (KL-13); treat difficulty numbers as lower bounds.
+- Snapshot JSON is full-state at 10 Hz (KL-14); delta encoding when entity
+  counts grow.
+- The offline SimWorld.drainEvents consumes globally: exactly one local view
+  per offline sim (documented in the file; server path is separate).
+- Git: sandbox cannot delete `.git/index.lock`/objects lock leftovers; if
+  commits fail on YOUR machine, delete `.git/index.lock` and commit; a
+  `claurim-mmo.bundle` with this session's commit may sit at repo root.

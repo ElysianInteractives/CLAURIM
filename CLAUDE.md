@@ -1,10 +1,20 @@
 # Claurim
 
-A browser-playable open-world action RPG in the spirit of a classic northern
-fantasy province: one deterministic TypeScript simulation core, multiple hosts
-(offline browser, headless, later an authoritative server). Clean-room
-project: original code, original content, no proprietary Bethesda assets,
-text, or data. Stack: TypeScript (ESM, strict) - Three.js - Vite - Vitest.
+A browser-playable, third-person, SERVER-AUTHORITATIVE multiplayer action
+RPG in an original northern fantasy province: one deterministic TypeScript
+simulation core, multiple hosts (dedicated server, offline browser,
+headless). Clean-room project: original code, original content, no
+proprietary Bethesda assets, text, or data (automated gate:
+`scripts/check_ip.ts`; rules: `docs/project/IP_STYLE_GUIDE.md` +
+`NAMING_GUIDE.md`). Stack: TypeScript (ESM, strict) - Three.js - ws - Vite -
+Vitest.
+
+MULTIPLAYER AUTHORITY (D-013..D-016): the SERVER sim resolves all persistent
+outcomes (damage, death/downed, loot, quests, XP, inventory, trade,
+targeting, spawns, positions). Clients send INTENT only (never positions),
+predict their own movement, and interpolate remotes. Per-player state
+(journal, dialogue, shop, spells, container loot) is keyed by CharacterId in
+the one shared Sim - never clone the world per client.
 
 ## Repo map
 | Path | What it is |
@@ -20,13 +30,19 @@ text, or data. Stack: TypeScript (ESM, strict) - Three.js - Vite - Vitest.
 | `src/game/` | Host glue: `sim_world.ts` (Sim -> IWorld adapter; the only host file that may import Sim), `input.ts`. |
 | `src/render/` | Three.js renderer. Observes IWorld + content data; never mutates the world. |
 | `src/ui/` | DOM HUD + menus. Observes IWorld, submits intent. |
-| `src/headless/` | Headless host (`npm run headless`): same sim, no renderer, unbounded speed. |
+| `src/headless/` | Headless host (`npm run headless`) + `mp_bench.ts` (bot-party difficulty measurement, `npm run mp:bench`). |
+| `src/net/` | Wire protocol v1 (`protocol.ts`, validated both ways, NO runtime sim imports) + `client_world.ts` (online IWorld: snapshots, prediction, reconciliation). |
+| `src/server/` | `core.ts` (transport-agnostic authoritative server), `ws_host.ts` (`npm run server`, :8787), `storage.ts` (StorageProvider + FileStorage; server owns online persistence). |
 | `tests/` | Vitest: architecture guards, determinism, save/migrations, quest e2e, navigation, combat. |
 | `scripts/` | `validate_content.ts` (content gate), `make_standalone.mjs` (single-file build). |
 | `docs/project/` | Charter, architecture, DECISIONS.md (locked), OPUS_BACKLOG.md, coverage matrix. Read `MODEL_HANDOFF.md` first in a new session. |
 
 ## Commands
-- `npm run dev` - Vite dev server on :5173.
+- `npm run dev` - Vite dev server on :5173. Offline by default; online:
+  open `/?ws=ws://localhost:8787&char=<id>&name=<name>` (one tab per client).
+- `npm run server` - authoritative server on :8787 (env: CLAURIM_PORT,
+  CLAURIM_DATA_DIR; SIGINT persists + clean shutdown).
+- `npm run mp:bench` - measured dungeon difficulty (bot parties 1/3/5).
 - `npm test` - Vitest. Prefer one file while iterating: `npx vitest run tests/sim_core.test.ts`.
 - `npm run typecheck` - `tsc --noEmit` (fast; run liberally).
 - `npm run validate` - content gate.

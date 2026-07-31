@@ -21,6 +21,8 @@ export class Renderer {
   private spaceGroup = new THREE.Group();
   private actorMeshes = new Map<number, THREE.Group>();
   private projectileMeshes = new Map<number, THREE.Mesh>();
+  private aoeMeshes = new Map<number, THREE.Mesh>();
+  private telegraphRings = new Map<number, THREE.Mesh>();
   private builtSpace: string | null = null;
   private clock = 0;
 
@@ -65,6 +67,7 @@ export class Renderer {
     this.updateLighting(exterior);
     this.updateActors();
     this.updateProjectiles();
+    this.updateGroundAoes();
     this.updateCamera(player);
     this.webgl.render(this.scene, this.camera);
   }
@@ -139,7 +142,28 @@ export class Renderer {
       mesh.rotation.y = v.yaw;
       poseCharacter(mesh, v, this.clock);
       // Hide the player body in first person.
-      mesh.visible = !(v.isPlayer && this.firstPerson);
+      mesh.visible = !(v.isPlayer && !v.isRemotePlayer && this.firstPerson);
+      // Telegraph warning ring: pulses under a casting enemy (combat
+      // readability for parties; observes state only).
+      let ring = this.telegraphRings.get(v.id);
+      if (v.telegraphTicks > 0 && !v.dead) {
+        if (!ring) {
+          ring = new THREE.Mesh(
+            new THREE.RingGeometry(1.1, 1.7, 24),
+            new THREE.MeshBasicMaterial({ color: 0xff5533, transparent: true, opacity: 0.6, side: THREE.DoubleSide }),
+          );
+          ring.rotation.x = -Math.PI / 2;
+          this.telegraphRings.set(v.id, ring);
+          this.scene.add(ring);
+        }
+        ring.position.set(v.x, v.y + 0.06, v.z);
+        const pulse = 1 + 0.2 * Math.sin(this.clock * 10);
+        ring.scale.setScalar(pulse * (v.tier === 'boss' ? 1.8 : 1));
+      } else if (ring) {
+        this.scene.remove(ring);
+        ring.geometry.dispose();
+        this.telegraphRings.delete(v.id);
+      }
     }
     for (const [id, mesh] of [...this.actorMeshes]) {
       if (!seen.has(id)) {
@@ -176,6 +200,33 @@ export class Renderer {
     }
   }
 
+  private updateGroundAoes(): void {
+    const views = this.world.groundAoesInSpace();
+    const seen = new Set<number>();
+    for (const v of views) {
+      seen.add(v.id);
+      let mesh = this.aoeMeshes.get(v.id);
+      if (!mesh) {
+        mesh = new THREE.Mesh(
+          new THREE.CircleGeometry(1, 24),
+          new THREE.MeshBasicMaterial({ color: PALETTE.frost, transparent: true, opacity: 0.35, side: THREE.DoubleSide }),
+        );
+        mesh.rotation.x = -Math.PI / 2;
+        this.aoeMeshes.set(v.id, mesh);
+        this.scene.add(mesh);
+      }
+      mesh.position.set(v.x, this.world.groundHeight(v.x, v.z) + 0.05, v.z);
+      mesh.scale.setScalar(v.radius);
+    }
+    for (const [id, mesh] of [...this.aoeMeshes]) {
+      if (!seen.has(id)) {
+        this.scene.remove(mesh);
+        mesh.geometry.dispose();
+        this.aoeMeshes.delete(id);
+      }
+    }
+  }
+
   private updateCamera(player: ActorView): void {
     const eye = 1.62;
     if (this.firstPerson) {
@@ -183,11 +234,26 @@ export class Renderer {
       this.camera.rotation.set(this.cameraPitch, this.cameraYaw + Math.PI, 0, 'YXZ');
       return;
     }
-    const d = this.cameraDistance;
-    const cx = player.x - Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch) * d;
-    const cz = player.z - Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch) * d;
-    let cy = player.y + eye - Math.sin(this.cameraPitch) * d;
-    // Keep the camera above the ground.
+    // Camera collision (third-person, D-023): march along the eye->camera ray
+    // and shorten the boom where terrain/floor would occlude the player.
+    let d = this.cameraDistance;
+    const dirX = -Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch);
+    const dirZ = -Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch);
+    const dirY = -Math.sin(this.cameraPitch);
+    const eyeY = player.y + eye;
+    for (let s = 1; s <= 8; s++) {
+      const t = (s / 8) * this.cameraDistance;
+      const px = player.x + dirX * t;
+      const pz = player.z + dirZ * t;
+      const py = eyeY + dirY * t;
+      if (py < this.world.groundHeight(px, pz) + 0.35) {
+        d = Math.max(1.2, t - 0.6);
+        break;
+      }
+    }
+    const cx = player.x + dirX * d;
+    const cz = player.z + dirZ * d;
+    let cy = eyeY + dirY * d;
     const groundAtCam = this.world.groundHeight(cx, cz);
     if (cy < groundAtCam + 0.4) cy = groundAtCam + 0.4;
     this.camera.position.set(cx, cy, cz);

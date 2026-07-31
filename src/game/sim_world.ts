@@ -1,22 +1,39 @@
-// SimWorld: adapts the offline Sim to the IWorld seam. This is the ONLY file
-// on the host side allowed to import Sim concretely; render/ui consume IWorld.
+// SimWorld: adapts a local Sim to the IWorld seam FOR ONE CHARACTER. This is
+// the only host-side file allowed to import Sim concretely (guarded). The
+// offline browser host binds the primary character; multiplayer server-side
+// views and tests may bind any character.
 
-import { Sim } from '../sim/sim';
-import { skillXpForLevel, xpForLevel, SKILL_IDS, type ContentId, type SimEvent } from '../sim/types';
+import { Sim, type CharacterId } from '../sim/sim';
+import { skillXpForLevel, xpForLevel, SKILL_IDS, type Actor, type ContentId, type SimEvent } from '../sim/types';
 import { groundHeight } from '../sim/world/spaces';
 import type {
   ActorView,
   DialogueView,
+  GroundAoeView,
   IWorld,
   JournalView,
+  PartyMemberView,
   ProjectileView,
   ShopView,
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
-import { buyPrice, countItem, sellPrice } from '../sim/inventory/inventory';
+import { buyPrice, sellPrice } from '../sim/inventory/inventory';
 
 export class SimWorld implements IWorld {
-  constructor(public sim: Sim) {}
+  readonly charId: CharacterId;
+
+  constructor(
+    public sim: Sim,
+    charId?: CharacterId,
+  ) {
+    this.charId = charId ?? sim.primaryCharId ?? 'p1';
+  }
+
+  private actor(): Actor {
+    const a = this.sim.playerActor(this.charId);
+    if (!a) throw new Error(`character ${this.charId} not in world`);
+    return a;
+  }
 
   // --- read ---------------------------------------------------------------
 
@@ -25,7 +42,7 @@ export class SimWorld implements IWorld {
   }
 
   currentSpace() {
-    return this.sim.player().pos.spaceId;
+    return this.actor().pos.spaceId;
   }
 
   spaceKind(spaceId: string): 'exterior' | 'interior' {
@@ -36,8 +53,9 @@ export class SimWorld implements IWorld {
     return this.sim.gameHours();
   }
 
-  private toView(a: import('../sim/types').Actor): ActorView {
+  private toView(a: Actor): ActorView {
     const tpl = this.sim.content.actors[a.templateId];
+    const self = this.actor();
     return {
       id: a.id,
       templateId: a.templateId,
@@ -48,15 +66,19 @@ export class SimWorld implements IWorld {
       z: a.pos.z,
       yaw: a.yaw,
       dead: a.dead,
+      downed: a.downed,
       health: a.health,
       maxHealth: a.stats.maxHealth,
       sneaking: a.sneaking,
       blocking: a.blocking,
       attacking: a.attack !== null && a.attack.phase !== 'recover',
       attackKind: a.attack?.kind ?? null,
+      telegraphTicks: a.attack?.telegraph && a.attack.phase === 'windup' ? a.attack.t : 0,
       isPlayer: a.kind === 'player',
-      hostileToPlayer: a.kind !== 'player' && this.sim.isHostile(this.sim.player(), a),
+      isRemotePlayer: a.kind === 'player' && a.id !== self.id,
+      hostileToPlayer: a.kind !== 'player' && this.sim.isHostile(self, a),
       hasDialogue: !!tpl?.dialogueId,
+      tier: tpl?.tier ?? 'standard',
     };
   }
 
@@ -76,12 +98,34 @@ export class SimWorld implements IWorld {
       .map((p) => ({ id: p.id, x: p.pos.x, y: p.pos.y, z: p.pos.z, kind: p.kind, channel: p.channel }));
   }
 
+  groundAoesInSpace(): GroundAoeView[] {
+    const space = this.currentSpace();
+    return this.sim.groundAoes
+      .filter((g) => g.spaceId === space)
+      .map((g) => ({ id: g.id, x: g.x, z: g.z, radius: g.radius }));
+  }
+
   player(): ActorView {
-    return this.toView(this.sim.player());
+    return this.toView(this.actor());
+  }
+
+  party(): PartyMemberView[] {
+    return this.sim.partyMembersOf(this.charId).map((memberId) => {
+      const a = this.sim.playerActor(memberId);
+      return {
+        charId: memberId,
+        name: a?.name ?? memberId,
+        health: a?.health ?? 0,
+        maxHealth: a?.stats.maxHealth ?? 1,
+        downed: a?.downed ?? false,
+        spaceId: a?.pos.spaceId ?? 'kaldwyn',
+        isSelf: memberId === this.charId,
+      };
+    });
   }
 
   playerResources() {
-    const p = this.sim.player();
+    const p = this.actor();
     return {
       health: p.health,
       maxHealth: p.stats.maxHealth,
@@ -98,7 +142,7 @@ export class SimWorld implements IWorld {
   }
 
   playerSkills() {
-    const p = this.sim.player();
+    const p = this.actor();
     return SKILL_IDS.map((id) => ({
       id,
       level: p.skills[id].level,
@@ -108,7 +152,7 @@ export class SimWorld implements IWorld {
   }
 
   playerInventory() {
-    const p = this.sim.player();
+    const p = this.actor();
     const equipped = new Set(Object.values(p.equipment));
     return p.inventory.map((s) => {
       const item = this.sim.content.items[s.itemId];
@@ -124,20 +168,49 @@ export class SimWorld implements IWorld {
   }
 
   knownSpells() {
-    return this.sim.playerKnownSpells.map((id) => {
+    return (this.sim.knownSpellsBy.get(this.charId) ?? []).map((id) => {
       const sp = this.sim.content.spells[id];
       return { id, name: sp?.name ?? id, cost: sp?.magickaCost ?? 0 };
     });
   }
 
+  /** Filter tick events to this player's view: own progression/quests, plus
+   * shared local happenings (combat, chat, boss events). */
+  private eventVisible(e: SimEvent): boolean {
+    const selfId = this.actor().id;
+    switch (e.type) {
+      case 'skillUp':
+      case 'levelUp':
+        return e.playerId === selfId;
+      case 'questStarted':
+      case 'questAdvanced':
+      case 'questCompleted':
+      case 'objectiveProgress':
+        return e.charId === this.charId;
+      case 'itemAdded':
+      case 'itemRemoved':
+        return e.actorId === selfId;
+      case 'spaceEntered':
+      case 'talkedTo':
+        return e.playerId === selfId;
+      case 'interacted':
+        return e.actorId === selfId;
+      default:
+        return true;
+    }
+  }
+
   drainEvents(): SimEvent[] {
+    // NOTE: with multiple local views over one sim, drain consumes for all;
+    // the offline host has exactly one view. The server host distributes
+    // events per player itself (server/core.ts) and does not use this path.
     const events = this.sim.events;
     this.sim.events = [];
-    return events;
+    return events.filter((e) => this.eventVisible(e));
   }
 
   nearestInteractablePrompt(): string | null {
-    const t = this.sim.nearestInteractable();
+    const t = this.sim.nearestInteractableFor(this.charId);
     if (!t) return null;
     switch (t.kind) {
       case 'door':
@@ -148,6 +221,8 @@ export class SimWorld implements IWorld {
         return `Talk to ${t.name}`;
       case 'corpse':
         return `Loot ${t.name}`;
+      case 'revive':
+        return `Revive ${t.name}`;
     }
   }
 
@@ -155,79 +230,91 @@ export class SimWorld implements IWorld {
     return groundHeight(this.sim.content, this.currentSpace(), x, z, this.sim.seed);
   }
 
-  playerDead(): boolean {
-    return this.sim.player().dead;
+  playerDowned(): boolean {
+    return this.actor().downed;
+  }
+
+  downedTicksLeft(): number {
+    return this.actor().downedTicks;
   }
 
   // --- intent -------------------------------------------------------------
 
   step(input: Parameters<IWorld['step']>[0]): void {
-    this.sim.tick(input);
+    // Offline host: one local character drives the tick.
+    this.sim.tick(new Map([[this.charId, input]]));
   }
 
   attackMelee(): boolean {
-    return this.sim.playerMelee();
+    return this.sim.meleeFor(this.charId);
   }
 
   attackRanged(): boolean {
-    return this.sim.playerRanged();
+    return this.sim.rangedFor(this.charId);
   }
 
   castSpell(spellId: ContentId): boolean {
-    return this.sim.playerCast(spellId);
+    return this.sim.castFor(this.charId, spellId);
   }
 
   interact() {
-    return this.sim.interact();
+    const result = this.sim.interactFor(this.charId);
+    return result === 'revive' ? 'none' : result;
   }
 
   useItem(itemId: ContentId): boolean {
-    return this.sim.playerUseItem(itemId);
+    return this.sim.useItemFor(this.charId, itemId);
   }
 
   equipItem(itemId: ContentId): boolean {
-    return this.sim.playerEquip(itemId);
+    return this.sim.equipFor(this.charId, itemId);
   }
 
   takePerk(perkId: ContentId): boolean {
-    return this.sim.playerTakePerk(perkId);
+    return this.sim.takePerkFor(this.charId, perkId);
   }
 
   respawn(): void {
-    this.sim.respawnPlayer();
+    this.sim.releasePlayer(this.charId);
   }
 
   saveGame(): string {
     return this.sim.saveToJson();
   }
 
+  chat(text: string): void {
+    this.sim.chatFrom(this.charId, text);
+  }
+
   // --- menus --------------------------------------------------------------
 
   dialogueView(): DialogueView | null {
-    const node = this.sim.dialogueNode();
-    if (!node || !this.sim.dialogue) return null;
-    const npc = this.sim.actors.get(this.sim.dialogue.npcId);
+    const node = this.sim.dialogueNodeFor(this.charId);
+    const session = this.sim.dialogueSessions.get(this.charId);
+    if (!node || !session) return null;
+    const npc = this.sim.actors.get(session.npcId);
     return {
       speakerName: npc?.name ?? '???',
       text: node.text,
-      choices: this.sim.dialogueChoices().map((c) => c.text),
+      choices: this.sim.dialogueChoicesFor(this.charId).map((c) => c.text),
     };
   }
 
   dialogueChoose(index: number): void {
-    this.sim.dialogueChoose(index);
+    this.sim.dialogueChooseFor(this.charId, index);
   }
 
   dialogueEnd(): void {
-    this.sim.dialogueEnd();
+    this.sim.dialogueEndFor(this.charId);
   }
 
   shopView(): ShopView | null {
-    if (this.sim.shopMerchantId === 0) return null;
-    const merchant = this.sim.actors.get(this.sim.shopMerchantId);
+    const merchantId = this.sim.shopMerchantBy.get(this.charId);
+    if (!merchantId) return null;
+    const merchant = this.sim.actors.get(merchantId);
     if (!merchant) return null;
     const ctx = this.sim.context();
-    const player = this.sim.player();
+    const player = this.actor();
     const stock = merchant.inventory.map((s) => ({
       itemId: s.itemId,
       name: this.sim.content.items[s.itemId]?.name ?? s.itemId,
@@ -246,25 +333,25 @@ export class SimWorld implements IWorld {
   }
 
   shopBuy(itemId: ContentId): boolean {
-    return this.sim.shopBuy(itemId);
+    return this.sim.shopBuyFor(this.charId, itemId);
   }
 
   shopSell(itemId: ContentId): boolean {
-    return this.sim.shopSell(itemId);
+    return this.sim.shopSellFor(this.charId, itemId);
   }
 
   shopClose(): void {
-    this.sim.shopClose();
+    this.sim.shopCloseFor(this.charId);
   }
 
   journal(): JournalView[] {
-    return this.sim.journal();
+    return this.sim.journalOf(this.charId);
   }
 
   perks(): PerkView[] {
-    const p = this.sim.player();
+    const p = this.actor();
     return Object.values(this.sim.content.perks).map((perk) => {
-      const check = this.sim.playerCanTakePerk(perk.id);
+      const check = this.sim.canTakePerkFor(this.charId, perk.id);
       return {
         id: perk.id,
         name: perk.name,
@@ -278,6 +365,3 @@ export class SimWorld implements IWorld {
     });
   }
 }
-
-// Keep countItem imported for future intent methods without a lint suppression.
-void countItem;

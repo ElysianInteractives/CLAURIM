@@ -3,36 +3,73 @@
 // Saves live in localStorage under one slot. The host may touch the DOM;
 // the sim never does.
 
+// Browser host. Two modes:
+//   OFFLINE (default): local Sim + SimWorld, localStorage save slot.
+//   ONLINE  (?ws=ws://host:8787&char=<id>&name=<display>): ClientWorld over
+//   WebSocket; the server owns simulation and persistence (D-014/D-016).
+
 import { Sim } from './sim/sim';
 import { SimWorld } from './game/sim_world';
+import { ClientWorld } from './net/client_world';
 import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import { Input } from './game/input';
 import { DT } from './sim/types';
+import type { IWorld } from './world_api';
 
 const WORLD_SEED = 20260730;
 const SAVE_KEY = 'claurim_save_v1';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
+const params = new URLSearchParams(location.search);
+const wsUrl = params.get('ws');
+const online = wsUrl !== null;
 
-let sim: Sim;
-const stored = localStorage.getItem(SAVE_KEY);
-if (stored) {
-  try {
-    sim = Sim.load(stored);
-  } catch (err) {
-    console.warn('save rejected, starting fresh:', err);
+let sim: Sim | null = null;
+let world: IWorld;
+let clientWorld: ClientWorld | null = null;
+
+if (online) {
+  const charId = params.get('char') ?? `guest_${Math.floor(Math.random() * 1e6)}`;
+  const name = params.get('name') ?? charId;
+  const socket = new WebSocket(wsUrl!);
+  clientWorld = new ClientWorld({ send: (json) => socket.send(json) }, charId, name);
+  socket.addEventListener('message', (ev) => clientWorld!.onMessage(String(ev.data)));
+  socket.addEventListener('close', () => console.warn('[claurim] server connection closed'));
+  world = clientWorld;
+} else {
+  const stored = localStorage.getItem(SAVE_KEY);
+  if (stored) {
+    try {
+      sim = Sim.load(stored);
+    } catch (err) {
+      console.warn('save rejected, starting fresh:', err);
+      sim = new Sim(WORLD_SEED);
+    }
+  } else {
     sim = new Sim(WORLD_SEED);
   }
-} else {
-  sim = new Sim(WORLD_SEED);
+  world = new SimWorld(sim);
 }
 
-let world = new SimWorld(sim);
 const renderer = new Renderer(world, canvas);
 const hud = new Hud(world);
 const input = new Input(canvas);
-input.yaw = world.player().yaw;
+if (!online) input.yaw = world.player().yaw;
+
+// Offline-only debug/inspection handle (screenshot tours, manual QA).
+// Never exposed online: the server is authoritative there and the client
+// holds nothing worth cheating with.
+if (!online) {
+  (globalThis as unknown as Record<string, unknown>).__claurim = {
+    get sim() {
+      return sim;
+    },
+    world,
+    renderer,
+    input,
+  };
+}
 
 addEventListener('resize', () => renderer.resize());
 
@@ -64,18 +101,22 @@ function frame(now: number): void {
     if (cmd.spell2) world.castSpell('mend_wounds');
   }
   if (cmd.save) {
-    localStorage.setItem(SAVE_KEY, world.saveGame());
-    hud.notify('Game saved');
+    if (online) {
+      hud.notify('Online: the server saves your character');
+    } else {
+      localStorage.setItem(SAVE_KEY, world.saveGame());
+      hud.notify('Game saved');
+    }
   }
-  if (cmd.load) {
+  if (cmd.load && !online) {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
       try {
         sim = Sim.load(raw);
         world = new SimWorld(sim);
         // Rebind observers to the new world instance.
-        (renderer as unknown as { world: SimWorld }).world = world;
-        (hud as unknown as { world: SimWorld }).world = world;
+        (renderer as unknown as { world: IWorld }).world = world;
+        (hud as unknown as { world: IWorld }).world = world;
         input.yaw = world.player().yaw;
         hud.notify('Game loaded');
       } catch (err) {
@@ -93,11 +134,14 @@ function frame(now: number): void {
   renderer.cameraYaw = input.yaw;
   renderer.cameraPitch = input.pitch;
 
-  // Fixed-step simulation.
+  // Fixed-step simulation (offline: advances the local sim; online: sends the
+  // input to the server and advances local prediction).
   accumulator += dtSec;
   const axes = menuOpen ? { x: 0, z: 0 } : input.moveAxes();
+  const worldReady = !clientWorld || clientWorld.ready();
   while (accumulator >= DT) {
     accumulator -= DT;
+    if (!worldReady) continue;
     world.step({
       moveX: axes.x,
       moveZ: axes.z,

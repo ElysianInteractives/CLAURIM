@@ -29,6 +29,14 @@ export type ContentId = string;
 /** Space id: an exterior region or an interior ("kaldwyn", "duskhollow_mine"). */
 export type SpaceId = string;
 
+/** Persistent character id (stable across connections; distinct from the
+ * transient connection id owned by the server transport layer). */
+export type CharacterId = string;
+
+/** Party id. The first multiplayer milestone uses one deterministic default
+ * party (see DECISIONS D-020); the model supports many. */
+export type PartyId = string;
+
 export interface Vec3 {
   x: number;
   y: number;
@@ -146,6 +154,14 @@ export interface AttackState {
   /** True once the melee hit for this swing has been resolved. */
   resolved?: boolean;
   power?: number;
+  /** Set when this attack is a template ABILITY (boss/elite mechanics). */
+  abilityId?: ContentId;
+  /** Telegraphed windup: visible to players, may be interruptible. */
+  telegraph?: boolean;
+  interruptible?: boolean;
+  /** Damage absorbed during an interruptible telegraph; crossing
+   * INTERRUPT_DAMAGE cancels the cast. */
+  interruptDamage?: number;
 }
 
 export type AiState = 'idle' | 'schedule' | 'combat' | 'search' | 'flee' | 'return' | 'dead';
@@ -162,6 +178,16 @@ export interface Brain {
   /** Ticks until the next path recompute is allowed. */
   repathCooldown: number;
   alertness: number;
+  /** Threat table: attacker entity id -> accumulated threat (D-017).
+   * Transient (not serialized): combat state resets across saves. */
+  threat: Record<number, number>;
+  /** Party size the encounter was scaled for; locked at first aggro (D-018).
+   * 0 = unscaled. */
+  scaledFor: number;
+  /** Per-ability cooldown ticks remaining, keyed by ability id. */
+  abilityCooldowns: Record<string, number>;
+  /** Current boss phase index (0-based) for templates with phases. */
+  phase: number;
 }
 
 export interface ItemStack {
@@ -216,6 +242,12 @@ export interface Actor {
   perkPoints: number;
   brain: Brain | null;
   factionId: ContentId | null;
+  /** Player-only: incapacitated awaiting revive or release (D-021). */
+  downed: boolean;
+  /** Ticks until a downed player auto-releases. */
+  downedTicks: number;
+  /** Summoned adds despawn with their owner encounter. */
+  summonedBy: EntityId;
   /** Spawner that owns this actor, for cleared-state persistence. */
   spawnerId: string | null;
   /** Loot rolled on death (from the template loot table). */
@@ -253,18 +285,25 @@ export type SimEvent =
   | { type: 'heal'; targetId: EntityId; amount: number }
   | { type: 'itemAdded'; actorId: EntityId; itemId: ContentId; count: number }
   | { type: 'itemRemoved'; actorId: EntityId; itemId: ContentId; count: number }
-  | { type: 'skillUp'; skill: SkillId; level: number }
-  | { type: 'levelUp'; level: number }
-  | { type: 'questStarted'; questId: ContentId }
-  | { type: 'questAdvanced'; questId: ContentId; stageId: string }
-  | { type: 'questCompleted'; questId: ContentId }
-  | { type: 'objectiveProgress'; questId: ContentId; objectiveId: string; progress: number; required: number }
+  | { type: 'skillUp'; playerId: EntityId; skill: SkillId; level: number }
+  | { type: 'levelUp'; playerId: EntityId; level: number }
+  | { type: 'questStarted'; charId: CharacterId; questId: ContentId }
+  | { type: 'questAdvanced'; charId: CharacterId; questId: ContentId; stageId: string }
+  | { type: 'questCompleted'; charId: CharacterId; questId: ContentId }
+  | { type: 'objectiveProgress'; charId: CharacterId; questId: ContentId; objectiveId: string; progress: number; required: number }
   | { type: 'dialogueLine'; speakerId: EntityId; text: string }
-  | { type: 'spaceEntered'; spaceId: SpaceId }
+  | { type: 'spaceEntered'; playerId: EntityId; spaceId: SpaceId }
   | { type: 'interacted'; actorId: EntityId; targetKind: string; targetId: string }
-  | { type: 'talkedTo'; npcTemplateId: ContentId }
+  | { type: 'talkedTo'; playerId: EntityId; npcTemplateId: ContentId }
   | { type: 'effectApplied'; targetId: EntityId; effectId: ContentId }
-  | { type: 'playerDied' };
+  | { type: 'playerDowned'; playerId: EntityId }
+  | { type: 'playerRevived'; playerId: EntityId; by: EntityId }
+  | { type: 'playerReleased'; playerId: EntityId }
+  | { type: 'encounterWipe'; bossId: EntityId }
+  | { type: 'bossPhase'; bossId: EntityId; phase: number }
+  | { type: 'telegraph'; sourceId: EntityId; abilityId: ContentId; ticks: number; interruptible: boolean }
+  | { type: 'interrupted'; sourceId: EntityId; abilityId: ContentId }
+  | { type: 'chat'; playerId: EntityId; text: string };
 
 // ---------------------------------------------------------------------------
 // Quests
@@ -307,6 +346,28 @@ export const SNEAK_ATTACK_MULT = 2.5;
 export const BASE_WALK_SPEED = 4.4;
 export const SPRINT_MULT = 1.55;
 export const SNEAK_MULT = 0.6;
+
+// --- multiplayer combat (D-017/D-018/D-021) --------------------------------
+/** Damage during an interruptible telegraph that cancels the cast. */
+export const INTERRUPT_DAMAGE = 25;
+/** Threat gained per point of damage dealt / healing done nearby. */
+export const THREAT_PER_DAMAGE = 1;
+export const THREAT_PER_HEAL = 0.8;
+/** Per-second threat decay fraction. */
+export const THREAT_DECAY_PER_SEC = 0.03;
+/** A new target must exceed current target threat by this factor (hysteresis). */
+export const THREAT_SWITCH_FACTOR = 1.25;
+/** Encounter scaling per extra engaged player (health / damage). Damage
+ * scales gently: big parties should feel pressure from ADDS and mechanics,
+ * not from one-shot cleaves (measured via npm run mp:bench, 2026-07-31). */
+export const SCALE_HP_PER_PLAYER = 0.6;
+export const SCALE_DMG_PER_PLAYER = 0.12;
+/** Radius for counting engaged players + party quest credit (meters). */
+export const ENGAGE_RADIUS = 60;
+/** Downed state duration before auto-release (ticks: 30 s). */
+export const DOWNED_TICKS = 900;
+export const REVIVE_HEALTH_FRAC = 0.3;
+export const RELEASE_HEALTH_FRAC = 0.4;
 
 /** Character XP required to advance from `level` to `level + 1`. */
 export function xpForLevel(level: number): number {

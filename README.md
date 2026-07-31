@@ -1,13 +1,26 @@
 # Claurim
 
-A browser-playable open-world action RPG: one deterministic TypeScript
-simulation, multiple hosts, code-authored world. Research/fan project with a
-strict clean-room IP boundary (see THIRD_PARTY_NOTICES.md).
+A browser-playable, third-person, server-authoritative multiplayer action
+RPG: one deterministic TypeScript simulation, multiple hosts, code-authored
+world. Research/fan project with a strict clean-room IP boundary (see
+THIRD_PARTY_NOTICES.md).
 
-## Play (dev)
+## Play multiplayer (dev)
 ```
 npm install
-npm run dev        # http://localhost:5173
+npm run server     # authoritative server on ws://localhost:8787
+npm run dev        # client on http://localhost:5173
+```
+Open two browser tabs for two players:
+`http://localhost:5173/?ws=ws://localhost:8787&char=alva&name=Alva`
+`http://localhost:5173/?ws=ws://localhost:8787&char=brona&name=Brona`
+Characters persist server-side (./server_data); Ctrl+C saves and shuts down.
+Bring a party: Duskhollow Mine is tuned for 3-5 players and its Warden will
+bury an unprepared solo hero.
+
+## Play offline (single player)
+```
+npm run dev        # http://localhost:5173 (no query string)
 ```
 Click the canvas to capture the mouse. WASD move, Shift sprint, C sneak,
 Space jump, LMB attack, RMB block, 1 Flamebolt, 2 Mend Wounds, E interact,

@@ -81,6 +81,88 @@ primitives; terrain is vertex-colored by biome. A GLB asset pipeline
 (ClaudeCraft's image-to-glb style) is the planned upgrade path and must slot
 in behind `buildCharacter`/`buildProp` without touching the sim.
 
+## D-013: Multiplayer state model - LOCKED (2026-07-31 MMO pivot)
+One authoritative Sim hosts many characters: `players: Map<CharacterId,
+EntityId>`, per-character keyed state (journals, spells, container loot,
+dialogue/shop sessions, transients), per-character input map into `tick()`.
+The world is never cloned per client. CharacterId (persistent) is distinct
+from connection id (transport) and EntityId (runtime). Deliberate seam
+evolution: SimContext's single-player `quests` view was REPLACED by
+charId-parameterized members (documented exception to append-only; all
+callers migrated, fixtures updated, invariants preserved).
+Full model: MULTIPLAYER_STATE_MODEL.md. Rejected: sim-per-client with state
+merge (unsolvable divergence), player-list bolted onto a primary-player core
+(hidden singletons keep leaking - the refactor removed them instead).
+
+## D-014: Server-authoritative WebSocket protocol v1 - LOCKED
+Dedicated Node server (`ServerCore`, transport-agnostic) owns the sim;
+`ws` adapter; versioned validated JSON messages; clients send intent only
+(never positions); 10 Hz interest-scoped self-contained snapshots over the
+cell architecture; per-client event filtering. P2P rejected as final
+architecture. Details + measured rates: NETWORK_ARCHITECTURE.md.
+
+## D-015: Client prediction + reconciliation - LOCKED
+Sequenced inputs; client predicts OWN movement with the same deterministic
+resolveMove/terrain code; server acks lastProcessedSeq; client replays the
+unacked tail from the authoritative position (snap >3 m, else 40% blend);
+space transitions snap; remote actors exponentially smoothed (0.35/frame);
+combat is presentation-only prediction.
+
+## D-016: Server-owned persistence behind StorageProvider - LOCKED
+Characters (schema v1) and world (schema v2) persist via a 4-method storage
+interface; FileStorage (atomic tmp+rename) for the milestone, database
+later. Browser localStorage is offline-mode only. Corruption rejects, never
+half-loads. PERSISTENCE_ARCHITECTURE.md.
+
+## D-017: Explicit threat system - LOCKED
+Per-enemy threat tables (damage/heal accrual, decay, 1.25x switch
+hysteresis, leash reset). Chosen over pure-proximity targeting (unpredictable
+in parties) and over hard taunt-trinity (Claurim stays action-first; taunt is
+a hook on the same table).
+
+## D-018: Data-driven encounter model + locked scaling - LOCKED
+Tiers standard/veteran/elite/boss; roles melee/ranged/support; template
+abilities (frontal_cone / ground_aoe / summon / heal_ally) with telegraphs +
+interrupts; boss phases; group aggro via spawner-mates; scaling locked at
+first aggro to engaged party size (hp +60%/extra, damage +12%/extra, tuned
+by measurement 2026-07-31), through the standard modifier system.
+ENCOUNTER_DESIGN.md. Exemplar: Duskhollow + The Pale Warden.
+
+## D-019: Loot ownership - LOCKED
+Standard corpses: one shared roll, first-looter (party norm). Elite/boss:
+PERSONAL loot - independent deterministic roll delivered to each eligible
+nearby party member. Containers: personal per character (deterministic
+per-char forked stream). Rejected: round-robin/need-greed UI (heavyweight
+for milestone; personal loot avoids intra-party theft griefs entirely).
+
+## D-020: Quest ownership + party credit - LOCKED
+Per-character journals; kill credit shared with party within 60 m same
+space; collect/talkTo/interact/reach personal; rewards to the completing
+character; mid-quest joiners credit only their current stage. Milestone
+party policy: one deterministic default party ('fellowship') until explicit
+party UI lands (Opus ticket on this exemplar).
+
+## D-021: Death and recovery - LOCKED
+Players go DOWNED (30 s, damage-immune, threat-invisible) -> party revive at
+30% or auto-release at 40% to the space's recovery point (interior exit
+door / Falkmoor waystone). Party wipe in a boss space = immediate release +
+full deterministic encounter reset (unlocks scaling). No durability loss.
+
+## D-022: Naming + dialogue originality regime - LOCKED
+NAMING_GUIDE.md (derivation methods, forbidden shortcuts, stable-id rule,
+audit log) + IP_STYLE_GUIDE.md (voice sheets, plural-adventurer framing,
+human checklist) + scripts/check_ip.ts automated fragment gate in
+validate/build/gate. Slice audit complete: 'Bronn Hale' -> 'Brandvar Hale',
+'Ysolde Varr' -> 'Eydris Varr' (display only; ids stable).
+
+## D-023: Third-person camera - LOCKED
+Third person is the primary mode: orbit boom with pitch limits, scroll zoom
+(2.2-14 m), terrain-collision ray march shortening the boom, camera-relative
+movement (input rotated by view yaw in the sim), first person retained as a
+secondary toggle. Lock-on/soft-targeting: evaluated, deferred - free-aim
+melee arcs + threat readability suffice at current pace (revisit with ranged
+PvP). Building-occlusion camera collision is KL-12.
+
 ## D-012: Perception model - LOCKED
 Distance (template range) x night factor (outdoors 21:00-05:00: 65%) x stealth
 (sneaking target: range * max(0.15, 1 - stealth*0.12) * observer detection),

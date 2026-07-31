@@ -1,5 +1,18 @@
 # Scope
 
+## Milestone MP-1 (CURRENT, 2026-07-31): multiplayer vertical slice - IMPLEMENTED
+Dedicated authoritative server (`npm run server`), two-plus browser clients
+(`?ws=...&char=...`), persistent distinct characters with server-owned
+storage, third-person remote-player rendering, movement replication with
+prediction/reconciliation, chat presence, deterministic default party,
+shared exterior + interiors, cooperative combat with threat/telegraphs/
+interrupts/scaling, party quest credit on The Hollow Delve, personal boss
+loot, downed/revive/release + wipe reset, disconnect/reconnect restoration,
+Duskhollow as the group-dungeon exemplar, measured difficulty (mp:bench),
+automated multi-client integration tests. Exit criteria still open: real
+browser visual QA of the multiplayer view (KL-7 successor), accounts/auth
+before any public exposure (KL-11).
+
 ## Milestone 1 (CURRENT): Kaldwyn Reach vertical slice - IMPLEMENTED
 World: streamed exterior (mountain rim, river, road, forest/tundra biomes,
 weather-lit day/night), Fenharrow village, Falkmoor Ruin start, road wolf

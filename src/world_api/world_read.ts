@@ -18,15 +18,21 @@ export interface ActorView {
   z: number;
   yaw: number;
   dead: boolean;
+  downed: boolean;
   health: number;
   maxHealth: number;
   sneaking: boolean;
   blocking: boolean;
   attacking: boolean;
   attackKind: string | null;
+  /** Remaining telegraph ticks when winding up a telegraphed ability. */
+  telegraphTicks: number;
   isPlayer: boolean;
+  /** True for player characters other than the viewing player. */
+  isRemotePlayer: boolean;
   hostileToPlayer: boolean;
   hasDialogue: boolean;
+  tier: string;
 }
 
 export interface ProjectileView {
@@ -38,16 +44,35 @@ export interface ProjectileView {
   channel: string;
 }
 
+export interface GroundAoeView {
+  id: number;
+  x: number;
+  z: number;
+  radius: number;
+}
+
+export interface PartyMemberView {
+  charId: string;
+  name: string;
+  health: number;
+  maxHealth: number;
+  downed: boolean;
+  spaceId: SpaceId;
+  isSelf: boolean;
+}
+
 export interface WorldReadFacet {
   seed(): number;
-  /** Space the player currently occupies. */
+  /** Space the viewing player currently occupies. */
   currentSpace(): SpaceId;
   spaceKind(spaceId: SpaceId): 'exterior' | 'interior';
   gameHours(): number;
-  /** Actors in the player's space (renderer culls further). */
+  /** Actors in the viewing player's space (renderer culls further). */
   actorsInSpace(): ActorView[];
   projectilesInSpace(): ProjectileView[];
+  groundAoesInSpace(): GroundAoeView[];
   player(): ActorView;
+  party(): PartyMemberView[];
   playerResources(): {
     health: number;
     maxHealth: number;
@@ -64,10 +89,14 @@ export interface WorldReadFacet {
   playerSkills(): { id: SkillId; level: number; xp: number; xpForNext: number }[];
   playerInventory(): { itemId: ContentId; name: string; count: number; equipped: boolean; kind: string; value: number }[];
   knownSpells(): { id: ContentId; name: string; cost: number }[];
-  /** Events from the most recent tick (damage numbers, notifications). */
+  /** Events from the most recent tick, already filtered to what this player
+   * should see (own progression, local combat, world messages). */
   drainEvents(): SimEvent[];
   nearestInteractablePrompt(): string | null;
   /** Sampling seam so the renderer never recomputes terrain differently. */
   groundHeight(x: number, z: number): number;
-  playerDead(): boolean;
+  /** Viewing player is downed (awaiting revive or release). */
+  playerDowned(): boolean;
+  /** Ticks until the downed player auto-releases. */
+  downedTicksLeft(): number;
 }

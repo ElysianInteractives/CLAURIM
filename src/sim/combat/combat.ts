@@ -8,7 +8,9 @@ import {
   ARROW_SPEED,
   ATTACK_STAMINA_COST,
   BLOCK_STAMINA_ON_HIT,
+  DOWNED_TICKS,
   DT,
+  INTERRUPT_DAMAGE,
   MELEE_ACTIVE_TICKS,
   MELEE_ARC_COS,
   MELEE_RANGE,
@@ -19,12 +21,14 @@ import {
   SNEAK_ATTACK_MULT,
   SPELL_PROJECTILE_SPEED,
   SPELL_WINDUP_TICKS,
+  THREAT_PER_DAMAGE,
   type Actor,
   type DamageChannel,
   type EntityId,
 } from '../types';
 import type { SimContext } from '../sim_context';
 import { rollLoot } from '../inventory/inventory';
+import { executeAbility } from '../ai/abilities';
 
 let nextProjectileId = 1;
 
@@ -63,6 +67,7 @@ export function dealDamage(
 ): void {
   const target = ctx.actors.get(targetId);
   if (!target || target.dead || amount <= 0) return;
+  if (target.downed) return; // downed players are out of the fight, not corpses
   const { taken, blocked } = mitigate(target, amount, channel);
   target.health -= taken;
   if (blocked) {
@@ -72,13 +77,27 @@ export function dealDamage(
     ctx.trainSkill(targetId, 'lightArmor', 3);
   }
   ctx.emit({ type: 'damage', targetId, sourceId, amount: taken, channel, blocked });
-  // Getting hit alerts the target's brain.
+  // Threat + aggro: getting hit adds threat and wakes the target's brain (D-017).
   if (target.brain && sourceId !== 0) {
     const src = ctx.actors.get(sourceId);
     if (src && ctx.isHostile(target, src)) {
-      target.brain.state = 'combat';
-      target.brain.targetId = sourceId;
+      target.brain.threat[sourceId] = (target.brain.threat[sourceId] ?? 0) + taken * THREAT_PER_DAMAGE;
+      if (target.brain.state !== 'combat') {
+        target.brain.state = 'combat';
+        target.brain.targetId = sourceId;
+      }
       target.brain.lastKnownPos = { ...src.pos };
+    }
+  }
+  // Interruption: damaging an interruptible telegraph cancels it (D-018).
+  const atk = target.attack;
+  if (atk?.telegraph && atk.interruptible && atk.phase === 'windup') {
+    atk.interruptDamage = (atk.interruptDamage ?? 0) + taken;
+    const tpl = ctx.content.actors[target.templateId];
+    if (!tpl?.interruptImmune && atk.interruptDamage >= INTERRUPT_DAMAGE && atk.abilityId) {
+      ctx.emit({ type: 'interrupted', sourceId: targetId, abilityId: atk.abilityId });
+      target.attack = null;
+      if (target.brain) target.brain.timer = 45; // staggered pause after interrupt
     }
   }
   if (target.health <= 0) {
@@ -89,32 +108,71 @@ export function dealDamage(
 export function handleDeath(ctx: SimContext, targetId: EntityId, killerId: EntityId): void {
   const target = ctx.actors.get(targetId);
   if (!target || target.dead) return;
+
+  // Players go DOWNED instead of dying outright (D-021): incapacitated,
+  // revivable by party members, auto-release after DOWNED_TICKS.
+  if (target.kind === 'player') {
+    target.downed = true;
+    target.downedTicks = DOWNED_TICKS;
+    target.health = 0;
+    target.attack = null;
+    target.blocking = false;
+    target.sprinting = false;
+    ctx.emit({ type: 'playerDowned', playerId: targetId });
+    return;
+  }
+
   target.dead = true;
   target.health = 0;
   target.attack = null;
   target.blocking = false;
   if (target.brain) target.brain.state = 'dead';
-  // Roll loot once, from the sim rng (deterministic given event order).
+
+  const tpl = ctx.content.actors[target.templateId];
   if (!target.lootRolled) {
     target.lootRolled = true;
-    const tpl = ctx.content.actors[target.templateId];
     const tableId = tpl?.lootTable;
     if (tableId) {
       const table = ctx.content.lootTables[tableId];
       if (table) {
-        const rolled = rollLoot(ctx.rng, table);
-        for (const it of rolled.items) {
-          const st = target.inventory.find((s) => s.itemId === it.itemId);
-          if (st && ctx.content.items[it.itemId]?.stackable) st.count += it.count;
-          else target.inventory.push({ itemId: it.itemId, count: it.count });
+        if (tpl?.tier === 'boss' || tpl?.tier === 'elite') {
+          // PERSONAL loot (D-019): every eligible party member near the kill
+          // receives an independent roll directly to their inventory.
+          const killerChar = ctx.charIdOf(killerId);
+          const recipients = killerChar ? ctx.partyMembersOf(killerChar) : [];
+          let delivered = false;
+          for (const charId of recipients) {
+            const member = ctx.actorByCharId(charId);
+            if (!member || member.dead) continue;
+            if (member.pos.spaceId !== target.pos.spaceId) continue;
+            const rolled = rollLoot(ctx.rng, table);
+            for (const it of rolled.items) ctx.addItem(member.id, it.itemId, it.count);
+            member.gold += rolled.gold;
+            delivered = true;
+          }
+          if (!delivered) {
+            // No player credit (e.g. environmental death): shared corpse loot.
+            const rolled = rollLoot(ctx.rng, table);
+            for (const it of rolled.items) target.inventory.push({ itemId: it.itemId, count: it.count });
+            target.gold += rolled.gold;
+          }
+        } else {
+          // Standard enemies: one shared corpse roll (first-looter).
+          const rolled = rollLoot(ctx.rng, table);
+          for (const it of rolled.items) {
+            const st = target.inventory.find((s) => s.itemId === it.itemId);
+            if (st && ctx.content.items[it.itemId]?.stackable) st.count += it.count;
+            else target.inventory.push({ itemId: it.itemId, count: it.count });
+          }
+          target.gold += rolled.gold;
         }
-        target.gold += rolled.gold;
       }
     }
   }
   ctx.emit({ type: 'death', targetId, sourceId: killerId, templateId: target.templateId });
   ctx.onQuestEvent({ type: 'death', targetId, sourceId: killerId, templateId: target.templateId });
-  if (target.kind === 'player') ctx.emit({ type: 'playerDied' });
+  // A summoner's adds despawn-on-death is handled by encounter reset; adds
+  // dying is normal combat.
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +219,7 @@ function facing(a: Actor): { x: number; z: number } {
 function resolveMeleeHit(ctx: SimContext, attacker: Actor): void {
   const dir = facing(attacker);
   for (const target of ctx.actors.values()) {
-    if (target.id === attacker.id || target.dead) continue;
+    if (target.id === attacker.id || target.dead || target.downed) continue;
     if (target.pos.spaceId !== attacker.pos.spaceId) continue;
     const dx = target.pos.x - attacker.pos.x;
     const dz = target.pos.z - attacker.pos.z;
@@ -220,6 +278,13 @@ export function tickAttack(ctx: SimContext, actorId: EntityId): void {
   atk.t -= 1;
   if (atk.t > 0) return;
   if (atk.phase === 'windup') {
+    if (atk.abilityId) {
+      // Template ability (boss/elite mechanic): resolve via the ability system.
+      executeAbility(ctx, a, atk.abilityId);
+      atk.phase = 'recover';
+      atk.t = MELEE_RECOVER_TICKS;
+      return;
+    }
     if (atk.kind === 'melee') {
       atk.phase = 'active';
       atk.t = MELEE_ACTIVE_TICKS;
@@ -279,7 +344,7 @@ export function tickProjectiles(ctx: SimContext): void {
     // Actor hit: first living actor (excluding source) within radius.
     let hit = false;
     for (const target of ctx.actors.values()) {
-      if (target.id === p.sourceId || target.dead) continue;
+      if (target.id === p.sourceId || target.dead || target.downed) continue;
       if (target.pos.spaceId !== p.spaceId) continue;
       const dx = target.pos.x - p.pos.x;
       const dz = target.pos.z - p.pos.z;
