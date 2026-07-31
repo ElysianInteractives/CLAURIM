@@ -169,6 +169,39 @@ behavior.
   [mine landing 1280x720](../screenshots/2026-07-31/plan-3-mine-landing-1280x720.jpg),
   and [mine walls scaled 1920x1080](../screenshots/2026-07-31/plan-3-mine-boundaries-1920x1080-scaled.jpg).
 
+### Plan 4 AI/encounter reliability exit
+
+- Exact short-path source copy: `npm run gate` green; 12 suites / 118 tests.
+  Production bundle: 616.52 kB JavaScript / 163.85 kB gzip.
+- The 13-test Plan 4 suite pins wall-aware perception, visible target
+  continuity, shared multi-spawner pulls/scaling, useful support heals,
+  cooldown progress during telegraphs, a four-summon cap, owned
+  projectile/pool/summon cleanup, defeated-member restoration, observed and
+  offscreen door schedules, and disconnected-home return recovery.
+- `npm run ai:bench` compares the same three seeds under named naïve and
+  mechanics policies. Solo remains 0/3 for both. At three players mechanics
+  reduces damage from 5,467.0 to 4,714.2 and downs from 79 to 65, with a 57 s
+  clear versus 80 s. At five it reduces damage from 11,593.2 to 8,108.5 and
+  downs from 180 to 99, and earns 1/3 clears versus 0/3.
+- Direct 1280x720 browser observation confirms the Mire Matron’s interruptible
+  heal ring/notice on an injured allied rat; the five-member Warden view shows
+  the exact cone, party frames, and four living summoned adds after three
+  forced casts; and Brandvar is interactable by name in the inn at 20:00 after
+  offscreen schedule advancement.
+- The direct encounter page logs only Vite connection diagnostics, with no
+  game warning/error. The temporary 1920x1080 scaled iframe preserves layout
+  and reproduces the known browser-instrumentation `MutationObserver` artifact;
+  neither query fixture nor iframe ships.
+- `npm run world:tour` retains all 17 routes and 34 placements. Headless
+  `ticks=9000 seed=42` records 124 ms / 72,581 ticks/sec, 9,958-byte save,
+  and 20 living actors. The real two-client WebSocket smoke passes at ack 30,
+  4.4 m movement, mutual visibility, and 3,930 / 3,918-byte snapshots.
+- Approved captures:
+  [Matron heal 1280x720](../screenshots/2026-07-31/plan-4-matron-heal-1280x720.png),
+  [Warden party/adds 1280x720](../screenshots/2026-07-31/plan-4-warden-party-1280x720.png),
+  [Brandvar schedule 1280x720](../screenshots/2026-07-31/plan-4-brandvar-schedule-1280x720.png),
+  and [Warden scaled 1920x1080](../screenshots/2026-07-31/plan-4-warden-party-1920x1080-scaled.png).
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -179,7 +212,7 @@ behavior.
 | QA-OFF-TRAVERSE | Every authored route, space, and placement | `npm run world:tour`, then browser-check changed geometry | Route/placement report, clipping list, screenshots |
 | QA-CMB-SMOKE | Melee, block, spells, damage, death | Falkmoor hostiles, then a mine pull | Inputs, outcomes, readable feedback |
 | QA-SIM | Deterministic speed/save baseline | `npm run headless -- ticks=9000 seed=42` | JSON metrics |
-| QA-BAL-BOSS | Party-size pressure baseline | `npm run mp:bench -- runs=3` | JSON summary |
+| QA-BAL-BOSS | Party-size pressure baseline | `npm run ai:bench` (comparison) or `npm run mp:bench -- runs=3 policy=mechanics` | JSON summary |
 | QA-NET-CORE | Server protocol/state correctness | `npm test -- tests/server_net.test.ts` | Snapshot, replay, persistence assertions |
 | QA-NET-WS | Real adapter/two-client smoke | Terminal 1 `npm run server`; terminal 2 `npm run qa:ws` | Ack, movement, visibility, snapshot bytes |
 | QA-NET-BROWSER | Actual online browser boot | Start server + dev; open query URL | Welcome/HUD, logs, remote visibility |

@@ -29,5 +29,6 @@ Each has an enforcing check. Weakening one requires a DECISIONS.md entry.
 | I-23 | The `src/sim` module import graph remains acyclic | `tests/architecture.test.ts` |
 | I-24 | A representative four-player dungeon snapshot stays below 32,000 UTF-8 bytes | `tests/server_net.test.ts` |
 | I-25 | Actor movement, navigation, projectiles, rendered interior boundaries, and camera obstruction derive from the same authored environment | `tests/world_traversal.test.ts` + `npm run world:tour` |
+| I-26 | One authored encounter key governs group aggro, scaling, summons, transient mechanics, return, and wipe reset | `tests/ai_encounter_reliability.test.ts` |
 
 Open QA gaps and future tripwires are tracked in `DEFICIT_REGISTER.md`.

@@ -63,6 +63,8 @@ export interface SimContext {
   containersLootedBy(charId: CharacterId): Set<string>;
   /** Spawn an actor from a template at runtime (summons). Returns id. */
   spawnFromTemplate(templateId: ContentId, spaceId: SpaceId, pos: Vec3, summonedBy: EntityId): EntityId;
+  /** Allocate an instance-owned transient ground-effect id. */
+  allocateGroundAoeId(): number;
 
   // --- cross-system callbacks ----------------------------------------------
   emit(e: SimEvent): void;

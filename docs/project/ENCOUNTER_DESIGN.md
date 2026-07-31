@@ -25,11 +25,13 @@ predictably. Taunts: a declared hook (add a large threat bump through the
 same table) - not yet a player ability.
 
 ## Group aggro + scaling
-Aggro pulls same-spawner allies within 20 m (multi-enemy pulls are the norm).
-Encounter scaling LOCKS at first aggro to the count of players within 60 m:
-maxHealth x(1 + 0.6/extra player), damage x(1 + 0.12/extra player), applied
-through the standard modifier system (auditable in stat traces). Rapid
-enter/exit cannot recount mid-fight; only a full reset unlocks (anti-exploit).
+Aggro pulls every living member of the spawner's authored `encounterId`;
+untagged content falls back to its individual spawner. Summons inherit the
+root owner. Encounter scaling LOCKS at first aggro to the count of players
+within 60 m: maxHealth x(1 + 0.4/extra player), damage x(1 + 0.08/extra
+player), applied through the standard modifier system (auditable in stat
+traces). Rapid enter/exit cannot recount mid-fight; only one atomic full
+encounter reset unlocks it (anti-exploit). See `AI_ENCOUNTER_CONTRACT.md`.
 
 ## The exemplar: Duskhollow Mine (group dungeon)
 - Gate camp (exterior): 2 raiders + rock-perch archer + Redclaw Reaver
@@ -40,11 +42,38 @@ enter/exit cannot recount mid-fight; only a full reset unlocks (anti-exploit).
 - The Pale Vault: The Pale Warden (boss, 380 base HP, frost):
   - pale_breath: 1.5 s telegraphed frontal cone, 42 frost, INTERRUPTIBLE.
   - grave_chill: pools under the current target (move or melt).
-  - call_thralls: phase-1 unlock, 2 adds per cast (priority targets).
+  - call_thralls: phase-1 unlock, 2 adds per cast, 4 living adds maximum
+    (priority targets).
   - Phase 2 (<=33%): +30% damage escalation.
   - Wipe -> deterministic full reset; personal loot per party member.
 
-## Difficulty targets and MEASURED baseline (npm run mp:bench, 2026-07-31)
+## Plan 4 two-policy baseline (`npm run ai:bench`, 2026-07-31)
+
+Correct faction allegiance means the Warden and its thralls are allies rather
+than damaging one another. The prior +60% health/+12% damage extra-player
+curve was therefore retuned to +40%/+8%; solo base values did not change.
+Both policies use identical fixed seeds, iron sword/shield, three draughts,
+and the same encounter. The mechanics policy pre-moves target pools, spreads
+on approach, blocks, prioritizes adds, and actively revives.
+
+| policy | party | kills | avg kill | wipes | downs | revives | blocks | damage taken | max phase |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| naïve | 1 | 0/3 | - | 5 | 23 | 0 | 0 | 1,775.1 | 0 |
+| mechanics | 1 | 0/3 | - | 6 | 23 | 0 | 14 | 1,410.7 | 0 |
+| naïve | 3 | 1/3 | 80 s | 6 | 79 | 46 | 0 | 5,467.0 | 2 |
+| mechanics | 3 | 1/3 | 57 s | 5 | 65 | 41 | 53 | 4,714.2 | 2 |
+| naïve | 5 | 0/3 | - | 8 | 180 | 95 | 0 | 11,593.2 | 2 |
+| mechanics | 5 | 1/3 | 166 s | 8 | 99 | 39 | 54 | 8,108.5 | 2 |
+
+The prepared solo policy still cannot reach phase 1. Mechanics-aware parties
+take 14-30% less damage, and the five-player policy earns a clear where the
+naïve one does not; downs remain high, so this is evidence for mechanic value
+and a lower performance bound, not a final “easy” verdict. Plan 4 browser
+observation confirms telegraph, party, add-cap, and support-heal readability;
+the fixed-seed benchmark supplies the clear evidence.
+
+## Original naïve baseline (`npm run mp:bench`, 2026-07-31)
+
 Targets: overworld solo-viable; dungeons for ~3-5; bosses defeat an
 unprepared solo player; success from mechanics, not damage sponging.
 Scripted bot parties (iron sword + shield + 3 draughts; naive AI that never
@@ -62,8 +91,8 @@ replace the earlier coarse-world baseline, so enemies and bots take different
 routes without any D-024 combat-number change. The bots' biggest killer
 remains standing in cleaves (mechanics matter). Real players who block,
 interrupt, spread, and revive should outperform these floors.
-Remaining uncertainty: bot quality bounds the estimate from below; a
-blocking/interrupting bot policy is an Opus benchmark ticket (OB-M6).
+This older result predates correct undead allegiance and remains historical
+context only. Use the Plan 4 two-policy table for current tuning.
 
 ## Plan 2 sustained-output baseline (`npm run combat:bench -- seconds=30`)
 

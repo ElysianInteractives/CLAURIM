@@ -17,4 +17,4 @@
 | Snapshot bandwidth growth | med | med | interest scoping now; OB-M3 tripwire; delta encoding later | managed |
 | Cheat clients (modified prediction) | med | med | server validates all intent; positions never accepted; keep every outcome server-side | managed by design |
 | Shared-world dungeon contention (no instancing) | med | low | KL-15; instancing designed later | open |
-| Difficulty misjudged from naive bots | med | med | KL-13; OB-M6 smarter bots + real-party playtests | open |
+| Difficulty misjudged from simple bots | med | med | KL-13; naïve/mechanics comparison now exists, broader real-party playtests remain | reduced/open |

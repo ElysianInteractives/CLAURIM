@@ -18,7 +18,7 @@ the tick order, or reopening D-001/D-002/D-013.
 | Multiplayer ownership | Character/entity lookup, per-character maps, parties, primary-character compatibility | quests, dialogue, inventory |
 | Tick orchestration | Fixed phase order, player inputs, active actors, effects, AI, attacks, regen, projectiles, objectives, respawns | every runtime system |
 | Player locomotion | Movement intent, collision, stance, stamina, jump/gravity transient state | collision, terrain/spaces |
-| Encounter lifecycle | Ground AoEs, downed/revive/release, wipe detection, scaling reset, respawn | combat, AI, modifiers |
+| Encounter lifecycle | Ground AoEs, downed/revive/release, deduplicated wipe detection, atomic ownership-key reset, respawn | `ai/encounters.ts`, combat, AI, modifiers |
 | Command facade | Melee, ranged, cast, items, equipment, perks, quests, chat | combat, inventory, progression, quests |
 | Interaction routing | Nearest door/container/NPC/corpse/player, transitions, loot, dialogue, revive | world content, dialogue, inventory |
 | Session ownership | Per-character dialogue/shop state and commands | dialogue and merchant functions |

@@ -11,10 +11,10 @@
 - KL-3 First-person mode is a camera toggle; the body hides but hands/weapon
   are not drawn. The camera abstraction supports it; the view model is art
   work, not architecture.
-- KL-4 Cross-space NPC schedule travel: an NPC whose current schedule entry is
-  in another space stays put instead of walking through doors. Bronn/Ysolde
-  schedules are authored within one space per block to mask this. Fix:
-  schedule-driven door transitions for NPCs.
+- KL-4 Active NPCs now follow authored doors for cross-space schedules, while
+  inactive NPCs collapse the same valid route to its destination anchor.
+  Commute duration is not simulated offscreen, and schedules do not persist a
+  mid-door route across save/load.
 - KL-5 Audio is limited to synthesized combat feedback unlocked by a browser
   user gesture. There is no music, ambience, spatial mix, volume UI, or asset
   pipeline yet.
@@ -38,9 +38,10 @@
   interior boundaries with projectile obstruction. It shortens as far as
   0.15 m rather than fading foreground meshes, so the player body can briefly
   dominate the view when backed tightly into a wall.
-- KL-13 Difficulty numbers are bounded from below by naive bots (never
-  block, cluster in cleaves, rarely revive). Real-party validation and a
-  smarter bot policy are open benchmark work (OB-M6).
+- KL-13 Difficulty numbers now compare naïve and mechanics-aware fixed-seed
+  bots, but both remain simple deterministic policies. Human browser
+  observation covers mechanic legibility; broader real-party latency and
+  skill-distribution playtests remain required.
 - KL-14 Snapshots are full (self-contained) JSON at 10 Hz; fine at slice
   scale, needs delta encoding before hundreds of visible entities.
 - KL-15 The shared-world dungeon has no instancing: two parties in the mine

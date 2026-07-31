@@ -35,6 +35,15 @@ placements. Browser evidence covers direct 1280x720 and a scaled true
 1920x1080 CSS viewport. The exact short-path gate is green at 11 suites /
 105 tests.
 
+Plan 4 verifies AI-001..004 and QLT-005: shared-world line-of-sight
+perception, visible threat continuity, authored multi-spawner encounter
+ownership, atomic group/transient reset, useful support/hostile ability
+selection, cooldown progress during casts, capped summons, active/offscreen
+door schedules, and unreachable-home recovery. `AI_ENCOUNTER_CONTRACT.md` is
+the exact ruleset. `npm run ai:bench` compares naïve/mechanics policies;
+browser evidence covers Matron healing, Warden party/cone/four-add
+presentation, and Brandvar’s scheduled inn arrival.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -67,15 +76,16 @@ session added and TESTED:
   all dialogue rewritten with voices + plural-adventurer framing.
 
 ## Verification evidence (this session)
-- `npm test`: 105 tests / 11 suites green (multiplayer sim, server/net,
+- `npm test`: 118 tests / 12 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25).
 - Live ws smoke: server + 2 real WebSocket clients: welcome, 25 snapshots
   per client per 2.5 s, server-side movement (ack seq 74), mutual remote
   visibility, shared party, characters persisted on disconnect.
-- `npm run mp:bench` after Plan 3 physical-route corrections (naive bot
-  parties vs boss): solo 0/3 kills (9 wipes), 3-party 2/3 (25 s), 5-party
-  2/3 (23 s). See ENCOUNTER_DESIGN.md.
+- `npm run ai:bench` after Plan 4 ownership/faction/scaling corrections:
+  solo 0/3 under both policies; mechanics at 3 players takes 4,714.2 damage
+  with 1/3 clears (57 s), and at 5 takes 8,108.5 with 1/3 clears (166 s).
+  It outperforms naïve pressure at both group sizes; see ENCOUNTER_DESIGN.md.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
   build).
 
@@ -84,6 +94,7 @@ session added and TESTED:
 - `npm run dev` then open `/?ws=ws://localhost:8787&char=<id>&name=<name>`
   in two tabs for two clients; no query = offline single-player.
 - `npm run mp:bench -- runs=5` - dungeon difficulty measurement.
+- `npm run ai:bench` - fixed-seed naïve/mechanics comparison.
 - `npm run combat:bench -- seconds=30` - sustained weapon/spell comparison.
 - `npm run world:tour` - deterministic all-space traversal/placement audit.
 
@@ -94,7 +105,8 @@ session added and TESTED:
 
 ## Watch items
 - KL-11: charId IS identity; accounts/auth is FABLE_REQUIRED pre-deployment.
-- Bench bots are naive (KL-13); treat difficulty numbers as lower bounds.
+- Bench bots are simple even with the mechanics policy (KL-13); treat
+  difficulty numbers as evidence bounds, not a replacement for real parties.
 - Snapshot JSON is full-state at 10 Hz (KL-14); delta encoding when entity
   counts grow.
 - The offline SimWorld.drainEvents consumes globally: exactly one local view

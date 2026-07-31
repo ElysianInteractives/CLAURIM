@@ -26,8 +26,9 @@ src/game       src/render       src/ui        src/headless
 1. clear events; advance tick counter
 2. player: stance flags, movement (axis-slide collision), jump/gravity,
    interact cooldown
-3. per actor ascending id: effects (DoT/HoT/expiry) -> brain (if active
-   window) -> attack state machine -> regen
+3. per actor ascending id: effects (DoT/HoT/expiry) -> brain maintenance
+   (cooldowns/threat and inactive schedule abstraction; full decisions only in
+   an active window) -> attack state machine -> regen
 4. projectiles step + hit
 5. every 10 ticks: positional reach objectives; every 300: respawn checks
 
@@ -42,6 +43,12 @@ spaces with flat floors and room-rect layouts. Cells are 64 m; the 5x5 block
 around the player is "active": AI ticks there, terrain meshes exist there.
 All actors stay resident (D-004). Transitions teleport the player through
 door records and emit `spaceEntered`.
+
+Scheduled resident NPCs use the directed authored door graph. Active NPCs
+walk to each door before transitioning; inactive NPCs may collapse the same
+valid route to the scheduled anchor. Encounter ownership is separately
+authored on spawners and resolved by pure helpers under `sim/ai`, so aggro and
+`Sim`-owned wipe/reset lifecycle use one key without a reverse dependency.
 
 ## Where things resolve
 - Damage: only `combat/damage` via `SimContext.dealDamage`.

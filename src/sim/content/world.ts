@@ -119,20 +119,20 @@ export const DOORS: DoorDef[] = [
 
 export const SPAWNERS: SpawnerDef[] = [
   // Wilderness encounter: wolves near the road bend
-  { id: 'sp_wolves_road', spaceId: 'kaldwyn', x: -6, z: 52, actorId: 'frostfang_wolf', count: 2, radius: 12, respawnGameHours: 48 },
+  { id: 'sp_wolves_road', spaceId: 'kaldwyn', x: -6, z: 52, actorId: 'frostfang_wolf', count: 2, radius: 12, encounterId: 'road_wolves', respawnGameHours: 48 },
   // Bandit camp on the road
-  { id: 'sp_camp_raider', spaceId: 'kaldwyn', x: 28, z: -298, actorId: 'redclaw_raider', count: 1, radius: 6, respawnGameHours: 'never' },
+  { id: 'sp_camp_raider', spaceId: 'kaldwyn', x: 28, z: -298, actorId: 'redclaw_raider', count: 1, radius: 6, encounterId: 'road_camp', respawnGameHours: 'never' },
   // Mine gate camp (quest stage: clear the entrance)
-  { id: 'sp_gate_raiders', spaceId: 'kaldwyn', x: 108, z: 324, actorId: 'redclaw_raider', count: 2, radius: 8, respawnGameHours: 'never' },
-  { id: 'sp_gate_archer', spaceId: 'kaldwyn', x: 114, z: 328, actorId: 'redclaw_archer', count: 1, radius: 6, respawnGameHours: 'never' },
+  { id: 'sp_gate_raiders', spaceId: 'kaldwyn', x: 108, z: 324, actorId: 'redclaw_raider', count: 2, radius: 8, encounterId: 'mine_gate', respawnGameHours: 'never' },
+  { id: 'sp_gate_archer', spaceId: 'kaldwyn', x: 114, z: 328, actorId: 'redclaw_archer', count: 1, radius: 6, encounterId: 'mine_gate', respawnGameHours: 'never' },
   // Mine gate veteran (target-priority + interrupt teaching pull)
-  { id: 'sp_gate_reaver', spaceId: 'kaldwyn', x: 111, z: 327, actorId: 'redclaw_reaver', count: 1, radius: 3, respawnGameHours: 'never' },
+  { id: 'sp_gate_reaver', spaceId: 'kaldwyn', x: 111, z: 327, actorId: 'redclaw_reaver', count: 1, radius: 3, encounterId: 'mine_gate', respawnGameHours: 'never' },
   // Mine interior: rat pack guarded by a healing matron (priority target)
-  { id: 'sp_mine_rats', spaceId: 'duskhollow_mine', x: 0, z: 33, actorId: 'marsh_rat', count: 5, radius: 6, respawnGameHours: 'never' },
-  { id: 'sp_mine_matron', spaceId: 'duskhollow_mine', x: -5, z: 36, actorId: 'mire_matron', count: 1, radius: 2, respawnGameHours: 'never' },
+  { id: 'sp_mine_rats', spaceId: 'duskhollow_mine', x: 0, z: 33, actorId: 'marsh_rat', count: 5, radius: 6, encounterId: 'flooded_gallery', respawnGameHours: 'never' },
+  { id: 'sp_mine_matron', spaceId: 'duskhollow_mine', x: -5, z: 36, actorId: 'mire_matron', count: 1, radius: 2, encounterId: 'flooded_gallery', respawnGameHours: 'never' },
   // Deep corridor thralls (multi-enemy pull before the vault)
-  { id: 'sp_mine_thralls', spaceId: 'duskhollow_mine', x: 0, z: 46, actorId: 'barrow_thrall', count: 2, radius: 3, respawnGameHours: 'never' },
-  { id: 'sp_mine_boss', spaceId: 'duskhollow_mine', x: 0, z: 60, actorId: 'barrow_wight', count: 1, radius: 2, respawnGameHours: 'never' },
+  { id: 'sp_mine_thralls', spaceId: 'duskhollow_mine', x: 0, z: 46, actorId: 'barrow_thrall', count: 2, radius: 3, encounterId: 'deep_corridor', respawnGameHours: 'never' },
+  { id: 'sp_mine_boss', spaceId: 'duskhollow_mine', x: 0, z: 60, actorId: 'barrow_wight', count: 1, radius: 2, encounterId: 'pale_vault', respawnGameHours: 'never' },
   // Villagers (spawned via schedule system, one per spawner)
   { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 4, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },
   { id: 'sp_bronn', spaceId: 'kaldwyn', x: 67, z: 132, actorId: 'bronn', count: 1, radius: 1, respawnGameHours: 'never' },

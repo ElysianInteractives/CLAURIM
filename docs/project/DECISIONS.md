@@ -130,9 +130,10 @@ a hook on the same table).
 ## D-018: Data-driven encounter model + locked scaling - LOCKED
 Tiers standard/veteran/elite/boss; roles melee/ranged/support; template
 abilities (frontal_cone / ground_aoe / summon / heal_ally) with telegraphs +
-interrupts; boss phases; group aggro via spawner-mates; scaling locked at
-first aggro to engaged party size (hp +60%/extra, damage +12%/extra, tuned
-by measurement 2026-07-31), through the standard modifier system.
+interrupts; boss phases; group aggro via authored encounter ownership;
+scaling locked at first aggro to engaged party size (hp +40%/extra, damage
++8%/extra, retuned after correct undead allegiance and two-policy measurement
+on 2026-07-31), through the standard modifier system.
 ENCOUNTER_DESIGN.md. Exemplar: Duskhollow + The Pale Warden.
 
 ## D-019: Loot ownership - LOCKED
@@ -194,4 +195,15 @@ swimming remains a later locked package. See `WORLD_TRAVERSAL_CONTRACT.md`.
 Distance (template range) x night factor (outdoors 21:00-05:00: 65%) x stealth
 (sneaking target: range * max(0.15, 1 - stealth*0.12) * observer detection),
 140-degree vision cone beyond touch range (2.5 m; 1.0 m vs sneaking targets =
-the backstab window). See `ai/brain.ts` canPerceive + `tests/navigation.test.ts`.
+the backstab window), plus shared-world eye-to-eye obstruction. Touch bypasses
+the cone but never a wall. See `ai/brain.ts` canPerceive and Plan 4 tests.
+
+## D-026: Authored encounter ownership and reliable AI transitions - LOCKED
+Spawner `encounterId` is the shared aggro/reset key; summons inherit their
+root owner. Target selection yields from an unseen target to visible threat,
+ability AI requires a useful legal target, cooldowns advance during casts,
+summons are capped, and reset atomically removes all owned transient mechanics
+and restores preplaced members. Active schedules route through doors;
+unobserved schedules collapse only a valid door route. Unreachable return
+recovers at the valid home after 90 blocked ticks. Exact rules:
+`AI_ENCOUNTER_CONTRACT.md`.

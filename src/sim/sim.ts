@@ -44,6 +44,11 @@ import { isActiveAt } from './world/cells';
 import { createActor, recalcActorStats } from './actors/actor';
 import { makeBrain, tickBrain } from './ai/brain';
 import {
+  encounterKeyForActor,
+  encounterMembers,
+  hasAuthoredEncounter,
+} from './ai/encounters';
+import {
   dealDamage,
   resetProjectileIds,
   startMelee,
@@ -83,8 +88,8 @@ import {
   type SaveGame,
 } from './save/save';
 
-/** Factions hostile to each other (symmetric). Wild creatures (factionId null,
- * aggressive) are hostile to everything but their own faction. */
+/** Factions hostile to each other (symmetric). Aggressive templates always
+ * oppose players; authored faction ids keep members of one encounter allied. */
 const HOSTILE_PAIRS: ReadonlySet<string> = new Set([
   'redclaw|fenharrow',
   'fenharrow|redclaw',
@@ -133,6 +138,7 @@ export class Sim {
   events: SimEvent[] = [];
   tickCount = 0;
   nextEntityId = 1;
+  private nextGroundAoeId = 1;
 
   // --- per-character state (D-013) -----------------------------------------
   readonly players = new Map<CharacterId, EntityId>();
@@ -221,6 +227,7 @@ export class Sim {
       containersLootedBy: (charId) => sim.containersLootedOf(charId),
       spawnFromTemplate: (templateId, spaceId, pos, summonedBy) =>
         sim.spawnFromTemplate(templateId, spaceId, pos, summonedBy),
+      allocateGroundAoeId: () => sim.nextGroundAoeId++,
       emit: (e) => sim.events.push(e),
       dealDamage: (t, s, a, c, blockable, blockOrigin) =>
         dealDamage(sim.ctx, t, s, a, c, blockable, blockOrigin),
@@ -575,6 +582,8 @@ export class Sim {
     if (HOSTILE_PAIRS.has(`${fa}|${fb}`)) return true;
     const ta = this.content.actors[a.templateId];
     const tb = this.content.actors[b.templateId];
+    if (ta?.aggressive && b.kind === 'player') return true;
+    if (tb?.aggressive && a.kind === 'player') return true;
     if (a.factionId === null && ta?.aggressive) return true;
     if (b.factionId === null && tb?.aggressive) return true;
     return false;
@@ -722,10 +731,14 @@ export class Sim {
     // its space is downed or absent, the encounter resets and the downed
     // players release immediately (D-021).
     if (this.tickCount % 15 !== 0) return;
+    const checkedEncounters = new Set<string>();
     for (const boss of this.actors.values()) {
       const tpl = this.content.actors[boss.templateId];
       if (!tpl || (tpl.tier !== 'boss' && tpl.tier !== 'elite')) continue;
       if (!boss.brain || boss.brain.state !== 'combat' || boss.dead) continue;
+      const encounterKey = encounterKeyForActor(this.content, this.actors, boss);
+      if (checkedEncounters.has(encounterKey)) continue;
+      checkedEncounters.add(encounterKey);
       let anyUp = false;
       const downedHere: CharacterId[] = [];
       for (const [charId, entityId] of this.players) {
@@ -742,35 +755,69 @@ export class Sim {
     }
   }
 
-  /** Reset an encounter: heal + rehome the anchor and its spawner-mates,
-   * despawn its summons, clear its pools (D-018/D-021). */
+  /** Reset one authored encounter atomically: remove owned transient state,
+   * restore every preplaced member, and unlock scaling for the next pull. */
   resetEncounter(bossId: EntityId): void {
     const boss = this.actors.get(bossId);
     if (!boss) return;
-    const group = [...this.actors.values()].filter(
-      (a) => a.id === bossId || (boss.spawnerId !== null && a.spawnerId === boss.spawnerId),
+    const group = encounterMembers(this.content, this.actors, boss);
+    const ownedIds = new Set(group.map((actor) => actor.id));
+    const revivePreplaced = group.some(
+      (actor) => actor.summonedBy === NO_ENTITY && hasAuthoredEncounter(this.content, actor),
     );
+
+    // Pools/projectiles disappear before their sources are removed.
+    for (let index = this.groundAoes.length - 1; index >= 0; index--) {
+      if (ownedIds.has(this.groundAoes[index].sourceId)) this.groundAoes.splice(index, 1);
+    }
+    for (let index = this.projectiles.length - 1; index >= 0; index--) {
+      if (ownedIds.has(this.projectiles[index].sourceId)) this.projectiles.splice(index, 1);
+    }
+
+    // Summons and summon descendants are transient encounter state.
+    for (const member of group) {
+      if (member.summonedBy !== NO_ENTITY) this.actors.delete(member.id);
+    }
+
     for (const a of group) {
-      if (a.dead || !a.brain) continue;
+      if (a.summonedBy !== NO_ENTITY || !a.brain) continue;
+      if (a.dead && !revivePreplaced) continue;
+      a.dead = false;
+      a.downed = false;
+      a.downedTicks = 0;
       a.brain.state = 'idle';
       a.brain.targetId = 0;
+      a.brain.lastKnownPos = null;
       a.brain.threat = {};
       a.brain.phase = 0;
       a.brain.abilityCooldowns = {};
       a.brain.scaledFor = 0;
+      a.brain.timer = 0;
+      a.brain.path = null;
+      a.brain.pathIdx = 0;
+      a.brain.repathCooldown = 0;
+      a.brain.stuckTicks = 0;
       a.attack = null;
-      a.pos.x = a.brain.homePos.x;
-      a.pos.z = a.brain.homePos.z;
-      a.pos.y = groundHeight(this.content, a.pos.spaceId, a.pos.x, a.pos.z, this.seed);
+      const home = nearestTraversablePoint(
+        this.content,
+        this.colliders,
+        a.brain.homePos.spaceId,
+        a.brain.homePos.x,
+        a.brain.homePos.z,
+        this.seed,
+      );
+      if (home) a.pos = { spaceId: a.brain.homePos.spaceId, ...home };
+      a.effects = [];
+      if (a.lootRolled) {
+        a.inventory = [];
+        a.gold = 0;
+        a.lootRolled = false;
+      }
       recalcActorStats(this.content, a);
       a.health = a.stats.maxHealth;
-    }
-    // Despawn summons belonging to the boss.
-    for (const [id, a] of [...this.actors]) {
-      if (a.summonedBy === bossId) this.actors.delete(id);
-    }
-    for (let i = this.groundAoes.length - 1; i >= 0; i--) {
-      if (this.groundAoes[i].sourceId === bossId) this.groundAoes.splice(i, 1);
+      a.stamina = a.stats.maxStamina;
+      a.magicka = a.stats.maxMagicka;
+      if (a.spawnerId) this.spawnerClearedAt.delete(a.spawnerId);
     }
   }
 

@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { Sim, IDLE_INPUT, type PlayerInput } from '../src/sim/sim';
 import { beginDialogue } from '../src/sim/dialogue/dialogue_runtime';
-import { INTERRUPT_DAMAGE } from '../src/sim/types';
+import { INTERRUPT_DAMAGE, SCALE_HP_PER_PLAYER } from '../src/sim/types';
 
 const idle: PlayerInput = { ...IDLE_INPUT };
 
@@ -154,7 +154,9 @@ describe('boss encounter (D-017/D-018)', () => {
     const duoBoss = duo.sim.actors.get(duo.bossId)!;
     for (let t = 0; t < 30 && duoBoss.brain!.state !== 'combat'; t++) duo.sim.tick(new Map());
     expect(duoBoss.brain!.scaledFor).toBe(2);
-    expect(duoBoss.stats.maxHealth).toBeGreaterThan(soloHp * 1.5);
+    expect(duoBoss.stats.maxHealth).toBeCloseTo(
+      soloHp * (1 + SCALE_HP_PER_PLAYER),
+    );
 
     // Wipe: both players downed -> encounter resets, scaling unlocks.
     for (const charId of ['p1', 'p2']) {

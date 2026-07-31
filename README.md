@@ -36,6 +36,7 @@ npm run gate       # content gate + typecheck + all tests + production build
 npm run headless   # scripted sim run without a renderer (-- ticks=9000)
 npm run combat:bench -- seconds=30  # sustained weapon/spell comparison
 npm run mp:bench -- runs=3          # party-size boss pressure benchmark
+npm run ai:bench                    # naive vs mechanics-aware AI comparison
 npm run world:tour                  # deterministic routes/placements audit
 ```
 

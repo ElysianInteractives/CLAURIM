@@ -63,10 +63,11 @@ state (alive, reduced resources, at recovery point or stored pos).
 Accept: documents + pins the policy; no sim change unless the test exposes a
 real hole (then FABLE_REVIEW).
 
-## OB-M6 FABLE_REVIEW - Blocking/interrupting bot policy for mp_bench
-Smarter bots (block telegraphs, spread from cleaves, prioritize matron/
-thralls, actually revive) to bound difficulty from above. Policy code is
-mechanical; reviewing the resulting balance conclusions is Fable's.
+## OB-M6 DONE - Blocking/interrupting bot policy for mp_bench
+Plan 4 adds named naïve/mechanics policies plus `npm run ai:bench`.
+Mechanics bots pre-move targeted pools, spread on approach, block late
+telegraphs/basic boss swings, prioritize summons, and revive. Output records
+policy, blocks, damage, downs, revives, interrupts, phases, wipes, and kills.
 
 ## OB-M7 FABLE_REQUIRED - Accounts + authentication service (KL-11),
 dungeon instancing, delta-encoded snapshots, guild/trade/matchmaking
@@ -138,10 +139,10 @@ Result: Plan 2 added a facing-selected hostile target name/tier/accessible
 health meter, with pure selector/render tests. It consumes existing ActorView
 position/health and remains read-only.
 
-## OB-8 FABLE_REVIEW - NPC cross-space schedule travel (KL-4)
-Door-transition pathfinding for NPCs touches brain + spaces + doors; design
-sketch exists in brain.ts NOTE. Opus may draft behind the existing seams;
-Fable reviews the state-machine change.
+## OB-8 DONE - NPC cross-space schedule travel (KL-4)
+Plan 4 uses deterministic directed-door breadth-first routes. Observed NPCs
+approach and transition at each door; inactive residents collapse only a valid
+route to the scheduled anchor. Both modes have focused tests.
 
 ## OB-9 FABLE_REQUIRED - Weather system in sim (state, perception/movement
 hooks, render fx), audio architecture, crafting systems, follower package,

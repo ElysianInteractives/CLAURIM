@@ -32,6 +32,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Authoritative combat feedback views/events and minimal cue layer (D-024).
 - Shared oriented environmental collision, route validation, and water policy
   (D-025).
+- Authored encounter ownership, wall-aware perception, useful ability
+  selection, atomic reset, and door-graph NPC schedules (D-026).
 
 Not locked (open design space): weather, music/ambience/spatial audio and
 mixing, crafting, followers, crime,

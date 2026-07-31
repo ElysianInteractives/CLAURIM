@@ -184,6 +184,9 @@ export interface Brain {
   pathIdx: number;
   /** Ticks until the next path recompute is allowed. */
   repathCooldown: number;
+  /** Consecutive ticks without movement toward the current goal. Used only
+   * to recover from a provably unreachable static route. */
+  stuckTicks: number;
   alertness: number;
   /** Threat table: attacker entity id -> accumulated threat (D-017).
    * Transient (not serialized): combat state resets across saves. */
@@ -370,8 +373,8 @@ export const THREAT_SWITCH_FACTOR = 1.25;
 /** Encounter scaling per extra engaged player (health / damage). Damage
  * scales gently: big parties should feel pressure from ADDS and mechanics,
  * not from one-shot cleaves (measured via npm run mp:bench, 2026-07-31). */
-export const SCALE_HP_PER_PLAYER = 0.6;
-export const SCALE_DMG_PER_PLAYER = 0.12;
+export const SCALE_HP_PER_PLAYER = 0.4;
+export const SCALE_DMG_PER_PLAYER = 0.08;
 /** Radius for counting engaged players + party quest credit (meters). */
 export const ENGAGE_RADIUS = 60;
 /** Downed state duration before auto-release (ticks: 30 s). */
