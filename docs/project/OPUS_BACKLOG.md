@@ -120,3 +120,11 @@ Plan 8 adds `tests/content_catalog.test.ts`, covering numeric envelopes,
 item/loot/merchant/actor/modifier references, perk graphs, dialogue reach,
 host-neutral space labels, veteran ability shapes, a real modifier-chain
 hook, and a deterministic prepared-solo encounter check.
+
+## OB-12 DONE - Development toolchain advisory closure
+Plan 10 replaces the advisory-bearing Vite 5/Vitest 2 graph with Vite 8.2 and
+Vitest 4.1, locks the supported Node floor, and adds explicit full/production
+audit commands. Clean install, zero-advisory audits, all 173 tests, the
+Rolldown production build, standalone generation, and dev-server module
+requests pass under D-032 without changing application source or production
+dependencies.

@@ -32,7 +32,8 @@ perception/aggro/search/flee; dungeon navigation; loot; persistent death.
 Quest: The Hollow Delve (4 stages, optional objective, journal, rewards,
 save/load continuity at each stage).
 Verification: architecture guards, determinism/replay, save round-trip +
-migration, nav tests, quest e2e, content gate, headless host, `npm run gate`.
+migration, nav tests, quest e2e, content gate, headless host, clean-lock
+installation, zero-advisory dependency audits, `npm run gate`.
 
 Milestone-1 browser and headless balance exits are complete; repeat the
 relevant QA contract whenever a later phase changes that surface.

@@ -86,6 +86,14 @@ dispatch. The 17-suite, 173-test exact short-path gate and 1280/1920 browser
 layout/persistence/log checks pass. Exact boundaries are in
 `AUDIO_PRESENTATION_CONTRACT.md`.
 
+Plan 10 verifies QLT-004 through D-032: the development graph moves from
+Vite 5.4/Vitest 2.1 to Vite 8.2/Vitest 4.1 and records the matching Node
+support floor. Clean install, full and production-only zero-advisory audits,
+the 17-suite/173-test gate, Rolldown production build, standalone generation,
+and transformed dev-server requests pass. Production dependencies and all
+application source remain unchanged. Exact maintenance rules are in
+`TOOLCHAIN_SECURITY_CONTRACT.md`.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -119,6 +127,9 @@ session added and TESTED:
   master/effects/ambience/music routing; persistent volume/mute controls; and
   procedural tonal soundscape exemplars. Final audio assets/spatial mix remain
   KL-5.
+- Plan 10 toolchain security (D-032): Node `^20.19.0 || >=22.12.0`, Vite 8,
+  Vitest 4, committed-lock clean installs, and explicit zero-advisory full/
+  production audit checks.
 - Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
   check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
   all dialogue rewritten with voices + plural-adventurer framing.
@@ -144,7 +155,9 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); production JavaScript is 658.33 kB / 174.72 kB gzip.
+  build); Vite 8 production JavaScript is 664.31 kB / 174.60 kB gzip.
+- `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
+  clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
 ## Commands
 - `npm run server` - authoritative server (CLAURIM_PORT / CLAURIM_DATA_DIR).
@@ -156,9 +169,11 @@ session added and TESTED:
 - `npm run world:tour` - deterministic all-space traversal/placement audit.
 - `npm run net:bench` - deterministic four-profile network acceptance matrix.
 - `npm run net:proxy` - real WebSocket impairment relay for browser QA.
+- `npm run audit:deps` / `npm run audit:prod` - networked full and
+  production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-031), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-032), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

@@ -366,6 +366,30 @@ simulation, protocol, authoritative combat outcomes, or save schema.
   loudness/asset quality remains an explicit human-review gate under KL-5;
   context construction and controls produced no runtime error.
 
+### Plan 10 toolchain-security exit
+
+Plan 10 resolves QLT-004 and locks D-032 without changing production
+dependencies or application source.
+
+- Baseline `npm audit` on Vite 5.4.21/Vitest 2.1.9 reproduced 5 development
+  findings: 3 moderate, 1 high, and 1 critical. `npm audit --omit=dev` was
+  clean.
+- `package.json` now requires Node `^20.19.0 || >=22.12.0`, Vite `^8.2.0`,
+  and Vitest `^4.1.10`; the lock resolves Vite 8.2.0, Vitest 4.1.10,
+  Rolldown 1.2.1, and no `vite-node`. Production dependencies remain Three.js
+  and `ws`.
+- A clean real-short-path `npm ci` installs 66 packages and audits 67. Both
+  `npm run audit:deps` and `npm run audit:prod` report zero vulnerabilities.
+- The Node 26.0.0/npm 11.12.1 gate is green at 17 suites / 173 tests. Vite 8
+  transforms 50 modules and produces 664.31 kB JavaScript / 174.60 kB gzip;
+  HTML remains 0.49 kB / 0.32 kB gzip.
+- `npm run standalone` produces `dist/claurim-standalone.html` at 649 kB.
+  A Vite 8 dev-server smoke is ready in 210 ms and returns HTTP 200 for `/`,
+  `/src/main.ts` as JavaScript, and `/@vite/client`.
+- Vitest 4 mis-normalizes module-runner ids when launched from the root of the
+  substituted `R:` test drive. The identical clean source passes from a real
+  short path; D-032 records that qualification requirement.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -386,6 +410,7 @@ simulation, protocol, authoritative combat outcomes, or save schema.
 | QA-SOC | Party consent/persistence and nearby chat | `tests/multiplayer_sim.test.ts`, `tests/server_net.test.ts`, `tests/save.test.ts`; two authenticated browser clients at 1280 and 1920 | Solo start, invite/accept/leave, reconnect/offline frame, chat focus/delivery, layout and logs |
 | QA-CNT | Proven-schema content and progression depth | `tests/content_catalog.test.ts`, `tests/navigation.test.ts`, `tests/quest_playthrough.test.ts`, `npm run world:tour`, `npm run ai:bench`; offline browser at 1280 and 1920 | Catalog links/envelopes, perk graph/hook, veteran shape/solo envelope, merchant purchase, all-space traversal, current location, layout and logs |
 | QA-AV | Host interpolation and browser audio/control boundary | `tests/presentation.test.ts`, `tests/combat_audio.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | Transform blend/snap/yaw, catalog bow dispatch, mixer/settings/soundscape rules, persistence, focused Escape, layout/overflow, browser logs |
+| QA-DEP | Toolchain advisories and major-version compatibility | clean `npm ci`; `npm run audit:deps`; `npm run audit:prod`; `npm run gate`; `npm run standalone`; dev-server HTTP smoke | zero full/prod findings, valid lock tree, all tests, Vite production output, standalone output, transformed dev modules |
 
 ## Browser visual-QA procedure
 

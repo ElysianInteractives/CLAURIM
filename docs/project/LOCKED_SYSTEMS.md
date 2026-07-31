@@ -43,6 +43,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   repeatable interior authoring, and host-neutral space naming (D-030).
 - Host-only one-tick transform interpolation and the browser audio mixer/
   persistent control boundary (D-031).
+- Node support floor, Vite 8/Vitest 4 development toolchain, committed-lock
+  reproducibility, and zero-advisory acceptance boundary (D-032).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

@@ -5,9 +5,12 @@ RPG: one deterministic TypeScript simulation, multiple hosts, code-authored
 world. Research/fan project with a strict clean-room IP boundary (see
 THIRD_PARTY_NOTICES.md).
 
+Development requires Node `^20.19.0 || >=22.12.0`; use `npm ci` for the
+committed toolchain graph.
+
 ## Play multiplayer (dev)
 ```
-npm install
+npm ci
 npm run server     # authoritative server on ws://localhost:8787
 npm run dev        # client on http://localhost:5173
 ```
@@ -49,6 +52,8 @@ npm run combat:bench -- seconds=30  # sustained weapon/spell comparison
 npm run mp:bench -- runs=3          # party-size boss pressure benchmark
 npm run ai:bench                    # naive vs mechanics-aware AI comparison
 npm run world:tour                  # deterministic routes/placements audit
+npm run audit:deps                  # full dependency advisory check
+npm run audit:prod                  # production-only advisory check
 ```
 
 ## Repository guide

@@ -12,6 +12,7 @@
 | Multi-region scale breaks the all-actors-resident model | med | med | D-004 documents the revisit trigger (~2000 actors/region) | open |
 | Balance drift with no measurement | high | med | headless host exists; require measured tuning | open |
 | Bundle growth (asset pipeline) | med | low | gzip budget note in ARCHITECTURE; code-split later | open |
+| Development-tool advisories or unsupported Node drift | med | med | D-032 pins the Node floor/lockfile and requires full+production audits plus clean-install compatibility checks | managed |
 | "Claurim" name conflict | low | med | HUMAN_DECISION ticket OB-10 | open |
 | Account/character takeover | med if deployed | high | D-028 removes charId-as-identity with scrypt auth, rotating digest-only sessions, ownership checks, TLS/origin policy, and rate limits; recovery/MFA/operations remain KL-11 | reduced/open |
 | Snapshot bandwidth growth | med | med | interest scoping now; OB-M3 tripwire; delta encoding later | managed |

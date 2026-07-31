@@ -6,8 +6,8 @@ simulation core, multiple hosts (dedicated server, offline browser,
 headless). Clean-room project: original code, original content, no
 proprietary Bethesda assets, text, or data (automated gate:
 `scripts/check_ip.ts`; rules: `docs/project/IP_STYLE_GUIDE.md` +
-`NAMING_GUIDE.md`). Stack: TypeScript (ESM, strict) - Three.js - ws - Vite -
-Vitest.
+`NAMING_GUIDE.md`). Stack: TypeScript (ESM, strict) - Three.js - ws - Vite 8 -
+Vitest 4. Supported Node: `^20.19.0 || >=22.12.0` (D-032).
 
 MULTIPLAYER AUTHORITY (D-013..D-016): the SERVER sim resolves all persistent
 outcomes (damage, death/downed, loot, quests, XP, inventory, trade,
@@ -36,7 +36,7 @@ the one shared Sim - never clone the world per client.
 | `src/server/` | `core.ts` (transport-agnostic authoritative server), `ws_host.ts` (`npm run server`, :8787), `storage.ts` (StorageProvider + FileStorage; server owns online persistence). |
 | `tests/` | Vitest: architecture guards, determinism, save/migrations, quest e2e, navigation, combat. |
 | `scripts/` | `validate_content.ts` (content gate), `make_standalone.mjs` (single-file build). |
-| `docs/project/` | Charter, architecture, locked decisions/contracts (including `AUDIO_PRESENTATION_CONTRACT.md`), deficit register, QA baseline, responsibility map, backlog, and coverage matrix. Read `MODEL_HANDOFF.md` first in a new session. |
+| `docs/project/` | Charter, architecture, locked decisions/contracts (including audio presentation and toolchain security), deficit register, QA baseline, responsibility map, backlog, and coverage matrix. Read `MODEL_HANDOFF.md` first in a new session. |
 
 ## Commands
 - `npm run dev` - Vite dev server on :5173. Offline by default; online:
@@ -49,6 +49,8 @@ the one shared Sim - never clone the world per client.
 - `npm run validate` - content gate.
 - `npm run headless` - headless run (`-- ticks=9000 seed=42`).
 - `npm run qa:ws` - real two-client WebSocket smoke against a running server.
+- `npm run audit:deps` / `npm run audit:prod` - networked full and
+  production-only advisory checks (D-032; deliberately separate from gate).
 - `npm run gate` - the full pre-done gate: validate + typecheck + tests + build. Run before calling ANY change done.
 
 ## Architecture (load-bearing)
@@ -66,7 +68,8 @@ the one shared Sim - never clone the world per client.
 - Save compatibility: bump `SAVE_SCHEMA_VERSION` AND add a migration + test for any change to the save shape (`src/sim/save/save.ts`, `tests/save.test.ts`). Loads must reject, never half-load.
 - Entity ids and content ids are stable identifiers; never renumber or reuse released ids.
 - IP boundary: NO Bethesda names, dialogue, lore text, maps, or assets. Original content only. Track any external asset in `THIRD_PARTY_NOTICES.md` with license + provenance.
-- Never commit secrets. Keep the dependency set tiny (currently: three; dev: vite/vitest/tsx/typescript/@types).
+- Never commit secrets. Keep the runtime dependency set tiny (currently:
+  Three.js and `ws`; development: Vite/Vitest/tsx/TypeScript/types only).
 
 ## Conventions
 - ESM + TypeScript strict. 2-space indent. Small modules behind existing seams; never grow `sim.ts`, `renderer.ts`, `hud.ts`, or `main.ts` with new subsystem logic - add a sibling module.

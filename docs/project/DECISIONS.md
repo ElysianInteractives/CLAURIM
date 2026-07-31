@@ -270,3 +270,15 @@ music buses, persistent bounded controls and mute, authoritative-event combat
 cues, and deterministic interior/exterior day/night procedural tonal beds.
 Final audio assets, spatial sources, device selection, and production mixing
 remain open. Exact boundaries: `AUDIO_PRESENTATION_CONTRACT.md`.
+
+## D-032: Audited modern development toolchain - LOCKED
+The supported development floor is Node `^20.19.0 || >=22.12.0`. Vite 8.2
+provides the browser build/dev pipeline and Vitest 4.1 provides the test
+runner; the committed npm lockfile is the reproducible dependency authority.
+The production `three`/`ws` graph is unchanged. Full and production-only npm
+audits must report zero known vulnerabilities at moderate-or-higher severity,
+while clean `npm ci`, `npm run gate`, standalone generation, and dev-server
+module requests prove compatibility. Networked audit checks remain explicit
+rather than part of the deterministic gate. Major tool/Node-floor changes or
+audit exceptions require a new lock. Exact rules:
+`TOOLCHAIN_SECURITY_CONTRACT.md`.
