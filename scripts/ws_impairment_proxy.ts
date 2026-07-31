@@ -2,7 +2,7 @@
 // Example:
 //   CLAURIM_NET_PROFILE=degraded npm run net:proxy
 // Browser:
-//   /?ws=ws://127.0.0.1:8790&char=qa_alva&name=QA%20Alva
+//   /?ws=ws://127.0.0.1:8790  (then authenticate in the browser gate)
 
 import WebSocket, { WebSocketServer } from 'ws';
 import { ImpairmentPolicy, networkProfile } from '../src/net/impairment';

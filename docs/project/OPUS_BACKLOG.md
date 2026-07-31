@@ -69,9 +69,12 @@ Mechanics bots pre-move targeted pools, spread on approach, block late
 telegraphs/basic boss swings, prioritize summons, and revive. Output records
 policy, blocks, damage, downs, revives, interrupts, phases, wipes, and kills.
 
-## OB-M7 FABLE_REQUIRED - Accounts + authentication service (KL-11),
-dungeon instancing, delta-encoded snapshots, guild/trade/matchmaking
-systems, multi-realm sharding. Do not start from tickets; these need design.
+## OB-M7 PARTIAL - Live-service platform systems
+Plan 6 delivers the bounded account/password, rotating session, ownership,
+transport, and browser sign-in boundary in D-028. Recovery/MFA, identity
+operations, dungeon instancing, delta-encoded snapshots,
+guild/trade/matchmaking, and multi-realm sharding remain FABLE_REQUIRED; do
+not start those systems from tickets without a new lock.
 
 ---
 

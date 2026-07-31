@@ -52,6 +52,14 @@ acknowledgements; and fixed-seed Local/Good/Degraded/Severe network profiles.
 `NETWORK_RELIABILITY_CONTRACT.md` is the exact ruleset. The exact short-path
 gate is green at 14 suites / 128 tests.
 
+Plan 6 verifies PST-001 through D-028: scrypt account credentials; generic and
+throttled login; 256-bit digest-only, expiring, rotating sessions; pre-core
+authentication; account-owned character selection; secure/origin-allowlisted
+remote browser transport; and a memory-only sign-in/create UI. The 15-suite,
+144-test gate, real register/resume/replay WebSocket smoke, persistence-secret
+inspection, and 1280/1920 browser flow all pass. Exact security and deliberate
+operations limits are in `AUTHENTICATION_THREAT_MODEL.md`.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -67,13 +75,14 @@ session added and TESTED:
   interrupts, boss phases; The Pale Warden converted into a 3-phase group
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
-- Authoritative server (D-014): transport-agnostic ServerCore + ws host on
-  :8787; protocol v1 with full inbound validation; 10 Hz interest-scoped
+- Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
+  on :8787; protocol v2 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with
   sequenced-input prediction + reconciliation and remote smoothing; browser
-  host runs offline (default) or online (?ws=ws://localhost:8787&char=alva).
+  host runs offline (default) or online (`?ws=ws://localhost:8787`) through an
+  explicit account sign-in/create gate.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -84,12 +93,12 @@ session added and TESTED:
   all dialogue rewritten with voices + plural-adventurer framing.
 
 ## Verification evidence (this session)
-- `npm test`: 128 tests / 14 suites green (multiplayer sim, server/net,
+- `npm test`: 144 tests / 15 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, and impairment).
 - Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
-  authoritative movement, mutual visibility, and 3,929 / 3,917-byte observed
-  snapshots.
+  authoritative movement, mutual visibility, session rotation, consumed-token
+  replay rejection, preserved ownership, and 3,928 / 3,915-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -102,8 +111,8 @@ session added and TESTED:
 
 ## Commands
 - `npm run server` - authoritative server (CLAURIM_PORT / CLAURIM_DATA_DIR).
-- `npm run dev` then open `/?ws=ws://localhost:8787&char=<id>&name=<name>`
-  in two tabs for two clients; no query = offline single-player.
+- `npm run dev` then open `/?ws=ws://localhost:8787` and authenticate; create a
+  second account in another tab for a second client. No query = offline.
 - `npm run mp:bench -- runs=5` - dungeon difficulty measurement.
 - `npm run ai:bench` - fixed-seed naïve/mechanics comparison.
 - `npm run combat:bench -- seconds=30` - sustained weapon/spell comparison.
@@ -117,7 +126,9 @@ session added and TESTED:
 3. Tests + `npm run gate` before done; never weaken a guard.
 
 ## Watch items
-- KL-11: charId IS identity; accounts/auth is FABLE_REQUIRED pre-deployment.
+- KL-11: baseline auth/ownership is implemented; recovery, MFA, external
+  breached-password checks, audit operations, and shared durable sessions
+  remain before a live service. See `AUTHENTICATION_THREAT_MODEL.md`.
 - Bench bots are simple even with the mechanics policy (KL-13); treat
   difficulty numbers as evidence bounds, not a replacement for real parties.
 - Snapshot JSON is full-state at 10 Hz (KL-14); delta encoding when entity

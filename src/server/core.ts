@@ -18,6 +18,7 @@ import {
   type ServerMessage,
 } from '../net/protocol';
 import type { StorageProvider } from './storage';
+import type { AuthenticatedIdentity } from './auth';
 
 /** Snapshots every N sim ticks: 30 Hz sim / 3 = 10 Hz replication (D-014). */
 export const SNAPSHOT_EVERY = 3;
@@ -29,6 +30,7 @@ export type SendFn = (msg: ServerMessage) => void;
 
 interface ClientState {
   connId: string;
+  identity: AuthenticatedIdentity;
   charId: string | null;
   send: SendFn;
   inputQueue: { seq: number; input: PlayerInput }[];
@@ -77,9 +79,10 @@ export class ServerCore {
   // Connection lifecycle
   // -------------------------------------------------------------------------
 
-  connect(connId: string, send: SendFn): void {
+  connect(connId: string, send: SendFn, identity: AuthenticatedIdentity): void {
     this.clients.set(connId, {
       connId,
+      identity,
       charId: null,
       send,
       inputQueue: [],
@@ -167,12 +170,21 @@ export class ServerCore {
       client.send({ t: 'reject', reason: 'already joined' });
       return;
     }
+    const character = client.identity.characters.find((owned) => owned.charId === msg.charId);
+    if (!character) {
+      client.send({ t: 'reject', reason: 'character not owned by account' });
+      return;
+    }
     // Reconnect-takeover: a live connection for the same character is
     // superseded (old socket gets bye; character state persists in place).
     const existingConn = this.connByChar.get(msg.charId);
     if (existingConn) {
       const old = this.clients.get(existingConn);
       if (old) {
+        if (old.identity.accountId !== client.identity.accountId) {
+          client.send({ t: 'reject', reason: 'character already active' });
+          return;
+        }
         old.send({ t: 'bye', reason: 'session superseded by new connection' });
         old.charId = null;
         this.clients.delete(existingConn);
@@ -180,10 +192,10 @@ export class ServerCore {
       this.connByChar.delete(msg.charId);
       // Keep the actor in-world: seamless takeover.
       if (!this.sim.players.has(msg.charId)) {
-        this.spawnCharacter(msg.charId, msg.name);
+        this.spawnCharacter(msg.charId, character.name);
       }
     } else if (!this.sim.players.has(msg.charId)) {
-      this.spawnCharacter(msg.charId, msg.name);
+      this.spawnCharacter(msg.charId, character.name);
     }
     client.charId = msg.charId;
     client.view = new SimWorld(this.sim, msg.charId);

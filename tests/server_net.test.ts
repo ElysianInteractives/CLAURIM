@@ -10,12 +10,17 @@ import { PROTOCOL_VERSION, type ServerMessage } from '../src/net/protocol';
 
 class TestClient {
   received: ServerMessage[] = [];
+  private readonly characters: { charId: string; name: string }[] = [];
 
   constructor(
     readonly core: ServerCore,
     readonly connId: string,
+    accountId = `account_${connId}`,
   ) {
-    core.connect(connId, (msg) => this.received.push(msg));
+    core.connect(connId, (msg) => this.received.push(msg), {
+      accountId,
+      characters: this.characters,
+    });
   }
 
   send(msg: unknown): void {
@@ -23,7 +28,10 @@ class TestClient {
   }
 
   hello(charId: string, name = charId, protocol = PROTOCOL_VERSION): void {
-    this.send({ t: 'hello', protocol, charId, name });
+    if (!this.characters.some((character) => character.charId === charId)) {
+      this.characters.push({ charId, name });
+    }
+    this.send({ t: 'hello', protocol, charId });
   }
 
   last<T extends ServerMessage['t']>(t: T): Extract<ServerMessage, { t: T }> | null {
@@ -231,7 +239,7 @@ describe('persistence + reconnect (D-016)', () => {
     expect(core.sim.players.has('alva')).toBe(false);
     expect(storage.loadCharacter('alva')).toBeTruthy();
     // Reconnect on a new connection.
-    const c2 = new TestClient(core, 'conn2');
+    const c2 = new TestClient(core, 'conn2', 'account_conn1');
     c2.hello('alva');
     const restored = core.sim.playerActor('alva')!;
     expect(restored.gold).toBe(777);
@@ -250,7 +258,7 @@ describe('persistence + reconnect (D-016)', () => {
     const dead = [...core2.sim.actors.values()].find((a) => a.id === raider.id);
     expect(dead?.dead).toBe(true);
     expect(core2.sim.players.size).toBe(0); // characters rejoin individually
-    const c2 = new TestClient(core2, 'connA');
+    const c2 = new TestClient(core2, 'connA', 'account_conn1');
     c2.hello('alva');
     expect(core2.sim.playerActor('alva')).toBeTruthy();
   });
@@ -259,7 +267,7 @@ describe('persistence + reconnect (D-016)', () => {
     const { core } = makeServer();
     const c1 = new TestClient(core, 'conn1');
     c1.hello('alva');
-    const c2 = new TestClient(core, 'conn2');
+    const c2 = new TestClient(core, 'conn2', 'account_conn1');
     c2.hello('alva');
     expect(c1.last('bye')?.reason).toContain('superseded');
     expect(c2.last('welcome')?.charId).toBe('alva');

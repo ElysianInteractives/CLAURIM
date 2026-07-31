@@ -116,10 +116,11 @@ space transitions snap; remote actors exponentially smoothed (0.35/frame);
 combat is presentation-only prediction.
 
 ## D-016: Server-owned persistence behind StorageProvider - LOCKED
-Characters (schema v1) and world (schema v2) persist via a 4-method storage
-interface; FileStorage (atomic tmp+rename) for the milestone, database
-later. Browser localStorage is offline-mode only. Corruption rejects, never
-half-loads. PERSISTENCE_ARCHITECTURE.md.
+Characters (schema v1) and world (schema v2) persist through StorageProvider;
+FileStorage (atomic tmp+rename) serves the milestone and a database comes
+later. D-028 extends the original four-method character/world seam with two
+account-record methods. Browser localStorage is offline-mode only. Corruption
+rejects, never half-loads. PERSISTENCE_ARCHITECTURE.md.
 
 ## D-017: Explicit threat system - LOCKED
 Per-enemy threat tables (damage/heal accrual, decay, 1.25x switch
@@ -217,3 +218,16 @@ rejection and session supersession are terminal. Snapshot ackSeq advances only
 when an authoritative tick consumes an input. Ordered fixed-seed Local/Good/
 Degraded/Severe links and a matching real WebSocket relay form the Plan 5
 gate. Exact rules: `NETWORK_RELIABILITY_CONTRACT.md`.
+
+## D-028: Account authentication and character ownership boundary - LOCKED
+Protocol v2 requires register/login/resume before `hello`. Passwords use
+scrypt (`N=131072`, `r=8`, `p=1`, 16-byte salt, 64-byte key); login failures
+are generic and expensive work is bounded. A successful account receives a
+256-bit opaque, digest-only, eight-hour in-memory session with resume-time
+rotation and a five-session cap. `AuthGateway` creates no authoritative core
+connection before authentication, and `ServerCore` independently restricts
+`hello` to an account-owned character and server-owned display name. The
+browser persists neither password nor token. Remote browser transport must be
+secure and origin-allowlisted; loopback remains available for development.
+Exact threat cases, deployment settings, and deliberate limits are in
+`AUTHENTICATION_THREAT_MODEL.md`.

@@ -5,12 +5,13 @@
 
 // Browser host. Two modes:
 //   OFFLINE (default): local Sim + SimWorld, localStorage save slot.
-//   ONLINE  (?ws=ws://host:8787&char=<id>&name=<display>): ClientWorld over
+//   ONLINE  (?ws=wss://host): authenticated ClientWorld over
 //   WebSocket; the server owns simulation and persistence (D-014/D-016).
 
 import { Sim } from './sim/sim';
 import { SimWorld } from './game/sim_world';
 import { ClientWorld } from './net/client_world';
+import { AuthenticatedClientSession } from './net/authenticated_session';
 import {
   BrowserConnection,
   type ConnectionStatus,
@@ -19,6 +20,7 @@ import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import { Input } from './game/input';
 import { CombatAudio } from './game/combat_audio';
+import { AuthGate } from './ui/auth_gate';
 import { DT } from './sim/types';
 import type { IWorld } from './world_api';
 
@@ -35,9 +37,7 @@ let world: IWorld;
 let clientWorld: ClientWorld | null = null;
 
 if (online) {
-  const charId = params.get('char') ?? `guest_${Math.floor(Math.random() * 1e6)}`;
-  const name = params.get('name') ?? charId;
-  clientWorld = new ClientWorld(charId, name);
+  clientWorld = new ClientWorld();
   world = clientWorld;
 } else {
   const stored = localStorage.getItem(SAVE_KEY);
@@ -61,13 +61,37 @@ const input = new Input(canvas);
 if (!online) input.yaw = world.player().yaw;
 
 let connection: BrowserConnection | null = null;
+let authSession: AuthenticatedClientSession | null = null;
+let authGate: AuthGate | null = null;
 let networkBadgeAt = 0;
 if (clientWorld && wsUrl) {
   const onlineWorld = clientWorld;
-  connection = new BrowserConnection(wsUrl, onlineWorld, {
+  const transportAllowed = browserTransportAllowed(wsUrl);
+  authSession = new AuthenticatedClientSession(onlineWorld, (state) => {
+    if (state.authenticated) authGate?.hide();
+    else authGate?.show(state.error);
+  });
+  const session = authSession;
+  authGate = new AuthGate((credentials) => {
+    if (!transportAllowed) {
+      authGate?.show('Remote accounts require a secure wss:// connection.');
+      return;
+    }
+    session.setCredentials(credentials);
+    authGate?.setError('');
+    authGate?.setBusy(true);
+    connection?.restart();
+  });
+  const gate = authGate;
+  if (!transportAllowed) {
+    gate.show('Remote accounts require a secure wss:// connection.');
+  }
+  connection = new BrowserConnection(wsUrl, session, {
     onStatus: (status) => {
       const presentation = connectionPresentation(status);
       hud.setConnectionStatus(presentation.text, presentation.tone);
+      if (status.phase === 'rejected' || status.phase === 'disconnected') gate.show(status.reason);
+      else if (status.phase === 'online') gate.hide();
     },
   });
   const onlineConnection = connection;
@@ -78,8 +102,18 @@ if (clientWorld && wsUrl) {
     diagnostics: () => onlineWorld.diagnostics(),
     retry: () => onlineConnection.retryNow(),
   };
-  connection.start();
   addEventListener('beforeunload', () => connection?.stop('page closing'), { once: true });
+}
+
+function browserTransportAllowed(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl, location.href);
+    if (url.protocol === 'wss:') return true;
+    if (url.protocol !== 'ws:') return false;
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+  } catch {
+    return false;
+  }
 }
 
 // Offline-only debug/inspection handle (screenshot tours, manual QA).

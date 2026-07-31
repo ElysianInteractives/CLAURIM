@@ -31,9 +31,12 @@
   bounded perf ticket).
 - KL-10 localStorage single save slot in the OFFLINE browser host (online
   characters are server-persisted, D-016).
-- KL-11 No real authentication: charId is the identity token. Anyone who
-  knows a charId can play that character. Accounts service is FABLE_REQUIRED
-  before any public deployment.
+- KL-11 Plan 6 provides real baseline account authentication and character
+  ownership, but not a complete live-service identity platform. There is no
+  email verification, recovery/reset flow, MFA, security-event audit trail,
+  external breached-password lookup, or horizontally shared session store.
+  Public operation still requires TLS termination, monitoring, backups, and
+  an explicit origin allowlist; see `AUTHENTICATION_THREAT_MODEL.md`.
 - KL-12 Third-person camera collision now shares terrain, oriented props, and
   interior boundaries with projectile obstruction. It shortens as far as
   0.15 m rather than fading foreground meshes, so the player body can briefly

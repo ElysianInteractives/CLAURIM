@@ -11,10 +11,15 @@ npm install
 npm run server     # authoritative server on ws://localhost:8787
 npm run dev        # client on http://localhost:5173
 ```
-Open two browser tabs for two players:
-`http://localhost:5173/?ws=ws://localhost:8787&char=alva&name=Alva`
-`http://localhost:5173/?ws=ws://localhost:8787&char=brona&name=Brona`
-Characters persist server-side (./server_data); Ctrl+C saves and shuts down.
+Open `http://localhost:5173/?ws=ws://localhost:8787`, create an account, and
+sign in. Open another tab and create a second account for a second player.
+Credentials never enter the URL; accounts and characters persist server-side
+(`./server_data`) while short-lived sessions remain memory-only. Ctrl+C saves
+and shuts down.
+
+Remote deployments must use `wss://`, set `CLAURIM_ALLOWED_ORIGINS` to the
+exact browser origin(s), and set `CLAURIM_TRUST_PROXY=1` only behind a trusted
+TLS reverse proxy. See `docs/project/AUTHENTICATION_THREAT_MODEL.md`.
 Bring a party: Duskhollow Mine is tuned for 3-5 players and its Warden will
 bury an unprepared solo hero.
 

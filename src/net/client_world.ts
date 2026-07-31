@@ -82,13 +82,20 @@ export class ClientWorld implements IWorld {
   private snapshotBytes = 0;
 
   constructor(
-    readonly charId: string,
-    readonly name: string,
+    public charId = '',
+    public name = '',
     private readonly now: () => number = () => performance.now(),
   ) {}
 
+  setIdentity(charId: string, name: string): void {
+    if (this.sessionActive) throw new Error('Cannot replace identity during an active world session');
+    this.charId = charId;
+    this.name = name;
+  }
+
   /** Start one protocol session. The host calls this only after WebSocket OPEN. */
   beginSession(transport: ClientTransport): void {
+    if (!this.charId) throw new Error('Authenticated character identity is required');
     this.transport = transport;
     this.sessionActive = true;
     this.awaitingBaseline = true;
@@ -107,7 +114,7 @@ export class ClientWorld implements IWorld {
     this.lastCorrectionMeters = 0;
     this.maxCorrectionMeters = 0;
     this.snapshotBytes = 0;
-    this.sendMsg({ t: 'hello', protocol: PROTOCOL_VERSION, charId: this.charId, name: this.name });
+    this.sendMsg({ t: 'hello', protocol: PROTOCOL_VERSION, charId: this.charId });
   }
 
   /** Freeze the latest presentation state and reject intent until rejoined. */

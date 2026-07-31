@@ -114,7 +114,7 @@ export function runNetworkProfile(profile: NetworkProfile, seed = 5105): Network
         }
       });
       if (!accepted && droppable) client.droppedSnapshots++;
-    });
+    }, { accountId: `bench_${stream}`, characters: [{ charId, name }] });
 
     client.world.beginSession({
       send: (json) => {

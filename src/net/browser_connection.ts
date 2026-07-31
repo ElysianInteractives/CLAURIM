@@ -116,6 +116,15 @@ export class BrowserConnection {
     this.start();
   }
 
+  /** Begin a new user-authorized authentication attempt after terminal rejection. */
+  restart(): void {
+    if (this.socket || this.retryHandle !== null) return;
+    this.stopped = false;
+    this.retryCount = 0;
+    this.publish({ phase: 'idle', attempt: 0 });
+    this.start();
+  }
+
   status(): ConnectionStatus {
     return { ...this.state };
   }
@@ -168,6 +177,8 @@ export class BrowserConnection {
         this.retryCount = 0;
         if (this.state.phase !== 'online') this.publish({ phase: 'online', attempt: 0 });
       } else if (message.t === 'reject') {
+        this.terminate(socket, message.reason);
+      } else if (message.t === 'authError') {
         this.terminate(socket, message.reason);
       } else if (message.t === 'bye') {
         if (isTerminalBye(message.reason)) this.terminate(socket, message.reason);

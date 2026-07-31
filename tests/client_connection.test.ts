@@ -7,6 +7,7 @@ import {
   type SessionClient,
 } from '../src/net/browser_connection';
 import { ClientWorld, type ClientTransport } from '../src/net/client_world';
+import { AuthenticatedClientSession } from '../src/net/authenticated_session';
 import { parseServerMessage, type ServerMessage } from '../src/net/protocol';
 
 type SocketEvent = 'open' | 'message' | 'close' | 'error';
@@ -181,6 +182,70 @@ describe('browser connection lifecycle (NET-001)', () => {
     expect(connection.status().reason).toContain('superseded');
     expect(scheduler.tasks.size).toBe(0);
   });
+
+  it('treats authentication failures as terminal but permits a user-authorized restart', () => {
+    const sockets: FakeSocket[] = [];
+    const session = new ProbeSession();
+    const connection = new BrowserConnection('ws://test', session, {
+      socketFactory: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+    });
+    connection.start();
+    sockets[0].open();
+    sockets[0].message({ t: 'authError', code: 'invalid_credentials', reason: 'Invalid username or password' });
+    expect(connection.status().phase).toBe('rejected');
+    connection.restart();
+    expect(sockets).toHaveLength(2);
+  });
+});
+
+describe('authenticated browser session', () => {
+  it('authenticates before hello and resumes with a rotated opaque token after reconnect', () => {
+    const world = new ClientWorld();
+    const session = new AuthenticatedClientSession(world);
+    const first: string[] = [];
+    session.setCredentials({
+      mode: 'login',
+      username: 'alva_1',
+      password: 'a sufficiently long passphrase',
+    });
+    session.beginSession({ send: (json) => first.push(json) });
+    expect(JSON.parse(first[0])).toMatchObject({ t: 'auth', mode: 'login', username: 'alva_1' });
+    expect(first).toHaveLength(1);
+
+    session.onMessage(JSON.stringify({
+      t: 'authOk',
+      protocol: 2,
+      sessionToken: 'a'.repeat(43),
+      expiresInSeconds: 28_800,
+      characters: [{ charId: 'pc_alva', name: 'Alva' }],
+    }));
+    expect(JSON.parse(first[1])).toEqual({ t: 'hello', protocol: 2, charId: 'pc_alva' });
+
+    session.endSession('network lost');
+    const second: string[] = [];
+    session.beginSession({ send: (json) => second.push(json) });
+    expect(JSON.parse(second[0])).toEqual({
+      t: 'auth',
+      mode: 'resume',
+      sessionToken: 'a'.repeat(43),
+    });
+  });
+
+  it('discards rejected credentials instead of retaining them for reconnect', () => {
+    const session = new AuthenticatedClientSession(new ClientWorld());
+    session.setCredentials({ mode: 'login', username: 'alva_1', password: 'a sufficiently long passphrase' });
+    session.beginSession({ send: () => undefined });
+    session.onMessage(JSON.stringify({
+      t: 'authError',
+      code: 'invalid_credentials',
+      reason: 'Invalid username or password',
+    }));
+    expect(() => session.beginSession({ send: () => undefined })).toThrow('Account credentials are required');
+  });
 });
 
 describe('ClientWorld session boundaries', () => {
@@ -193,7 +258,7 @@ describe('ClientWorld session boundaries', () => {
 
     world.beginSession({ send: (json) => sent.push(json) });
     expect(sent.map((json) => JSON.parse(json))).toEqual([
-      { t: 'hello', protocol: 1, charId: 'qa_alva', name: 'QA Alva' },
+      { t: 'hello', protocol: 2, charId: 'qa_alva' },
     ]);
 
     world.endSession('network lost');

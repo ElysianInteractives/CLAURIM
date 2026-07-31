@@ -6,32 +6,60 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { ServerCore } from './core';
 import { FileStorage } from './storage';
+import { AuthService } from './auth';
+import { AuthGateway } from './auth_gateway';
+import { browserOriginAllowed, secureTransportAllowed, sourceAddress } from './transport_security';
 import { DT } from '../sim/types';
 
 const PORT = Number(process.env.CLAURIM_PORT ?? 8787);
 const DATA_DIR = process.env.CLAURIM_DATA_DIR ?? './server_data';
+const TRUST_PROXY = process.env.CLAURIM_TRUST_PROXY === '1';
+const ALLOWED_ORIGINS = new Set(
+  (process.env.CLAURIM_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean),
+);
 
-const core = new ServerCore(new FileStorage(DATA_DIR));
-const wss = new WebSocketServer({ port: PORT });
+const storage = new FileStorage(DATA_DIR);
+const core = new ServerCore(storage);
+const gateway = new AuthGateway(core, new AuthService(storage));
+const wss = new WebSocketServer({ port: PORT, maxPayload: 8_192 });
 
 let nextConnId = 1;
 const sockets = new Map<string, WebSocket>();
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, request) => {
+  const encrypted = Boolean((request.socket as { encrypted?: boolean }).encrypted);
+  const forwardedProto = request.headers['x-forwarded-proto'];
+  if (!secureTransportAllowed({
+    remoteAddress: request.socket.remoteAddress,
+    encrypted,
+    forwardedProto: Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto,
+    trustProxy: TRUST_PROXY,
+  })) {
+    ws.close(1008, 'secure transport required');
+    return;
+  }
+  if (!browserOriginAllowed(request.headers.origin, request.socket.remoteAddress, ALLOWED_ORIGINS)) {
+    ws.close(1008, 'origin not allowed');
+    return;
+  }
   const connId = `c${nextConnId++}`;
   sockets.set(connId, ws);
-  core.connect(connId, (msg) => {
+  gateway.connect(connId, sourceAddress(
+    request.socket.remoteAddress,
+    request.headers['x-forwarded-for'],
+    TRUST_PROXY,
+  ), (msg) => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   });
   ws.on('message', (data) => {
-    core.onMessage(connId, data.toString());
+    void gateway.onMessage(connId, data.toString()).catch(() => ws.close(1011, 'authentication unavailable'));
   });
   ws.on('close', () => {
-    core.disconnect(connId);
+    gateway.disconnect(connId);
     sockets.delete(connId);
   });
   ws.on('error', () => {
-    core.disconnect(connId);
+    gateway.disconnect(connId);
     sockets.delete(connId);
   });
 });
@@ -55,7 +83,7 @@ const loop = setInterval(() => {
 
 function shutdown(): void {
   clearInterval(loop);
-  core.shutdown();
+  gateway.shutdown();
   for (const ws of sockets.values()) ws.close();
   wss.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 1500);

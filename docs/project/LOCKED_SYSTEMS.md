@@ -19,7 +19,8 @@ amendment; "a later model prefers a different shape" is not a defect.
 
 Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Multiplayer state model: one Sim, many characters, per-char keyed state (D-013).
-- Server-authoritative WebSocket protocol v1 + interest-scoped 10 Hz snapshots (D-014).
+- Server-authoritative WebSocket protocol v2 + authenticated pre-hello boundary
+  + interest-scoped 10 Hz snapshots (D-014/D-028).
 - Client prediction/reconciliation via sequenced intent (D-015).
 - StorageProvider persistence: server-owned characters + world (D-016).
 - Threat tables with decay + switch hysteresis (D-017).
@@ -34,9 +35,11 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   (D-025).
 - Authored encounter ownership, wall-aware perception, useful ability
   selection, atomic reset, and door-graph NPC schedules (D-026).
+- Account/password authentication, rotating opaque sessions, character
+  ownership, and secure remote browser transport boundary (D-028).
 
 Not locked (open design space): weather, music/ambience/spatial audio and
 mixing, crafting, followers, crime,
 dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
-accounts/authentication service, explicit party UI/matchmaking, dungeon
+account recovery/MFA/operations, explicit party UI/matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading.

@@ -242,6 +242,38 @@ behavior.
   [terminal supersession 1280x720](../screenshots/2026-07-31/plan-5-session-superseded-1280x720.png),
   and [Severe online 1920x1080](../screenshots/2026-07-31/plan-5-online-severe-1920x1080.png).
 
+### Plan 6 authentication/ownership exit
+
+- Exact short-path source copy: `npm run gate` green; 15 suites / 144 tests.
+  Production bundle: 633.27 kB JavaScript / 168.56 kB gzip.
+- The 13-test authentication suite starts from the reproduced unauthenticated
+  core/character-claim boundary and pins production scrypt cost/salt/key size,
+  plaintext-free restart persistence, generic failures and dummy verification,
+  account/source throttling, digest-only rotating sessions, expiry/restart
+  invalidation, replay rejection, ownership, transport, proxy-source, and
+  browser-origin policy. Browser lifecycle tests additionally pin
+  authenticate-before-hello, memory-only resume, terminal failure, explicit
+  restart, and rejected-credential disposal.
+- The real WebSocket adapter creates two accounts, moves one character 4.4 m
+  through ack 30, confirms mutual visibility, rotates a session on resume,
+  rejects the consumed token, and preserves the owned character. Snapshots are
+  3,928 / 3,915 bytes. The resulting two-account `auth.json` contains scrypt
+  `N=131072` / 64-byte-key records and no QA password text.
+- `npm run net:bench` retains every D-027 envelope under protocol v2: all four
+  profiles connect with zero disconnects and zero pending tail; p95 authority
+  remains 34.3 / 111.5 / 187.3 / 311.1 ms and maximum correction remains
+  0 / 0 / 0.147 / 0.182 m.
+- Direct 1280x720 browser QA caught and fixed a hidden-field CSS override and
+  rejected-password retention. The final sign-in card is centered at 430x444
+  px with no page scroll. Account creation enters the authoritative world;
+  reload returns to sign-in; wrong login is generic and clears the password;
+  correct login restores the character; remote plaintext `ws://` is refused.
+- At 1920x1080 the authenticated status is 198x26 px at `(861, 16)` and the
+  document has no overflow. Browser diagnostics contain no warning/error.
+- Approved captures:
+  [authentication gate 1280x720](../screenshots/2026-07-31/plan-6-auth-gate-1280x720.png)
+  and [authenticated world 1920x1080](../screenshots/2026-07-31/plan-6-authenticated-1920x1080.png).
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -258,6 +290,7 @@ behavior.
 | QA-NET-BROWSER | Actual online browser boot/lifecycle | Start server + dev; open query URL directly and through `net:proxy` | Status HUD, logs, reconnect/supersession |
 | QA-NET-MATRIX | Prediction under locked network profiles | `npm run net:bench` | Delay, correction, throughput, loss, remote motion |
 | QA-PST-RECONNECT | Character/world persistence | Join, mutate, disconnect, restart, rejoin | Restored character and world fields |
+| QA-AUTH | Account/session/ownership and secure browser boundary | `tests/authentication.test.ts`, real `qa:ws`, create/login/reload/insecure-URL browser flow | Hash/session/ownership assertions, rotation/replay result, sign-in captures and logs |
 
 ## Browser visual-QA procedure
 
