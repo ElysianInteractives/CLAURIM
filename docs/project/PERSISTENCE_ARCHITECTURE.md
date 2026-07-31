@@ -18,14 +18,15 @@
   identity, position/space, resources, inventory/equipment/gold, effects,
   skills/perks/level/xp, known spells, quest journal, container-loot set.
   Written on: join-create, disconnect, every 30 s (PERSIST_EVERY), shutdown.
-- World save (`SaveGame`, schema v2): world deltas (dead never-respawn
-  actors, spawner bookkeeping, parties, resident characters). Written every
-  30 s + shutdown. On server start the world save loads and resident
-  characters are removed (they rejoin from their own records).
+- World save (`SaveGame`, schema v3): world deltas (dead never-respawn
+  actors, spawner bookkeeping, explicit parties, known character names,
+  resident characters). Written every 30 s + shutdown. On server start the
+  world save loads and resident characters are removed (they rejoin from
+  their own records) while durable party membership remains.
 
 ## Migration + corruption
 Both schemas carry versions and linear migration registries with tests
-(world v0->v1->v2 chain pinned). Corrupt payloads REJECT: a bad character
+(world v0->v1->v2->v3 chain pinned). Corrupt payloads REJECT: a bad character
 record falls back to a fresh character (logged); a bad world save starts a
 fresh world and leaves the bad file for the operator. Nothing half-loads.
 An invalid account store fails server startup rather than silently replacing

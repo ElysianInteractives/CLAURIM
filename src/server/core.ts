@@ -40,6 +40,7 @@ interface ClientState {
   pendingEvents: SimEvent[];
   view: SimWorld | null;
   protocolErrors: number;
+  lastChatTick: number;
 }
 
 export class ServerCore {
@@ -65,7 +66,7 @@ export class ServerCore {
       if (loaded) {
         // Characters persist individually; the world save only carries world
         // deltas. Remove any character actors that were resident at save time.
-        for (const charId of [...loaded.players.keys()]) loaded.removePlayer(charId);
+        for (const charId of [...loaded.players.keys()]) loaded.removePlayer(charId, { preserveParty: true });
         this.sim = loaded;
       } else {
         this.sim = new Sim(seed, undefined, { noDefaultPlayer: true });
@@ -92,6 +93,7 @@ export class ServerCore {
       pendingEvents: [],
       view: null,
       protocolErrors: 0,
+      lastChatTick: Number.NEGATIVE_INFINITY,
     });
   }
 
@@ -102,8 +104,9 @@ export class ServerCore {
       this.persistCharacter(client.charId);
       // Character leaves the live world on disconnect (linkdead policy:
       // immediate despawn; documented in MULTIPLAYER_STATE_MODEL.md).
-      this.sim.removePlayer(client.charId);
+      this.sim.removePlayer(client.charId, { preserveParty: true });
       this.connByChar.delete(client.charId);
+      this.storage.saveWorld(this.sim.saveToJson());
     }
     this.clients.delete(connId);
   }
@@ -271,7 +274,21 @@ export class ServerCore {
         sim.releasePlayer(charId);
         break;
       case 'chat':
-        if (msg.arg) sim.chatFrom(charId, msg.arg);
+        if (msg.arg && sim.tickCount - client.lastChatTick >= 15) {
+          if (sim.chatFrom(charId, msg.arg)) client.lastChatTick = sim.tickCount;
+        }
+        break;
+      case 'partyInvite':
+        if (msg.targetId !== undefined) sim.inviteToParty(charId, msg.targetId);
+        break;
+      case 'partyAccept':
+        if (sim.acceptPartyInvite(charId) === 'joined') this.storage.saveWorld(sim.saveToJson());
+        break;
+      case 'partyDecline':
+        sim.declinePartyInvite(charId);
+        break;
+      case 'partyLeave':
+        if (sim.leaveParty(charId)) this.storage.saveWorld(sim.saveToJson());
         break;
     }
   }
@@ -329,6 +346,8 @@ export class ServerCore {
       case 'questAdvanced':
       case 'questCompleted':
       case 'objectiveProgress':
+        return e.charId === charId;
+      case 'partyStatus':
         return e.charId === charId;
       case 'itemAdded':
       case 'itemRemoved':
@@ -403,7 +422,9 @@ export class ServerCore {
         knownSpells: view.knownSpells(),
         journal: view.journal(),
         perks: view.perks(),
+        partyId: view.partyId(),
         party: view.party(),
+        partyInvites: view.partyInvites(),
         dialogue: view.dialogueView(),
         shop: view.shopView(),
         prompt: view.nearestInteractablePrompt(),

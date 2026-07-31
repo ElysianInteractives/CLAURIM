@@ -136,19 +136,30 @@ export class SimWorld implements IWorld {
     return this.toView(this.actor());
   }
 
+  partyId(): string | null {
+    return this.sim.partyOf(this.charId);
+  }
+
   party(): PartyMemberView[] {
     return this.sim.partyMembersOf(this.charId).map((memberId) => {
       const a = this.sim.playerActor(memberId);
       return {
         charId: memberId,
-        name: a?.name ?? memberId,
+        entityId: a?.id ?? null,
+        name: a?.name ?? this.sim.characterNames.get(memberId) ?? memberId,
         health: a?.health ?? 0,
         maxHealth: a?.stats.maxHealth ?? 1,
         downed: a?.downed ?? false,
         spaceId: a?.pos.spaceId ?? 'kaldwyn',
         isSelf: memberId === this.charId,
+        online: a !== null,
       };
     });
+  }
+
+  partyInvites() {
+    const invite = this.sim.pendingPartyInviteFor(this.charId);
+    return invite ? [invite] : [];
   }
 
   playerResources() {
@@ -313,6 +324,22 @@ export class SimWorld implements IWorld {
 
   chat(text: string): void {
     this.sim.chatFrom(this.charId, text);
+  }
+
+  partyInvite(targetEntityId: number): void {
+    this.sim.inviteToParty(this.charId, targetEntityId);
+  }
+
+  partyAccept(): void {
+    this.sim.acceptPartyInvite(this.charId);
+  }
+
+  partyDecline(): void {
+    this.sim.declinePartyInvite(this.charId);
+  }
+
+  partyLeave(): void {
+    this.sim.leaveParty(this.charId);
   }
 
   // --- menus --------------------------------------------------------------

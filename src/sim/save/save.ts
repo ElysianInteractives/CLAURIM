@@ -15,9 +15,10 @@ import type {
   QuestState,
 } from '../types';
 
-/** v2: multiplayer world saves (D-013). v1 single-player saves migrate:
- * the sole player becomes character 'p1' in the default party. */
-export const SAVE_SCHEMA_VERSION = 2;
+/** v3: player-controlled parties (D-029). v2 used one global automatic
+ * party; v3 removes that milestone shortcut and retains known character
+ * names for offline party frames. */
+export const SAVE_SCHEMA_VERSION = 3;
 
 export interface ActorSave {
   id: EntityId;
@@ -67,6 +68,8 @@ export interface SaveGame {
   knownSpells: { charId: CharacterId; spells: ContentId[] }[];
   /** Per-character looted-container sets (D-019 personal container loot). */
   containersLootedBy: { charId: CharacterId; ids: string[] }[];
+  /** Durable display names for online and offline party members. */
+  characterNames: { charId: CharacterId; name: string }[];
   parties: { partyId: PartyId; members: CharacterId[] }[];
   /** Spawner ids that have already produced their actors. */
   spawnersSpawned: string[];
@@ -111,6 +114,21 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
     delete out.playerKnownSpells;
     return out;
   },
+  // v2 -> v3: the old fellowship was an automatic global milestone party,
+  // never player intent. Disband it as explicit party control comes online.
+  2: (raw) => {
+    const actors = Array.isArray(raw.actors) ? raw.actors as Record<string, unknown>[] : [];
+    const players = Array.isArray(raw.players) ? raw.players as Record<string, unknown>[] : [];
+    const names = players.flatMap((player) => {
+      if (typeof player.charId !== 'string' || typeof player.entityId !== 'number') return [];
+      const actor = actors.find((candidate) => candidate.id === player.entityId);
+      return typeof actor?.name === 'string' ? [{ charId: player.charId, name: actor.name }] : [];
+    });
+    const parties = Array.isArray(raw.parties)
+      ? (raw.parties as Record<string, unknown>[]).filter((party) => party.partyId !== 'fellowship')
+      : [];
+    return { ...raw, schemaVersion: 3, characterNames: names, parties };
+  },
 };
 
 export class SaveError extends Error {}
@@ -148,7 +166,7 @@ export function parseSave(json: string): SaveGame {
   for (const [key, type] of required) {
     if (typeof raw[key] !== type) throw new SaveError(`corrupt save: bad ${key}`);
   }
-  for (const key of ['actors', 'players', 'questLogs', 'knownSpells', 'containersLootedBy', 'parties', 'spawnersSpawned']) {
+  for (const key of ['actors', 'players', 'questLogs', 'knownSpells', 'containersLootedBy', 'characterNames', 'parties', 'spawnersSpawned']) {
     if (!Array.isArray(raw[key])) throw new SaveError(`corrupt save: bad ${key}`);
   }
   const save = raw as unknown as SaveGame;

@@ -2,7 +2,7 @@
 // feed, dialogue panel, shop, inventory, journal, perks, and the death screen.
 // Observes IWorld and submits intent through it; never resolves outcomes.
 
-import type { ActorView, IWorld } from '../world_api';
+import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
@@ -52,6 +52,7 @@ const CSS = `
     background: rgba(14,12,10,.93); border: 1px solid #8a7a55; border-radius: 6px; padding: 18px 22px; pointer-events: auto; box-shadow: 0 8px 40px #000; }
   #hud .panel h2 { margin: 0 0 10px; font-size: 20px; color: #d8c890; border-bottom: 1px solid #665533; padding-bottom: 6px; }
   #hud .panel .row { padding: 5px 8px; margin: 2px 0; border-radius: 3px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+  #hud .panel button.row { width: 100%; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; }
   #hud .panel .row:hover { background: rgba(200,180,120,.15); }
   #hud .panel .row.static { cursor: default; }
   #hud .panel .dim { opacity: .55; }
@@ -66,6 +67,18 @@ const CSS = `
   #hud .pmember .bar { height: 8px; margin-top: 2px; }
   #hud .pdowntag { color: #d05040; font-weight: bold; }
   #hud .pdown span { opacity: .7; }
+  #hud .poffline { opacity: .58; }
+  #hud .social-status { color: #cbbd98; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  #hud .chat-compose { position: absolute; left: 50%; bottom: 28px; width: min(580px, calc(100vw - 48px)); transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; padding: 9px 11px; box-sizing: border-box; pointer-events: auto;
+    background: rgba(10,10,12,.94); border: 1px solid rgba(218,198,142,.62); border-radius: 5px; box-shadow: 0 5px 24px rgba(0,0,0,.62); }
+  #hud .chat-compose label { color: #d8c890; font-size: 13px; font-weight: bold; }
+  #hud .chat-compose input { flex: 1; min-width: 0; padding: 7px 9px; color: #f4eddb; background: rgba(3,4,6,.82);
+    border: 1px solid rgba(230,216,174,.42); border-radius: 3px; outline: none; font: 14px/1.25 Georgia, 'Times New Roman', serif; user-select: text; }
+  #hud .chat-compose input:focus { border-color: #d8c890; box-shadow: 0 0 0 2px rgba(216,200,144,.16); }
+  #hud .chat-compose .hint { margin: 0; white-space: nowrap; }
+  #hud .chat-send { padding: 6px 9px; color: #f4eddb; background: rgba(104,91,61,.52); border: 1px solid rgba(225,207,157,.5);
+    border-radius: 3px; font: 12px/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace; cursor: pointer; }
   #hud .help-card { position: absolute; right: 24px; bottom: 24px; width: min(370px, calc(100vw - 48px)); padding: 14px 16px 15px;
     box-sizing: border-box; background: linear-gradient(145deg, rgba(13,13,15,.94), rgba(27,23,18,.9));
     border: 1px solid rgba(218,198,142,.55); border-radius: 6px; box-shadow: 0 5px 24px rgba(0,0,0,.55);
@@ -94,7 +107,7 @@ const CSS = `
   }
 `;
 
-type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks';
+type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social';
 type ResourceKind = 'health' | 'stamina' | 'magicka';
 type ResourceReadout = Pick<
   ReturnType<IWorld['playerResources']>,
@@ -108,6 +121,10 @@ export class Hud {
   private combatPulse: 'hit' | 'blocked' | 'hurt' | null = null;
   private combatPulseUntil = 0;
   private connectionStatus: { text: string; tone: 'pending' | 'online' | 'error' } | null = null;
+  private chatOpen = false;
+  private chatDraft = '';
+  private renderedHtml = '';
+  private renderedInteraction = '';
   panel: Panel = 'none';
   private time = 0;
 
@@ -136,6 +153,7 @@ export class Hud {
   }
 
   togglePanel(p: Panel): void {
+    this.chatOpen = false;
     this.panel = this.panel === p ? 'none' : p;
   }
 
@@ -145,6 +163,16 @@ export class Hud {
 
   isMenuOpen(): boolean {
     return this.panel !== 'none';
+  }
+
+  isInputCaptured(): boolean {
+    return this.panel !== 'none' || this.chatOpen;
+  }
+
+  openChat(): void {
+    if (this.panel !== 'none' || this.world.playerDowned()) return;
+    this.chatOpen = true;
+    void document.exitPointerLock?.();
   }
 
   update(dtSec: number): void {
@@ -214,6 +242,9 @@ export class Hud {
         case 'playerReleased':
           this.notify('Companion released to the recovery point');
           break;
+        case 'partyStatus':
+          this.notify(e.text);
+          break;
         case 'chat': {
           const speaker = this.world.actorsInSpace().find((a) => a.id === e.playerId);
           this.notify(`${speaker?.name ?? '???'}: ${e.text}`);
@@ -232,12 +263,44 @@ export class Hud {
     else if (this.world.shopView()) this.panel = 'shop';
     else if (this.panel === 'dialogue' || this.panel === 'shop') this.panel = 'none';
 
-    this.root.innerHTML = this.renderHtml();
-    this.bindPanelClicks();
+    const html = this.renderHtml();
+    const interaction = this.interactionSignature();
+    const stableInteraction = this.chatOpen || this.panel === 'social';
+    if (html !== this.renderedHtml && (!stableInteraction || interaction !== this.renderedInteraction)) {
+      this.renderedHtml = html;
+      this.renderedInteraction = interaction;
+      this.root.innerHTML = html;
+      this.bindPanelClicks();
+      if (this.chatOpen) {
+        const input = this.root.querySelector<HTMLInputElement>('[data-chat-input]');
+        input?.focus({ preventScroll: true });
+        input?.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
   }
 
   private questName(id: string): string {
     return this.world.journal().find((j) => j.questId === id)?.name ?? id;
+  }
+
+  private interactionSignature(): string {
+    if (this.chatOpen) return 'chat';
+    if (this.panel !== 'social') return this.panel;
+    const party = this.world.party().map((member) => ({
+      id: member.charId,
+      entity: member.entityId,
+      name: member.name,
+      online: member.online,
+      downed: member.downed,
+      health: member.health,
+      maxHealth: member.maxHealth,
+      space: member.spaceId,
+    }));
+    const invites = this.world.partyInvites();
+    const nearby = this.world.actorsInSpace()
+      .filter((actor) => actor.isRemotePlayer)
+      .map((actor) => ({ id: actor.id, name: actor.name }));
+    return JSON.stringify({ panel: 'social', partyId: this.world.partyId(), party, invites, nearby });
   }
 
   private renderHtml(): string {
@@ -257,7 +320,7 @@ export class Hud {
       ${this.combatPulse === 'hurt' ? '<div class="damage-vignette" aria-hidden="true"></div>' : ''}
       <div class="feed" aria-live="polite" aria-atomic="false">${this.feedLines.map((l) => `<div>${esc(l.text)}</div>`).join('')}</div>
     `;
-    if (this.panel === 'none') html += renderControlsHelp(this.controlsOpen);
+    if (this.panel === 'none' && !this.chatOpen) html += renderControlsHelp(this.controlsOpen);
     if (prompt && this.panel === 'none') html += `<div class="prompt">[E] ${esc(prompt)}</div>`;
     // Party frames (multiplayer presence).
     const party = this.world.party();
@@ -265,10 +328,11 @@ export class Hud {
       html += `<div class="partyframes">`;
       for (const m of party) {
         if (m.isSelf) continue;
-        html += `<div class="pmember${m.downed ? ' pdown' : ''}"><span>${esc(m.name)}</span><div class="bar hp"><div style="width:${(100 * m.health) / m.maxHealth}%"></div></div>${m.downed ? '<span class="pdowntag">DOWN</span>' : ''}</div>`;
+        html += `<div class="pmember${m.downed ? ' pdown' : ''}${m.online ? '' : ' poffline'}"><span>${esc(m.name)}${m.online ? '' : ' (offline)'}</span><div class="bar hp"><div style="width:${resourcePercent(m.health, m.maxHealth).toFixed(2)}%"></div></div>${m.downed ? '<span class="pdowntag">DOWN</span>' : ''}</div>`;
       }
       html += `</div>`;
     }
+    if (this.chatOpen) html += renderChatComposer(this.chatDraft, 400);
     if (this.world.playerDowned()) {
       const secs = Math.ceil(this.world.downedTicksLeft() / 30);
       html += `<div class="death"><h1>You are down.</h1><div class="row static">A party member can revive you. Auto-release in ${secs}s.</div><div class="row" data-act="respawn">Release now</div></div>`;
@@ -337,6 +401,14 @@ export class Hud {
         html += `<div class="hint">[P] close</div></div>`;
         break;
       }
+      case 'social':
+        html += renderSocialPanel(
+          this.world.partyId(),
+          this.world.party(),
+          this.world.partyInvites(),
+          this.world.actorsInSpace(),
+        );
+        break;
       case 'none':
         break;
     }
@@ -353,6 +425,10 @@ export class Hud {
         else if (act === 'sell') this.world.shopSell(id);
         else if (act === 'perk') this.world.takePerk(id);
         else if (act === 'respawn') this.world.respawn();
+        else if (act === 'party-invite') this.world.partyInvite(Number(el.dataset.target));
+        else if (act === 'party-accept') this.world.partyAccept();
+        else if (act === 'party-decline') this.world.partyDecline();
+        else if (act === 'party-leave') this.world.partyLeave();
         else if (act === 'item') {
           const it = this.world.playerInventory().find((x) => x.itemId === id);
           if (!it) return;
@@ -361,17 +437,53 @@ export class Hud {
         }
       };
     });
+    const input = this.root.querySelector<HTMLInputElement>('[data-chat-input]');
+    const form = this.root.querySelector<HTMLFormElement>('[data-chat-form]');
+    if (input) input.oninput = () => {
+      const bounded = [...input.value].slice(0, 200).join('');
+      if (bounded !== input.value) input.value = bounded;
+      this.chatDraft = bounded;
+      // The input's live value already changed; keep the HTML cache aligned
+      // so a stable HUD does not tear down focus on the following frame.
+      this.renderedHtml = this.renderHtml();
+    };
+    if (form) {
+      const submitChat = () => {
+        const message = this.chatDraft.trim();
+        if (message) this.world.chat(message);
+        this.chatDraft = '';
+        this.chatOpen = false;
+      };
+      form.onsubmit = (event) => {
+        event.preventDefault();
+        submitChat();
+      };
+      form.onkeydown = (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          event.stopPropagation();
+          submitChat();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          this.chatDraft = '';
+          this.chatOpen = false;
+        }
+      };
+    }
   }
 
   closeAll(): void {
     if (this.panel === 'dialogue') this.world.dialogueEnd();
     if (this.panel === 'shop') this.world.shopClose();
     this.panel = 'none';
+    this.chatOpen = false;
+    this.chatDraft = '';
   }
 }
 
 function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function actionRejectionText(
@@ -457,6 +569,45 @@ export function renderResourceMeters(resources: ResourceReadout): string {
   </div>`;
 }
 
+export function renderChatComposer(draft: string, maxLength: number): string {
+  return `<form class="chat-compose" data-chat-form aria-label="Nearby chat">
+    <label for="claurim-chat">Say</label>
+    <input id="claurim-chat" data-chat-input type="text" aria-label="Chat message" autocomplete="off"
+      maxlength="${maxLength}" value="${esc(draft)}" />
+    <button class="chat-send" type="submit">Send</button>
+    <span class="hint"><kbd>Enter</kbd> send · <kbd>Esc</kbd> cancel</span>
+  </form>`;
+}
+
+export function renderSocialPanel(
+  partyId: string | null,
+  members: readonly PartyMemberView[],
+  invites: readonly PartyInviteView[],
+  actors: readonly ActorView[],
+): string {
+  const memberEntities = new Set(members.flatMap((member) => member.entityId === null ? [] : [member.entityId]));
+  const nearby = actors.filter((actor) => actor.isRemotePlayer && !memberEntities.has(actor.id));
+  let html = `<div class="panel" aria-label="Party controls"><h2>Party</h2>`;
+  html += `<div class="row static social-status">${partyId ? `${members.length} / 5 members` : 'Travelling solo'}</div>`;
+  for (const invite of invites) {
+    html += `<div class="row static"><span>${esc(invite.fromName)} invited you</span><span>` +
+      `<button data-act="party-accept">Accept</button> <button data-act="party-decline">Decline</button></span></div>`;
+  }
+  html += `<div class="row static dim">Current group</div>`;
+  for (const member of members) {
+    html += `<div class="row static${member.online ? '' : ' dim'}"><span>${esc(member.name)}${member.isSelf ? ' (you)' : ''}</span>` +
+      `<span>${member.online ? (member.downed ? 'down' : esc(member.spaceId)) : 'offline'}</span></div>`;
+  }
+  html += `<div class="row static dim">Nearby players</div>`;
+  if (nearby.length === 0) html += `<div class="row static dim">No ungrouped players nearby.</div>`;
+  for (const actor of nearby) {
+    html += `<button type="button" class="row" data-act="party-invite" data-target="${actor.id}"><span>${esc(actor.name)}</span><span>Invite</span></button>`;
+  }
+  if (partyId) html += `<button type="button" class="row" data-act="party-leave"><span>Leave party</span></button>`;
+  html += `<div class="hint"><kbd>O</kbd> close · invitations require a nearby player</div></div>`;
+  return html;
+}
+
 export function renderControlsHelp(expanded: boolean): string {
   if (!expanded) {
     return `<div class="help-toggle" aria-label="Press H to show game controls"><kbd>H</kbd> Controls</div>`;
@@ -478,9 +629,10 @@ export function renderControlsHelp(expanded: boolean): string {
       <section class="control-group"><h3>World</h3>
         <div class="control-row"><kbd>E</kbd><span>Interact</span></div>
         <div class="control-row"><kbd>Tab</kbd><span>Inventory</span></div>
-        <div class="control-row"><kbd>J / P</kbd><span>Journal / perks</span></div>
+        <div class="control-row"><kbd>J / P / O</kbd><span>Journal / perks / party</span></div>
       </section>
       <section class="control-group"><h3>Utility</h3>
+        <div class="control-row"><kbd>Enter</kbd><span>Nearby chat</span></div>
         <div class="control-row"><kbd>V</kbd><span>Camera</span></div>
         <div class="control-row"><kbd>F5 / F9</kbd><span>Save / load</span></div>
         <div class="control-row"><kbd>Esc</kbd><span>Close menu</span></div>

@@ -21,7 +21,8 @@ Remote deployments must use `wss://`, set `CLAURIM_ALLOWED_ORIGINS` to the
 exact browser origin(s), and set `CLAURIM_TRUST_PROXY=1` only behind a trusted
 TLS reverse proxy. See `docs/project/AUTHENTICATION_THREAT_MODEL.md`.
 Bring a party: Duskhollow Mine is tuned for 3-5 players and its Warden will
-bury an unprepared solo hero.
+bury an unprepared solo hero. Press `O` near another player to invite them;
+press `Enter` to send nearby chat.
 
 ## Play offline (single player)
 ```
@@ -29,8 +30,8 @@ npm run dev        # http://localhost:5173 (no query string)
 ```
 Click the canvas to capture the mouse. WASD move, Shift sprint, C sneak,
 Space jump, LMB attack, RMB block, 1 Flamebolt, 2 Mend Wounds, E interact,
-Tab inventory, J journal, P perks, H controls, V first/third person, F5 save,
-F9 load.
+Tab inventory, J journal, P perks, O party, Enter nearby chat, H controls,
+V first/third person, F5 save, F9 load.
 
 Start at Falkmoor Ruin. The road north leads to Fenharrow; talk to Maera in
 the inn ("The Fenharrow Hearth") to begin The Hollow Delve.

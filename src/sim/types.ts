@@ -314,6 +314,7 @@ export type SimEvent =
   | { type: 'bossPhase'; bossId: EntityId; phase: number }
   | { type: 'telegraph'; sourceId: EntityId; abilityId: ContentId; ticks: number; interruptible: boolean }
   | { type: 'interrupted'; sourceId: EntityId; abilityId: ContentId }
+  | { type: 'partyStatus'; charId: CharacterId; text: string }
   | { type: 'chat'; playerId: EntityId; text: string };
 
 // ---------------------------------------------------------------------------

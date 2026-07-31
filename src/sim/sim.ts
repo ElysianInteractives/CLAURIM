@@ -97,7 +97,19 @@ const HOSTILE_PAIRS: ReadonlySet<string> = new Set([
   'player|redclaw',
 ]);
 
-export const DEFAULT_PARTY: PartyId = 'fellowship';
+export const PARTY_INVITE_RADIUS = 30;
+export const PARTY_MAX_MEMBERS = 5;
+
+export type PartyInviteResult =
+  | 'sent'
+  | 'no-player'
+  | 'self'
+  | 'not-nearby'
+  | 'already-party'
+  | 'target-in-party'
+  | 'party-full';
+
+export type PartyAcceptResult = 'joined' | 'none' | 'stale' | 'already-party' | 'party-full';
 
 export interface PlayerInput {
   /** Normalized move intent in the player's local heading space. */
@@ -147,6 +159,8 @@ export class Sim {
   readonly knownSpellsBy = new Map<CharacterId, ContentId[]>();
   readonly containersLootedByChar = new Map<CharacterId, Set<string>>();
   readonly parties = new Map<PartyId, CharacterId[]>();
+  readonly characterNames = new Map<CharacterId, string>();
+  private readonly partyInvites = new Map<CharacterId, CharacterId>();
   readonly dialogueSessions = new Map<CharacterId, DialogueSession>();
   readonly shopMerchantBy = new Map<CharacterId, EntityId>();
   private transientBy = new Map<CharacterId, PlayerTransient>();
@@ -402,6 +416,7 @@ export class Sim {
     player.factionId = 'player';
     this.actors.set(id, player);
     this.players.set(charId, id);
+    this.characterNames.set(charId, player.name);
     if (!this.primaryCharId) this.primaryCharId = charId;
     this.transientBy.set(charId, { vy: 0, airborne: false, lastYaw: restore?.yaw ?? PLAYER_START.yaw });
     player.yaw = restore?.yaw ?? PLAYER_START.yaw;
@@ -438,13 +453,11 @@ export class Sim {
       player.magicka = player.stats.maxMagicka;
     }
 
-    // Milestone party policy (D-020): everyone joins one deterministic party.
-    this.joinParty(charId, DEFAULT_PARTY);
     return id;
   }
 
   /** Remove a character from the live world, returning its durable record. */
-  removePlayer(charId: CharacterId): CharacterSave | null {
+  removePlayer(charId: CharacterId, opts: { preserveParty?: boolean } = {}): CharacterSave | null {
     const id = this.players.get(charId);
     if (id === undefined) return null;
     const record = this.extractCharacter(charId);
@@ -453,12 +466,8 @@ export class Sim {
     this.dialogueSessions.delete(charId);
     this.shopMerchantBy.delete(charId);
     this.transientBy.delete(charId);
-    const partyId = this.partyOf(charId);
-    if (partyId) {
-      const members = this.parties.get(partyId)!.filter((m) => m !== charId);
-      if (members.length > 0) this.parties.set(partyId, members);
-      else this.parties.delete(partyId);
-    }
+    this.clearInvitesFor(charId);
+    if (!opts.preserveParty) this.leaveParty(charId);
     if (this.primaryCharId === charId) {
       this.primaryCharId = this.players.size > 0 ? [...this.players.keys()][0] : null;
     }
@@ -499,11 +508,119 @@ export class Sim {
     const current = this.partyOf(charId);
     if (current === partyId) return;
     if (current) {
-      this.parties.set(current, this.parties.get(current)!.filter((m) => m !== charId));
+      const remaining = this.parties.get(current)!.filter((m) => m !== charId);
+      if (remaining.length > 1) this.parties.set(current, remaining);
+      else this.parties.delete(current);
     }
     const members = this.parties.get(partyId) ?? [];
-    members.push(charId);
+    if (!members.includes(charId)) members.push(charId);
     this.parties.set(partyId, members);
+  }
+
+  inviteToParty(fromCharId: CharacterId, targetEntityId: EntityId): PartyInviteResult {
+    const fail = (result: PartyInviteResult, text: string): PartyInviteResult => {
+      this.events.push({ type: 'partyStatus', charId: fromCharId, text });
+      return result;
+    };
+    const from = this.playerActor(fromCharId);
+    const targetCharId = this.charIdForEntity(targetEntityId);
+    const target = targetCharId ? this.playerActor(targetCharId) : null;
+    if (!from || !target || !targetCharId) return fail('no-player', 'That player is no longer available.');
+    if (targetCharId === fromCharId) return fail('self', 'You cannot invite yourself.');
+    if (
+      from.pos.spaceId !== target.pos.spaceId ||
+      Math.hypot(from.pos.x - target.pos.x, from.pos.z - target.pos.z) > PARTY_INVITE_RADIUS
+    ) return fail('not-nearby', 'Party invitations require a nearby player.');
+    const fromParty = this.partyOf(fromCharId);
+    const targetParty = this.partyOf(targetCharId);
+    if (fromParty && targetParty === fromParty) return fail('already-party', `${target.name} is already in your party.`);
+    if (targetParty) return fail('target-in-party', `${target.name} is already in a party.`);
+    if (fromParty && (this.parties.get(fromParty)?.length ?? 0) >= PARTY_MAX_MEMBERS) {
+      return fail('party-full', 'Your party is full.');
+    }
+    this.partyInvites.set(targetCharId, fromCharId);
+    this.events.push({ type: 'partyStatus', charId: fromCharId, text: `Invitation sent to ${target.name}.` });
+    this.events.push({ type: 'partyStatus', charId: targetCharId, text: `${from.name} invited you. Press O to respond.` });
+    return 'sent';
+  }
+
+  pendingPartyInviteFor(
+    charId: CharacterId,
+  ): { fromCharId: CharacterId; fromName: string; fromEntityId: EntityId } | null {
+    const fromCharId = this.partyInvites.get(charId);
+    if (!fromCharId) return null;
+    const from = this.playerActor(fromCharId);
+    if (!from) return null;
+    return { fromCharId, fromName: from.name, fromEntityId: from.id };
+  }
+
+  acceptPartyInvite(charId: CharacterId): PartyAcceptResult {
+    const fromCharId = this.partyInvites.get(charId);
+    this.partyInvites.delete(charId);
+    if (!fromCharId) return 'none';
+    if (this.partyOf(charId)) {
+      this.events.push({ type: 'partyStatus', charId, text: 'Leave your current party before accepting another invitation.' });
+      return 'already-party';
+    }
+    const inviter = this.playerActor(fromCharId);
+    const invitee = this.playerActor(charId);
+    if (!inviter || !invitee) {
+      this.events.push({ type: 'partyStatus', charId, text: 'That party invitation is no longer available.' });
+      return 'stale';
+    }
+    let partyId = this.partyOf(fromCharId);
+    if (partyId && (this.parties.get(partyId)?.length ?? 0) >= PARTY_MAX_MEMBERS) {
+      this.events.push({ type: 'partyStatus', charId, text: 'That party is now full.' });
+      return 'party-full';
+    }
+    if (!partyId) {
+      partyId = `party:${fromCharId}`;
+      this.joinParty(fromCharId, partyId);
+    }
+    this.joinParty(charId, partyId);
+    this.clearInvitesFor(charId);
+    this.events.push({ type: 'partyStatus', charId, text: `You joined ${inviter.name}'s party.` });
+    this.events.push({ type: 'partyStatus', charId: fromCharId, text: `${invitee.name} joined your party.` });
+    return 'joined';
+  }
+
+  declinePartyInvite(charId: CharacterId): boolean {
+    const fromCharId = this.partyInvites.get(charId);
+    if (!this.partyInvites.delete(charId)) return false;
+    this.events.push({ type: 'partyStatus', charId, text: 'Party invitation declined.' });
+    if (fromCharId) {
+      const name = this.characterNames.get(charId) ?? charId;
+      this.events.push({ type: 'partyStatus', charId: fromCharId, text: `${name} declined your invitation.` });
+    }
+    return true;
+  }
+
+  leaveParty(charId: CharacterId): boolean {
+    const partyId = this.partyOf(charId);
+    if (!partyId) return false;
+    const members = this.parties.get(partyId) ?? [];
+    const remaining = members.filter((member) => member !== charId);
+    if (remaining.length > 1) this.parties.set(partyId, remaining);
+    else this.parties.delete(partyId);
+    this.clearInvitesFor(charId);
+    this.events.push({ type: 'partyStatus', charId, text: 'You left the party.' });
+    const name = this.characterNames.get(charId) ?? charId;
+    for (const member of remaining) {
+      this.events.push({ type: 'partyStatus', charId: member, text: `${name} left the party.` });
+    }
+    return true;
+  }
+
+  private clearInvitesFor(charId: CharacterId): void {
+    this.partyInvites.delete(charId);
+    for (const [target, inviter] of this.partyInvites) {
+      if (inviter === charId) this.partyInvites.delete(target);
+    }
+  }
+
+  private charIdForEntity(entityId: EntityId): CharacterId | null {
+    for (const [charId, id] of this.players) if (id === entityId) return charId;
+    return null;
   }
 
   partyOf(charId: CharacterId): PartyId | null {
@@ -599,7 +716,9 @@ export class Sim {
     // Commands arrive between fixed ticks. Preserve rejection feedback until
     // the host gets a chance to drain it; all tick-generated events remain
     // current-tick only as before.
-    this.events = this.events.filter((event) => event.type === 'actionRejected');
+    this.events = this.events.filter(
+      (event) => event.type === 'actionRejected' || event.type === 'chat' || event.type === 'partyStatus',
+    );
     this.tickCount++;
 
     const inputMap: Map<CharacterId, PlayerInput> =
@@ -927,11 +1046,15 @@ export class Sim {
     return journalFor(this.ctx, charId);
   }
 
-  chatFrom(charId: CharacterId, text: string): void {
+  chatFrom(charId: CharacterId, text: string): boolean {
     const p = this.playerActor(charId);
-    if (!p) return;
-    const clean = text.slice(0, 200);
+    if (!p) return false;
+    const clean = [...text.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().replace(/\s+/g, ' ')]
+      .slice(0, 200)
+      .join('');
+    if (!clean) return false;
     this.events.push({ type: 'chat', playerId: p.id, text: clean });
+    return true;
   }
 
   /** The nearest interactable within reach for one character: door,
@@ -942,6 +1065,7 @@ export class Sim {
   ): { kind: 'door' | 'container' | 'npc' | 'corpse' | 'revive'; id: string; name: string } | null {
     const p = this.playerActor(charId);
     if (!p) return null;
+    const party = new Set(this.partyMembersOf(charId));
     const reach = 3.0;
     const looted = this.containersLootedOf(charId);
     let best: { kind: 'door' | 'container' | 'npc' | 'corpse' | 'revive'; id: string; name: string; d: number } | null =
@@ -960,7 +1084,7 @@ export class Sim {
       if (a.id === p.id || a.pos.spaceId !== p.pos.spaceId) continue;
       const d = Math.hypot(a.pos.x - p.pos.x, a.pos.z - p.pos.z);
       if (d >= reach) continue;
-      if (a.kind === 'player' && a.downed) {
+      if (a.kind === 'player' && a.downed && party.has(this.charIdForEntity(a.id) ?? '')) {
         if (!best || d < best.d) best = { kind: 'revive', id: String(a.id), name: a.name, d };
       } else if (a.dead && (a.inventory.length > 0 || a.gold > 0)) {
         if (!best || d < best.d) best = { kind: 'corpse', id: String(a.id), name: a.name, d };
@@ -1211,7 +1335,7 @@ export class Sim {
   }
 
   // -------------------------------------------------------------------------
-  // Save / load (world save, schema v2)
+  // Save / load (world save, schema v3)
   // -------------------------------------------------------------------------
 
   serialize(): SaveGame {
@@ -1267,6 +1391,7 @@ export class Sim {
       })),
       knownSpells: [...this.knownSpellsBy].map(([charId, spells]) => ({ charId, spells: [...spells] })),
       containersLootedBy: [...this.containersLootedByChar].map(([charId, ids]) => ({ charId, ids: [...ids] })),
+      characterNames: [...this.characterNames].map(([charId, name]) => ({ charId, name })),
       parties: [...this.parties].map(([partyId, members]) => ({ partyId, members: [...members] })),
       spawnersSpawned: [...this.spawnersSpawned],
     };
@@ -1339,6 +1464,9 @@ export class Sim {
     }
     for (const entry of save.containersLootedBy) {
       sim.containersLootedByChar.set(entry.charId, new Set(entry.ids));
+    }
+    for (const entry of save.characterNames) {
+      sim.characterNames.set(entry.charId, entry.name);
     }
     for (const entry of save.parties) {
       sim.parties.set(entry.partyId, [...entry.members]);

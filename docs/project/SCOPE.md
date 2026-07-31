@@ -4,7 +4,8 @@
 Dedicated authoritative server (`npm run server`), two-plus authenticated
 browser clients (`?ws=...`), persistent distinct characters with server-owned
 storage, third-person remote-player rendering, movement replication with
-prediction/reconciliation, chat presence, deterministic default party,
+prediction/reconciliation, sanitized nearby chat with a focused composer,
+player-controlled persistent parties,
 shared exterior + interiors, cooperative combat with threat/telegraphs/
 interrupts/scaling, party quest credit on The Hollow Delve, personal boss
 loot, downed/revive/release + wipe reset, disconnect/reconnect restoration,
@@ -30,8 +31,8 @@ save/load continuity at each stage).
 Verification: architecture guards, determinism/replay, save round-trip +
 migration, nav tests, quest e2e, content gate, headless host, `npm run gate`.
 
-Milestone-1 exit criteria still open: first visual QA pass on a real browser
-(KL-7), one balance pass with headless measurement.
+Milestone-1 browser and headless balance exits are complete; repeat the
+relevant QA contract whenever a later phase changes that surface.
 
 ## Milestone 2: Systems depth (Fable-led design, Opus fill)
 Crafting (smithing/alchemy/enchanting), weather in-sim, followers, crime/
@@ -44,5 +45,4 @@ Multi-region streaming, main-story arc + one faction line, dragons (flight
 architecture prototyped FIRST), mounted movement, cities.
 
 ## Out of scope until base game is complete
-Expansion-scale content, multiplayer (kept possible, not built), mod loader UI,
-desktop packaging.
+Expansion-scale content, mod loader UI, desktop packaging.

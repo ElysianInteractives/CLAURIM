@@ -274,6 +274,37 @@ behavior.
   [authentication gate 1280x720](../screenshots/2026-07-31/plan-6-auth-gate-1280x720.png)
   and [authenticated world 1920x1080](../screenshots/2026-07-31/plan-6-authenticated-1920x1080.png).
 
+### Plan 7 social coordination exit
+
+Plan 7 resolves SOC-001/SOC-002 and locks D-029 without adding matchmaking,
+guild, trade, PvP, or dungeon-instancing scope.
+
+- The exact short-path source gate is green at 15 suites / 155 tests and a
+  643.52 kB JavaScript / 171.40 kB gzip production bundle. The
+  focused additions cover solo starts; invite/accept/decline/leave constraints;
+  persistence and v2->v3 migration; party-only revive/scaling; downed
+  reconnect release; chat sanitation/throttle/replication; protocol target
+  validation; and semantic HUD output.
+- The real WebSocket smoke passes with two authenticated clients, ack 30,
+  4.4 m authoritative movement, mutual visibility, rotating/replay-safe
+  sessions, restored ownership, and 3,852 / 3,840-byte snapshots.
+- Direct two-client 1280x720 browser QA creates two accounts, starts both
+  solo, sends a nearby invite, displays private invite feedback, accepts into
+  a 2/5 party, survives repeated disconnect/sign-in cycles, and delivers
+  `Meet at the waystone.` to both notification feeds through Enter submit.
+  The composer hides the controls card while focused and does not overlap the
+  310x153 resource card.
+- Browser QA reproduced and fixed per-frame HUD DOM replacement: interactive
+  rows could detach between focus and click, and the original composer
+  overlapped the resource/help cards. Stable interaction signatures plus
+  semantic party/chat buttons make the final flow keyboard- and click-usable.
+- A true 1920x1080 CSS viewport in the temporary 2/3-scale iframe harness has
+  no document overflow. The party panel measures 466x317 px at `(727, 382)`,
+  remains fully inside the viewport, and does not overlap the resource card
+  at `(24, 903)`. The direct second-client log has no warning/error; the scaled
+  harness retains the known instrumentation-only MutationObserver/pointer-lock
+  errors and does not ship.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -291,6 +322,7 @@ behavior.
 | QA-NET-MATRIX | Prediction under locked network profiles | `npm run net:bench` | Delay, correction, throughput, loss, remote motion |
 | QA-PST-RECONNECT | Character/world persistence | Join, mutate, disconnect, restart, rejoin | Restored character and world fields |
 | QA-AUTH | Account/session/ownership and secure browser boundary | `tests/authentication.test.ts`, real `qa:ws`, create/login/reload/insecure-URL browser flow | Hash/session/ownership assertions, rotation/replay result, sign-in captures and logs |
+| QA-SOC | Party consent/persistence and nearby chat | `tests/multiplayer_sim.test.ts`, `tests/server_net.test.ts`, `tests/save.test.ts`; two authenticated browser clients at 1280 and 1920 | Solo start, invite/accept/leave, reconnect/offline frame, chat focus/delivery, layout and logs |
 
 ## Browser visual-QA procedure
 

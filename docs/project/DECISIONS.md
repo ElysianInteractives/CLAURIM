@@ -116,7 +116,8 @@ space transitions snap; remote actors exponentially smoothed (0.35/frame);
 combat is presentation-only prediction.
 
 ## D-016: Server-owned persistence behind StorageProvider - LOCKED
-Characters (schema v1) and world (schema v2) persist through StorageProvider;
+Characters (schema v1) and world saves persist through StorageProvider;
+world schema v2 introduced the boundary and D-029 advances it to v3.
 FileStorage (atomic tmp+rename) serves the milestone and a database comes
 later. D-028 extends the original four-method character/world seam with two
 account-record methods. Browser localStorage is offline-mode only. Corruption
@@ -147,9 +148,9 @@ for milestone; personal loot avoids intra-party theft griefs entirely).
 ## D-020: Quest ownership + party credit - LOCKED
 Per-character journals; kill credit shared with party within 60 m same
 space; collect/talkTo/interact/reach personal; rewards to the completing
-character; mid-quest joiners credit only their current stage. Milestone
-party policy: one deterministic default party ('fellowship') until explicit
-party UI lands (Opus ticket on this exemplar).
+character; mid-quest joiners credit only their current stage. Plan 7's D-029
+replaces the milestone default party with explicit membership; the credit
+rules in this decision are unchanged.
 
 ## D-021: Death and recovery - LOCKED
 Players go DOWNED (30 s, damage-immune, threat-invisible) -> party revive at
@@ -231,3 +232,16 @@ browser persists neither password nor token. Remote browser transport must be
 secure and origin-allowlisted; loopback remains available for development.
 Exact threat cases, deployment settings, and deliberate limits are in
 `AUTHENTICATION_THREAT_MODEL.md`.
+
+## D-029: Player-controlled party and nearby chat - LOCKED
+Characters start solo. A nearby-player invite must be explicitly accepted;
+decline and leave are first-class commands, one character cannot occupy two
+parties, and party size is capped at five. Accepted membership is durable
+across disconnect and world restart; invitations are transient. Save schema
+v3 removes the non-consensual legacy `fellowship` on migration and persists
+known names for offline frames. Only accepted members receive D-019/D-020/
+D-021 benefits, and first-engage scaling counts the engaged character's
+nearby active party rather than unrelated bystanders. Nearby chat is
+space-scoped, control-character sanitized, whitespace normalized, capped at
+200 code points, and accepted at most once per 15 ticks per connection. The
+HUD exposes party control on `O` and a focus-safe chat composer on `Enter`.

@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   renderControlsHelp,
+  renderChatComposer,
+  renderSocialPanel,
   renderCombatTarget,
   renderResourceMeter,
   renderResourceMeters,
   resourcePercent,
   selectCombatTarget,
 } from '../src/ui/hud';
-import type { ActorView } from '../src/world_api';
+import type { ActorView, PartyMemberView } from '../src/world_api';
 
 function actor(overrides: Partial<ActorView> = {}): ActorView {
   return {
@@ -82,7 +84,7 @@ describe('HUD controls onboarding', () => {
     const html = renderControlsHelp(true);
     expect(html).toContain('aria-label="Game controls"');
     expect(html).toContain('Click the world to capture the mouse');
-    for (const control of ['WASD', 'LMB', 'RMB', '1 / 2', 'Tab', 'J / P', 'F5 / F9', 'Esc']) {
+    for (const control of ['WASD', 'LMB', 'RMB', '1 / 2', 'Tab', 'J / P / O', 'Enter', 'F5 / F9', 'Esc']) {
       expect(html).toContain(`<kbd>${control}</kbd>`);
     }
     expect(html).toContain('<kbd>H</kbd> hide');
@@ -93,6 +95,38 @@ describe('HUD controls onboarding', () => {
     expect(html).toContain('aria-label="Press H to show game controls"');
     expect(html).toContain('<kbd>H</kbd> Controls');
     expect(html).not.toContain('control-grid');
+  });
+});
+
+describe('HUD social controls', () => {
+  it('renders a bounded accessible chat composer without inserting raw markup', () => {
+    const html = renderChatComposer('<hello>', 400);
+    expect(html).toContain('aria-label="Chat message"');
+    // HTML maxlength counts UTF-16 units. Four hundred permits 200 astral
+    // code points; the input handler enforces the actual 200-code-point cap.
+    expect(html).toContain('maxlength="400"');
+    expect(html).toContain('type="submit">Send</button>');
+    expect(html).toContain('value="&lt;hello&gt;"');
+    expect(html).not.toContain('value="<hello>"');
+  });
+
+  it('renders invites, online state, nearby invite actions, and leave controls', () => {
+    const members: PartyMemberView[] = [
+      { charId: 'alva', entityId: 1, name: 'Alva', health: 80, maxHealth: 100, downed: false, spaceId: 'kaldwyn', isSelf: true, online: true },
+      { charId: 'brona', entityId: null, name: 'Brona', health: 0, maxHealth: 1, downed: false, spaceId: 'kaldwyn', isSelf: false, online: false },
+    ];
+    const html = renderSocialPanel(
+      'party:alva',
+      members,
+      [{ fromCharId: 'cadan', fromName: 'Cadan', fromEntityId: 42 }],
+      [actor({ id: 9, name: 'Dara', isPlayer: true, isRemotePlayer: true })],
+    );
+    expect(html).toContain('Cadan invited you');
+    expect(html).toContain('data-act="party-accept"');
+    expect(html).toContain('Brona');
+    expect(html).toContain('offline');
+    expect(html).toContain('data-act="party-invite" data-target="9"');
+    expect(html).toContain('data-act="party-leave"');
   });
 });
 

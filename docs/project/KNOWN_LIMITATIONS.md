@@ -50,8 +50,6 @@
 - KL-15 The shared-world dungeon has no instancing: two parties in the mine
   share one boss (lockout = 'never respawns' after a kill). Instancing is a
   declared later system (LOCKED_SYSTEMS open list).
-- KL-16 Chat renders in the notification feed; there is no chat input box in
-  the HUD yet (clients can send via the chat command; OB-M5 adds the UI).
 - KL-17 Remote players all render with the same archetype body; per-character
   appearance is future content work.
 - KL-18 The target frame uses a 20 m / 22-degree facing selection and does not

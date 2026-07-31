@@ -9,6 +9,7 @@ import type {
   DialogueView,
   GroundAoeView,
   JournalView,
+  PartyInviteView,
   PartyMemberView,
   ProjectileView,
   ShopView,
@@ -43,12 +44,16 @@ export type CommandKind =
   | 'shopSell'
   | 'shopClose'
   | 'respawn'
-  | 'chat';
+  | 'chat'
+  | 'partyInvite'
+  | 'partyAccept'
+  | 'partyDecline'
+  | 'partyLeave';
 
 export type ClientMessage =
   | { t: 'hello'; protocol: number; charId: string }
   | { t: 'input'; inputs: WireInput[] }
-  | { t: 'cmd'; kind: CommandKind; arg?: string; index?: number }
+  | { t: 'cmd'; kind: CommandKind; arg?: string; index?: number; targetId?: number }
   | { t: 'ping'; ts: number };
 
 export type AuthClientMessage =
@@ -101,7 +106,9 @@ export interface SelfState {
   knownSpells: { id: string; name: string; cost: number }[];
   journal: JournalView[];
   perks: PerkView[];
+  partyId: string | null;
   party: PartyMemberView[];
+  partyInvites: PartyInviteView[];
   dialogue: DialogueView | null;
   shop: ShopView | null;
   prompt: string | null;
@@ -169,6 +176,10 @@ const COMMAND_KINDS: ReadonlySet<string> = new Set([
   'shopClose',
   'respawn',
   'chat',
+  'partyInvite',
+  'partyAccept',
+  'partyDecline',
+  'partyLeave',
 ]);
 
 export const MAX_INPUTS_PER_MESSAGE = 10;
@@ -302,13 +313,17 @@ export function parseClientMessage(json: string): ClientMessage | null {
     }
     case 'cmd': {
       if (typeof m.kind !== 'string' || !COMMAND_KINDS.has(m.kind)) return null;
-      if (m.arg !== undefined && (typeof m.arg !== 'string' || m.arg.length > MAX_ARG_LEN)) return null;
+      if (m.arg !== undefined && (typeof m.arg !== 'string' || [...m.arg].length > MAX_ARG_LEN)) return null;
       if (m.index !== undefined && (!isFiniteNum(m.index) || m.index < 0 || m.index > 50)) return null;
+      if (m.targetId !== undefined && (!Number.isSafeInteger(m.targetId) || (m.targetId as number) <= 0)) return null;
+      if (m.kind === 'partyInvite' && m.targetId === undefined) return null;
+      if (m.kind !== 'partyInvite' && m.targetId !== undefined) return null;
       return {
         t: 'cmd',
         kind: m.kind as CommandKind,
         arg: m.arg as string | undefined,
         index: m.index as number | undefined,
+        targetId: m.targetId as number | undefined,
       };
     }
     case 'ping':

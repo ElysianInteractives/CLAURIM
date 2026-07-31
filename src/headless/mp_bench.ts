@@ -210,6 +210,9 @@ function runFight(
     sim.addPlayer(`p${i}`, `Bot${i}`);
     chars.push(`p${i}`);
   }
+  if (chars.length > 1) {
+    for (const charId of chars) sim.joinParty(charId, 'party:p1');
+  }
   // Gear the party: swords + shields + draughts (a prepared, not perfect, group).
   for (const c of chars) {
     const a = sim.playerActor(c)!;

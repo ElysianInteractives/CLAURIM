@@ -289,6 +289,22 @@ export class ClientWorld implements IWorld {
     if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'chat', arg: text });
   }
 
+  partyInvite(targetEntityId: number): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyInvite', targetId: targetEntityId });
+  }
+
+  partyAccept(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyAccept' });
+  }
+
+  partyDecline(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyDecline' });
+  }
+
+  partyLeave(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyLeave' });
+  }
+
   dialogueChoose(index: number): void {
     if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'dialogueChoose', index });
   }
@@ -416,8 +432,16 @@ export class ClientWorld implements IWorld {
     };
   }
 
+  partyId(): string | null {
+    return this.snapshot?.self.partyId ?? null;
+  }
+
   party(): PartyMemberView[] {
     return this.snapshot?.self.party ?? [];
+  }
+
+  partyInvites() {
+    return this.snapshot?.self.partyInvites ?? [];
   }
 
   playerResources() {

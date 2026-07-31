@@ -1,7 +1,8 @@
 // Keyboard/mouse input -> per-tick PlayerInput + one-shot commands.
 // Keybinds: WASD move, mouse look (pointer lock), Shift sprint, C sneak,
 // Space jump, RMB block, LMB attack (weapon-appropriate), 1/2 spells,
-// E interact, Tab inventory, J journal, P perks, H controls, V camera toggle,
+// E interact, Tab inventory, J journal, P perks, O party, Enter chat,
+// H controls, V camera toggle,
 // F5/F9 save/load.
 
 export interface FrameCommands {
@@ -13,6 +14,8 @@ export interface FrameCommands {
   toggleInventory: boolean;
   toggleJournal: boolean;
   togglePerks: boolean;
+  toggleSocial: boolean;
+  toggleChat: boolean;
   toggleHelp: boolean;
   toggleCamera: boolean;
   save: boolean;
@@ -31,6 +34,7 @@ export class Input {
 
   constructor(private canvas: HTMLCanvasElement) {
     addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.repeat) return;
       this.keys.add(e.code);
       switch (e.code) {
@@ -46,6 +50,13 @@ export class Input {
           break;
         case 'KeyP':
           this.commands.togglePerks = true;
+          break;
+        case 'KeyO':
+          this.commands.toggleSocial = true;
+          break;
+        case 'Enter':
+          this.commands.toggleChat = true;
+          e.preventDefault();
           break;
         case 'KeyH':
           this.commands.toggleHelp = true;
@@ -146,6 +157,8 @@ function emptyCommands(): FrameCommands {
     toggleInventory: false,
     toggleJournal: false,
     togglePerks: false,
+    toggleSocial: false,
+    toggleChat: false,
     toggleHelp: false,
     toggleCamera: false,
     save: false,

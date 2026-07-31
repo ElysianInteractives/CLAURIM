@@ -37,9 +37,11 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   selection, atomic reset, and door-graph NPC schedules (D-026).
 - Account/password authentication, rotating opaque sessions, character
   ownership, and secure remote browser transport boundary (D-028).
+- Player-controlled five-character parties with durable membership, scoped
+  cooperative benefits, and sanitized/throttled nearby chat (D-029).
 
 Not locked (open design space): weather, music/ambience/spatial audio and
 mixing, crafting, followers, crime,
 dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
-account recovery/MFA/operations, explicit party UI/matchmaking, dungeon
+account recovery/MFA/operations, matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading.

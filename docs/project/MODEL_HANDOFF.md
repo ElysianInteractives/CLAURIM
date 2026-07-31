@@ -60,14 +60,23 @@ remote browser transport; and a memory-only sign-in/create UI. The 15-suite,
 inspection, and 1280/1920 browser flow all pass. Exact security and deliberate
 operations limits are in `AUTHENTICATION_THREAT_MODEL.md`.
 
+Plan 7 verifies SOC-001/SOC-002 through D-029: characters start solo;
+nearby invite/accept/decline/leave forms a durable five-member party; offline
+frames and reconnect/restart membership persist; cooperative credit, loot,
+revive, and first-engage scaling use accepted membership; and save schema v3
+removes the legacy automatic `fellowship`. Enter opens a focus-safe,
+sanitized/throttled nearby-chat composer. The 15-suite, 155-test gate, real
+WebSocket smoke, and two-client 1280/1920 browser flow pass.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
 session added and TESTED:
 
 - Multiplayer sim core (D-013): many characters in one Sim; per-character
-  journals/spells/sessions/container-loot; parties; downed/revive/release;
-  world save schema v2 with a tested v1->v2 migration; per-character
+  journals/spells/sessions/container-loot; explicit durable parties and
+  nearby chat (D-029); downed/revive/release;
+  world save schema v3 with tested v1->v2->v3 migrations; per-character
   persistence records (schema v1).
 - MMO combat (D-017/D-018): threat tables with hysteresis, group aggro,
   locked encounter scaling through the modifier system, data-driven
@@ -93,12 +102,12 @@ session added and TESTED:
   all dialogue rewritten with voices + plural-adventurer framing.
 
 ## Verification evidence (this session)
-- `npm test`: 144 tests / 15 suites green (multiplayer sim, server/net,
+- `npm test`: 155 tests / 15 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, and impairment).
 - Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and 3,928 / 3,915-byte snapshots.
+  replay rejection, preserved ownership, and current 3,852 / 3,840-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.

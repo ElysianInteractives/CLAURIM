@@ -1,7 +1,7 @@
 // Intent facet: everything a host may submit on the player's behalf.
 // The renderer/UI observe and submit intent; they never resolve outcomes.
 
-import type { ContentId } from '../sim/types';
+import type { ContentId, EntityId } from '../sim/types';
 
 export interface PlayerIntentFacet {
   /** Called once per fixed tick by the host loop. */
@@ -25,4 +25,8 @@ export interface PlayerIntentFacet {
   saveGame(): string;
   /** Minimal social presence: a short chat line broadcast to nearby players. */
   chat(text: string): void;
+  partyInvite(targetEntityId: EntityId): void;
+  partyAccept(): void;
+  partyDecline(): void;
+  partyLeave(): void;
 }

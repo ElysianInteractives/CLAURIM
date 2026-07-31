@@ -8,33 +8,20 @@ exemplar, invariants, steps, tests, commands, acceptance, traps.
 
 # Multiplayer-era tickets (2026-07-31 pivot)
 
-## OB-M1 OPUS_READY - Explicit party commands (invite/leave) on the party model
-Why: milestone auto-party ('fellowship') must become player-controlled.
-Inspect: `src/sim/sim.ts` (joinParty/partyOf/partyMembersOf, DEFAULT_PARTY),
-`src/net/protocol.ts` (CommandKind), `src/server/core.ts` handleCommand,
-`tests/multiplayer_sim.test.ts` party suite.
-Change: sim.ts (partyInvite/partyLeave methods, pending-invite map),
-protocol.ts (+2 command kinds + validation), core.ts (dispatch), hud.ts
-(invite prompt rows), tests.
-Exemplar: existing joinParty + the cmd dispatch table.
-Invariants: I-19 (per-char isolation), D-020 credit rules unchanged; party
-state persists in world save (extend serialize/load symmetric to parties).
-Tests: invite/accept/leave; credit follows the NEW party; save round-trip.
-Commands: `npx vitest run tests/multiplayer_sim.test.ts`, `npm run gate`.
-Accept: two characters can form/leave a party in a server test.
-Traps: do not let a character be in two parties; keep DEFAULT_PARTY only as
-new-character fallback.
+## OB-M1 DONE - Explicit party commands on the party model
+Plan 7 replaces automatic `fellowship` membership with D-029: solo starts;
+nearby invite, accept, decline, and leave; a five-member cap; private status
+feedback; durable membership/offline frames; and save v2->v3 migration that
+disbands the legacy global party. Tests pin party exclusivity, distance,
+stale invites, reconnect/restart storage, revive access, quest/loot behavior,
+and party-only first-engage scaling.
 
-## OB-M2 OPUS_READY - Chat input box in the HUD
-Why: KL-16; the chat plumbing (cmd + event + feed render) already works.
-Inspect: `src/ui/hud.ts` (feed + CSS), `src/game/input.ts` (Enter key),
-`src/world_api/player_intent.ts` chat().
-Change: hud.ts (input row toggled by Enter, calls world.chat), input.ts
-(Enter opens, Escape closes; suppress game keys while typing).
-Invariants: renderer/ui observe IWorld only; 200-char limit already enforced
-server-side.
-Accept: type -> appears in both clients' feeds (manual two-tab check +
-screenshot). Fable review: no.
+## OB-M2 DONE - Chat input box in the HUD
+Plan 7 adds the focused Enter/Send/Escape composer, suppresses game input while
+typing, stabilizes interactive HUD nodes, and fixes command-to-tick chat event
+loss. The authoritative path sanitizes controls/whitespace, caps 200 code
+points, throttles at 15 ticks, and remains same-space scoped. Automated and
+two-browser delivery checks pass at the supported desktop viewports.
 
 ## OB-M3 DONE - Snapshot bandwidth guard test
 Why: KL-14 needs a tripwire before entity growth.
@@ -54,14 +41,9 @@ Invariants: validator green; NEW ability KINDS are FABLE_REVIEW - use
 existing kinds only.
 Accept: `npm run validate` + mp:bench still shows solo-viable overworld.
 
-## OB-M5 OPUS_READY - Reconnect-while-downed policy test
-Why: pin the edge: disconnect while downed must not dodge death.
-Inspect: `src/sim/sim.ts` extractCharacter (downed -> release-health rule),
-`tests/server_net.test.ts` reconnect suite.
-Change: add test: down a character, disconnect, reconnect; expect released
-state (alive, reduced resources, at recovery point or stored pos).
-Accept: documents + pins the policy; no sim change unless the test exposes a
-real hole (then FABLE_REVIEW).
+## OB-M5 DONE - Reconnect-while-downed policy test
+Plan 7 pins the existing extract/restore policy: disconnecting while downed
+returns the character standing at 40% health, never linkdead or incapacitated.
 
 ## OB-M6 DONE - Blocking/interrupting bot policy for mp_bench
 Plan 4 adds named naïve/mechanics policies plus `npm run ai:bench`.

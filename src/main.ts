@@ -146,10 +146,12 @@ function frame(now: number): void {
   if (cmd.toggleInventory) hud.togglePanel('inventory');
   if (cmd.toggleJournal) hud.togglePanel('journal');
   if (cmd.togglePerks) hud.togglePanel('perks');
+  if (cmd.toggleSocial) hud.togglePanel('social');
+  if (cmd.toggleChat) hud.openChat();
   if (cmd.toggleHelp) hud.toggleControls();
   if (cmd.toggleCamera) renderer.firstPerson = !renderer.firstPerson;
   if (cmd.interact) world.interact();
-  const menuOpen = hud.isMenuOpen();
+  const menuOpen = hud.isInputCaptured();
   if (!menuOpen) {
     if (cmd.melee) {
       // Weapon-appropriate: bow fires, otherwise melee swing.

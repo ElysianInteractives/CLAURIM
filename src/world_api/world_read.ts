@@ -66,12 +66,20 @@ export interface GroundAoeView {
 
 export interface PartyMemberView {
   charId: string;
+  entityId: EntityId | null;
   name: string;
   health: number;
   maxHealth: number;
   downed: boolean;
   spaceId: SpaceId;
   isSelf: boolean;
+  online: boolean;
+}
+
+export interface PartyInviteView {
+  fromCharId: string;
+  fromName: string;
+  fromEntityId: EntityId;
 }
 
 export interface WorldReadFacet {
@@ -85,7 +93,9 @@ export interface WorldReadFacet {
   projectilesInSpace(): ProjectileView[];
   groundAoesInSpace(): GroundAoeView[];
   player(): ActorView;
+  partyId(): string | null;
   party(): PartyMemberView[];
+  partyInvites(): PartyInviteView[];
   playerResources(): {
     health: number;
     maxHealth: number;

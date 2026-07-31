@@ -101,6 +101,12 @@ describe('join and protocol hygiene', () => {
     expect(c.last('reject')?.reason).toContain('malformed'); // moveX out of range
     c.send({ t: 'cmd', kind: 'grant_admin' });
     expect(c.last('reject')?.reason).toContain('malformed');
+    c.send({ t: 'cmd', kind: 'partyInvite' });
+    expect(c.last('reject')?.reason).toContain('malformed');
+    c.send({ t: 'cmd', kind: 'partyInvite', targetId: -4 });
+    expect(c.last('reject')?.reason).toContain('malformed');
+    c.send({ t: 'cmd', kind: 'chat', arg: 'x'.repeat(201) });
+    expect(c.last('reject')?.reason).toContain('malformed');
   });
 
   it('commands before joining are rejected', () => {
@@ -203,6 +209,67 @@ describe('interest management (D-014)', () => {
   });
 });
 
+describe('social coordination', () => {
+  it('replicates invite, accept, leave, and durable party membership authoritatively', () => {
+    const { core, storage } = makeServer();
+    const c1 = new TestClient(core, 'conn1');
+    const c2 = new TestClient(core, 'conn2');
+    c1.hello('alva', 'Alva');
+    c2.hello('brona', 'Brona');
+    ticks(core, SNAPSHOT_EVERY);
+    expect(c1.last('snapshot')!.self.partyId).toBeNull();
+    expect(c1.last('snapshot')!.self.party.map((member) => member.charId)).toEqual(['alva']);
+
+    c1.send({ t: 'cmd', kind: 'partyInvite', targetId: core.sim.playerActor('brona')!.id });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(c2.last('snapshot')!.self.partyInvites).toEqual([
+      expect.objectContaining({ fromCharId: 'alva', fromName: 'Alva' }),
+    ]);
+
+    c2.send({ t: 'cmd', kind: 'partyAccept' });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(c1.last('snapshot')!.self.party.map((member) => member.charId)).toEqual(['alva', 'brona']);
+    expect(c2.last('snapshot')!.self.partyId).toBe('party:alva');
+
+    core.disconnect('conn2');
+    expect(core.sim.partyMembersOf('alva')).toEqual(['alva', 'brona']);
+    expect(storage.loadWorld()).toBeTruthy();
+    const reconnect = new TestClient(core, 'conn3', 'account_conn2');
+    reconnect.hello('brona', 'Brona');
+    ticks(core, SNAPSHOT_EVERY);
+    expect(reconnect.last('snapshot')!.self.party.map((member) => member.charId)).toEqual(['alva', 'brona']);
+
+    reconnect.send({ t: 'cmd', kind: 'partyLeave' });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(reconnect.last('snapshot')!.self.partyId).toBeNull();
+    expect(core.sim.partyOf('alva')).toBeNull();
+  });
+
+  it('sanitizes local chat and throttles command spam', () => {
+    const { core } = makeServer();
+    const c1 = new TestClient(core, 'conn1');
+    const c2 = new TestClient(core, 'conn2');
+    c1.hello('alva', 'Alva');
+    c2.hello('brona', 'Brona');
+    c1.send({ t: 'cmd', kind: 'chat', arg: '\u0000\u0001  ' });
+    c1.send({ t: 'cmd', kind: 'chat', arg: '  hello\u0000  reach  ' });
+    c1.send({ t: 'cmd', kind: 'chat', arg: 'spam' });
+    ticks(core, SNAPSHOT_EVERY);
+    const chats = c2.last('snapshot')!.events.filter((event) => event.type === 'chat');
+    expect(chats).toEqual([{ type: 'chat', playerId: core.sim.playerActor('alva')!.id, text: 'hello reach' }]);
+
+    ticks(core, 15);
+    const unicodeLine = '😀'.repeat(200);
+    c1.send({ t: 'cmd', kind: 'chat', arg: unicodeLine });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(c2.last('snapshot')!.events).toContainEqual({
+      type: 'chat',
+      playerId: core.sim.playerActor('alva')!.id,
+      text: unicodeLine,
+    });
+  });
+});
+
 describe('snapshot bandwidth budget', () => {
   it('keeps a representative four-player dungeon snapshot below 32,000 bytes', () => {
     const { core } = makeServer();
@@ -244,6 +311,22 @@ describe('persistence + reconnect (D-016)', () => {
     const restored = core.sim.playerActor('alva')!;
     expect(restored.gold).toBe(777);
     expect(restored.skills.oneHanded.level).toBe(level);
+  });
+
+  it('disconnecting while downed restores the character released, not incapacitated', () => {
+    const { core } = makeServer();
+    const c1 = new TestClient(core, 'conn1');
+    c1.hello('alva', 'Alva');
+    const actor = core.sim.playerActor('alva')!;
+    core.sim.context().dealDamage(actor.id, 0, 100000, 'physical');
+    expect(actor.downed).toBe(true);
+    core.disconnect('conn1');
+
+    const reconnect = new TestClient(core, 'conn2', 'account_conn1');
+    reconnect.hello('alva', 'Alva');
+    const restored = core.sim.playerActor('alva')!;
+    expect(restored.downed).toBe(false);
+    expect(restored.health).toBeCloseTo(restored.stats.maxHealth * 0.4);
   });
 
   it('world state survives a full server restart via storage', () => {

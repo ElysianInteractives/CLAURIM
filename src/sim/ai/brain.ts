@@ -247,8 +247,10 @@ function engage(ctx: SimContext, a: Actor, targetId: EntityId): void {
   brain.targetId = targetId;
   brain.threat[targetId] = Math.max(brain.threat[targetId] ?? 0, 5);
 
+  const targetCharId = ctx.charIdOf(targetId);
+  const eligibleCharacters = targetCharId ? ctx.partyMembersOf(targetCharId) : ctx.playerCharIds();
   let nearbyPlayers = 0;
-  for (const charId of ctx.playerCharIds()) {
+  for (const charId of eligibleCharacters) {
     const player = ctx.actorByCharId(charId);
     if (!player || player.dead || player.pos.spaceId !== a.pos.spaceId) continue;
     if (Math.hypot(player.pos.x - a.pos.x, player.pos.z - a.pos.z) <= ENGAGE_RADIUS) {
