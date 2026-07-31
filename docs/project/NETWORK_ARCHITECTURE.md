@@ -44,7 +44,8 @@ the party frame via the self.party block, not as world actors.
 ## Prediction + reconciliation (D-015)
 Inputs carry sequence numbers. The client predicts its own movement by
 running the SAME deterministic `resolveMove` + terrain code the server runs.
-Snapshots carry `ackSeq` + authoritative position; the client drops
+Snapshots carry `ackSeq` for the highest input consumed by an authoritative
+tick plus authoritative position; the client drops
 acknowledged inputs, replays the unacknowledged tail from the server
 position, then blends (snap beyond 3 m, 40% exponential correction under).
 Space transitions always snap; never lerp through a door. Remote actors use
@@ -58,6 +59,12 @@ despawn (linkdead policy). Reconnect: same charId restores the persisted
 record; a second connection for a live character supersedes the first
 ('session superseded'). Late join: first snapshot is a full baseline (JSON
 snapshots are always self-contained).
+
+The browser host never gives ClientWorld a transport until WebSocket `open`.
+Unexpected loss clears pending intent, generation-guards the old socket, and
+uses the bounded D-027 retry schedule. Supersession and protocol rejection are
+terminal; all lifecycle phases are visible in the HUD. Exact retry, impairment,
+and acceptance rules are in `NETWORK_RELIABILITY_CONTRACT.md`.
 
 ## Security / trust boundary
 All inputs validated + clamped server-side; movement derives only from

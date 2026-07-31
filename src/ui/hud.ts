@@ -42,6 +42,12 @@ const CSS = `
   #hud .feed { position: absolute; right: 24px; top: 24px; width: 320px; text-align: right; font-size: 14px; text-shadow: 0 1px 2px #000; }
   #hud .feed div { margin-bottom: 3px; opacity: .95; }
   #hud .clockrow { position: absolute; left: 24px; top: 18px; font-size: 14px; opacity: .85; text-shadow: 0 1px 2px #000; }
+  #hud .connection-status { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); padding: 5px 10px;
+    border: 1px solid rgba(220,205,165,.42); border-radius: 4px; background: rgba(10,11,13,.82); font: 12px/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    letter-spacing: .025em; text-shadow: 0 1px 2px #000; box-shadow: 0 2px 10px rgba(0,0,0,.32); }
+  #hud .connection-status--pending { color: #ead49b; }
+  #hud .connection-status--online { color: #9fd89f; border-color: rgba(126,205,139,.42); }
+  #hud .connection-status--error { color: #ff9d90; border-color: rgba(224,99,84,.52); }
   #hud .panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); min-width: 420px; max-width: 620px; max-height: 70vh; overflow-y: auto;
     background: rgba(14,12,10,.93); border: 1px solid #8a7a55; border-radius: 6px; padding: 18px 22px; pointer-events: auto; box-shadow: 0 8px 40px #000; }
   #hud .panel h2 { margin: 0 0 10px; font-size: 20px; color: #d8c890; border-bottom: 1px solid #665533; padding-bottom: 6px; }
@@ -101,6 +107,7 @@ export class Hud {
   private controlsOpen = true;
   private combatPulse: 'hit' | 'blocked' | 'hurt' | null = null;
   private combatPulseUntil = 0;
+  private connectionStatus: { text: string; tone: 'pending' | 'online' | 'error' } | null = null;
   panel: Panel = 'none';
   private time = 0;
 
@@ -119,6 +126,13 @@ export class Hud {
   notify(text: string): void {
     this.feedLines.push({ text, until: this.time + 5 });
     if (this.feedLines.length > 8) this.feedLines.shift();
+  }
+
+  setConnectionStatus(
+    text: string | null,
+    tone: 'pending' | 'online' | 'error' = 'pending',
+  ): void {
+    this.connectionStatus = text ? { text, tone } : null;
   }
 
   togglePanel(p: Panel): void {
@@ -236,6 +250,7 @@ export class Hud {
     const pulseClass = this.combatPulse ? ` crosshair--${this.combatPulse}` : '';
     let html = `
       <div class="clockrow">Kaldwyn Reach - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
+      ${this.connectionStatus ? `<div class="connection-status connection-status--${this.connectionStatus.tone}" role="status">${esc(this.connectionStatus.text)}</div>` : ''}
       ${renderResourceMeters(r)}
       <div class="crosshair${pulseClass}" aria-hidden="true"></div>
       ${target ? renderCombatTarget(target) : ''}

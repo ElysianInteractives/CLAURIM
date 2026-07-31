@@ -202,6 +202,46 @@ behavior.
   [Brandvar schedule 1280x720](../screenshots/2026-07-31/plan-4-brandvar-schedule-1280x720.png),
   and [Warden scaled 1920x1080](../screenshots/2026-07-31/plan-4-warden-party-1920x1080-scaled.png).
 
+### Plan 5 network/browser reliability exit
+
+- Exact short-path source copy: `npm run gate` green; 14 suites / 128 tests.
+  Production bundle: 623.80 kB JavaScript / 165.88 kB gzip.
+- Focused tests reproduce and pin the CONNECTING-state handshake, one hello
+  per opened session, disconnected command suppression, stale-socket
+  isolation, bounded retries, terminal session supersession, authoritative
+  tick acknowledgement, deterministic ordered impairment, and all four
+  network profiles.
+- `npm run net:bench` results:
+
+| Profile | Connected / disconnects | p95 authority | Max correction | Snapshot bytes/s | Remote motion | Dropped input / snapshots |
+|---|---:|---:|---:|---:|---:|---:|
+| Local | yes / 0 | 34.3 ms | 0.000 m | 38,753 | 21.56 m | 0 / 0 |
+| Good WAN | yes / 0 | 111.5 ms | 0.000 m | 38,474 | 21.41 m | 0 / 0 |
+| Degraded WAN | yes / 0 | 187.3 ms | 0.147 m | 37,932 | 21.12 m | 5 / 2 |
+| Severe | yes / 0 | 311.1 ms | 0.182 m | 37,351 | 19.95 m | 11 / 2 |
+
+  Every run drains pending inputs to zero. Severe remains a bounded-failure
+  profile rather than a quality target.
+- The in-repo real WebSocket relay boots the browser under Local, Good,
+  Degraded, and Severe profiles. Observed healthy badges were Local `Online`,
+  Good approximately 200 ms, Degraded 199-221 ms, and Severe 306-355 ms
+  authority delay, with no inspected browser warning/error.
+- A short Degraded relay outage visibly reached `retry 3/5` and recovered to
+  `Online` within the retry budget. Opening the same character in a second tab
+  left the new tab online and the old tab terminal at `session superseded`,
+  without reconnect oscillation.
+- Direct 1280x720 and 1920x1080 checks keep the status badge legible and inside
+  the top edge; at 1920 it measured 205x26 px at `(857, 16)`.
+- Headless `ticks=9000 seed=42`: 136 ms / 66,176 ticks/sec, 9,958-byte save,
+  and 20 living actors. The real two-client WebSocket smoke passes at ack 30,
+  4.4 m movement, mutual visibility, and 3,929 / 3,917-byte snapshots.
+- Approved captures:
+  [Local online 1280x720](../screenshots/2026-07-31/plan-5-online-local-1280x720.png),
+  [Degraded online 1280x720](../screenshots/2026-07-31/plan-5-online-degraded-1280x720.png),
+  [visible reconnect 1280x720](../screenshots/2026-07-31/plan-5-reconnecting-1280x720.png),
+  [terminal supersession 1280x720](../screenshots/2026-07-31/plan-5-session-superseded-1280x720.png),
+  and [Severe online 1920x1080](../screenshots/2026-07-31/plan-5-online-severe-1920x1080.png).
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -215,7 +255,8 @@ behavior.
 | QA-BAL-BOSS | Party-size pressure baseline | `npm run ai:bench` (comparison) or `npm run mp:bench -- runs=3 policy=mechanics` | JSON summary |
 | QA-NET-CORE | Server protocol/state correctness | `npm test -- tests/server_net.test.ts` | Snapshot, replay, persistence assertions |
 | QA-NET-WS | Real adapter/two-client smoke | Terminal 1 `npm run server`; terminal 2 `npm run qa:ws` | Ack, movement, visibility, snapshot bytes |
-| QA-NET-BROWSER | Actual online browser boot | Start server + dev; open query URL | Welcome/HUD, logs, remote visibility |
+| QA-NET-BROWSER | Actual online browser boot/lifecycle | Start server + dev; open query URL directly and through `net:proxy` | Status HUD, logs, reconnect/supersession |
+| QA-NET-MATRIX | Prediction under locked network profiles | `npm run net:bench` | Delay, correction, throughput, loss, remote motion |
 | QA-PST-RECONNECT | Character/world persistence | Join, mutate, disconnect, restart, rejoin | Restored character and world fields |
 
 ## Browser visual-QA procedure
@@ -233,9 +274,9 @@ For every visual or interaction change:
 
 ## Network-condition matrix
 
-Plan 5 must lock and implement an in-repo impairment harness. Until then, use
-the following standard profiles with the chosen external development proxy or
-browser network emulator and record the mechanism:
+Plan 5 locks the following profiles. `npm run net:bench` is the deterministic
+gate; `npm run net:proxy` applies the same ordered fixed-seed policy to a real
+WebSocket relay for browser checks:
 
 | Profile | RTT | Jitter | Loss | Purpose |
 |---|---:|---:|---:|---|
@@ -246,7 +287,7 @@ browser network emulator and record the mechanism:
 
 For each profile record connection success, disconnects, input-to-authority
 delay, correction distance, snapshot bytes/sec, and visible remote motion.
-NET-001 currently blocks browser-profile execution beyond the handshake.
+See `NETWORK_RELIABILITY_CONTRACT.md` for loss semantics and locked bounds.
 
 ## Exit evidence for every later plan
 

@@ -207,3 +207,13 @@ and restores preplaced members. Active schedules route through doors;
 unobserved schedules collapse only a valid door route. Unreachable return
 recovers at the valid home after 90 blocked ticks. Exact rules:
 `AI_ENCOUNTER_CONTRACT.md`.
+
+## D-027: Bounded browser connection and impairment contract - LOCKED
+Browser sockets send no protocol data before `open`; each opened or re-opened
+socket begins one fresh ClientWorld session and waits for a full baseline.
+Unexpected loss freezes presentation and rejects intent while retrying at
+250/500/1000/2000/4000 ms; exhaustion is visibly disconnected, while protocol
+rejection and session supersession are terminal. Snapshot ackSeq advances only
+when an authoritative tick consumes an input. Ordered fixed-seed Local/Good/
+Degraded/Severe links and a matching real WebSocket relay form the Plan 5
+gate. Exact rules: `NETWORK_RELIABILITY_CONTRACT.md`.

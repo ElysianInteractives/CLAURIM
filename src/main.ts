@@ -11,6 +11,10 @@
 import { Sim } from './sim/sim';
 import { SimWorld } from './game/sim_world';
 import { ClientWorld } from './net/client_world';
+import {
+  BrowserConnection,
+  type ConnectionStatus,
+} from './net/browser_connection';
 import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import { Input } from './game/input';
@@ -33,10 +37,7 @@ let clientWorld: ClientWorld | null = null;
 if (online) {
   const charId = params.get('char') ?? `guest_${Math.floor(Math.random() * 1e6)}`;
   const name = params.get('name') ?? charId;
-  const socket = new WebSocket(wsUrl!);
-  clientWorld = new ClientWorld({ send: (json) => socket.send(json) }, charId, name);
-  socket.addEventListener('message', (ev) => clientWorld!.onMessage(String(ev.data)));
-  socket.addEventListener('close', () => console.warn('[claurim] server connection closed'));
+  clientWorld = new ClientWorld(charId, name);
   world = clientWorld;
 } else {
   const stored = localStorage.getItem(SAVE_KEY);
@@ -58,6 +59,28 @@ const combatAudio = new CombatAudio(canvas);
 const hud = new Hud(world, (events) => combatAudio.handle(events, world.player().id));
 const input = new Input(canvas);
 if (!online) input.yaw = world.player().yaw;
+
+let connection: BrowserConnection | null = null;
+let networkBadgeAt = 0;
+if (clientWorld && wsUrl) {
+  const onlineWorld = clientWorld;
+  connection = new BrowserConnection(wsUrl, onlineWorld, {
+    onStatus: (status) => {
+      const presentation = connectionPresentation(status);
+      hud.setConnectionStatus(presentation.text, presentation.tone);
+    },
+  });
+  const onlineConnection = connection;
+  (globalThis as unknown as Record<string, unknown>).__claurimNet = {
+    get status() {
+      return onlineConnection.status();
+    },
+    diagnostics: () => onlineWorld.diagnostics(),
+    retry: () => onlineConnection.retryNow(),
+  };
+  connection.start();
+  addEventListener('beforeunload', () => connection?.stop('page closing'), { once: true });
+}
 
 // Offline-only debug/inspection handle (screenshot tours, manual QA).
 // Never exposed online: the server is authoritative there and the client
@@ -158,8 +181,41 @@ function frame(now: number): void {
   }
 
   hud.update(dtSec);
+  if (connection?.status().phase === 'online' && clientWorld && now >= networkBadgeAt) {
+    const latency = Math.round(clientWorld.diagnostics().lastAckLatencyMs);
+    hud.setConnectionStatus(latency > 0 ? `Online · ${latency} ms authority` : 'Online', 'online');
+    networkBadgeAt = now + 1_000;
+  }
   renderer.render(dtSec);
   requestAnimationFrame(frame);
 }
 
 requestAnimationFrame(frame);
+
+function connectionPresentation(status: ConnectionStatus): {
+  text: string | null;
+  tone: 'pending' | 'online' | 'error';
+} {
+  switch (status.phase) {
+    case 'idle':
+      return { text: null, tone: 'pending' };
+    case 'connecting':
+      return { text: 'Connecting to server…', tone: 'pending' };
+    case 'synchronizing':
+      return { text: 'Synchronizing world…', tone: 'pending' };
+    case 'online':
+      return { text: 'Online', tone: 'online' };
+    case 'reconnecting': {
+      const seconds = status.retryInMs === undefined ? null : Math.max(0.1, status.retryInMs / 1_000);
+      const timing = seconds === null ? '' : ` in ${seconds.toFixed(1)}s`;
+      return {
+        text: `Connection lost · retry ${status.attempt}/${status.maxAttempts}${timing}`,
+        tone: 'pending',
+      };
+    }
+    case 'rejected':
+      return { text: `Connection refused · ${status.reason ?? 'session rejected'}`, tone: 'error' };
+    case 'disconnected':
+      return { text: `Disconnected · ${status.reason ?? 'reload to retry'}`, tone: 'error' };
+  }
+}

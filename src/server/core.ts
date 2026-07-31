@@ -31,8 +31,9 @@ interface ClientState {
   connId: string;
   charId: string | null;
   send: SendFn;
-  inputQueue: PlayerInput[];
+  inputQueue: { seq: number; input: PlayerInput }[];
   lastInput: PlayerInput;
+  lastReceivedSeq: number;
   ackSeq: number;
   pendingEvents: SimEvent[];
   view: SimWorld | null;
@@ -83,6 +84,7 @@ export class ServerCore {
       send,
       inputQueue: [],
       lastInput: { ...IDLE_INPUT },
+      lastReceivedSeq: -1,
       ackSeq: -1,
       pendingEvents: [],
       view: null,
@@ -128,19 +130,22 @@ export class ServerCore {
     switch (msg.t) {
       case 'input': {
         for (const input of msg.inputs) {
-          if (input.seq <= client.ackSeq) continue; // duplicate/replay
+          if (input.seq <= client.lastReceivedSeq) continue; // duplicate/replay
+          client.lastReceivedSeq = input.seq;
           // Bound the queue: a client cannot bank unlimited future movement.
-          if (client.inputQueue.length >= 12) client.inputQueue.shift();
+          if (client.inputQueue.length >= 12) continue;
           client.inputQueue.push({
-            moveX: clamp(input.moveX, -1, 1),
-            moveZ: clamp(input.moveZ, -1, 1),
-            yaw: input.yaw % (Math.PI * 2),
-            sprint: input.sprint,
-            sneak: input.sneak,
-            block: input.block,
-            jump: input.jump,
+            seq: input.seq,
+            input: {
+              moveX: clamp(input.moveX, -1, 1),
+              moveZ: clamp(input.moveZ, -1, 1),
+              yaw: input.yaw % (Math.PI * 2),
+              sprint: input.sprint,
+              sneak: input.sneak,
+              block: input.block,
+              jump: input.jump,
+            },
           });
-          client.ackSeq = input.seq;
         }
         break;
       }
@@ -271,10 +276,13 @@ export class ServerCore {
     for (const client of this.clients.values()) {
       if (!client.charId) continue;
       const next = client.inputQueue.shift();
-      if (next) client.lastInput = next;
+      if (next) {
+        client.lastInput = next.input;
+        client.ackSeq = next.seq;
+      }
       // Starvation policy: reuse last MOVEMENT-neutral form of the input
       // (keep yaw/stances, stop translation) after a short gap.
-      const input = next ?? { ...client.lastInput, moveX: 0, moveZ: 0, jump: false };
+      const input = next?.input ?? { ...client.lastInput, moveX: 0, moveZ: 0, jump: false };
       inputs.set(client.charId, input);
     }
     this.sim.tick(inputs);

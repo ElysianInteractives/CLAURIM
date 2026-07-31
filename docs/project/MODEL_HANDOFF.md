@@ -7,9 +7,10 @@ checks and current measurements, and `SIM_RESPONSIBILITY_MAP.md` before
 proposing a change to the coordinator. Plan 0 also adds the missing sim-cycle
 and snapshot-size guards plus a real two-client `npm run qa:ws` smoke.
 
-The first browser baseline confirmed NET-001: online browser boot sends
-`hello` while the WebSocket is still connecting. This is recorded with root
-cause but deliberately not fixed until the networking change plan is locked.
+The first browser baseline confirmed NET-001: online browser boot sent
+`hello` while the WebSocket was still connecting. Plan 5 resolves it through
+the explicit D-027 connection/session lifecycle and verifies it in real
+browsers across the standard impairment matrix.
 
 Plan 1 verifies UX-001/UX-002: the HUD now uses named, numeric, patterned
 resource meters and a structured controls card that toggles with `H`. Browser
@@ -44,6 +45,13 @@ the exact ruleset. `npm run ai:bench` compares naïve/mechanics policies;
 browser evidence covers Matron healing, Warden party/cone/four-add
 presentation, and Brandvar’s scheduled inn arrival.
 
+Plan 5 verifies NET-001, NET-003, and QLT-003: open-gated browser sessions;
+generation-safe, bounded reconnect; visible online/retry/rejected states;
+terminal duplicate-session takeover; authoritative-tick input
+acknowledgements; and fixed-seed Local/Good/Degraded/Severe network profiles.
+`NETWORK_RELIABILITY_CONTRACT.md` is the exact ruleset. The exact short-path
+gate is green at 14 suites / 128 tests.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -76,12 +84,15 @@ session added and TESTED:
   all dialogue rewritten with voices + plural-adventurer framing.
 
 ## Verification evidence (this session)
-- `npm test`: 118 tests / 12 suites green (multiplayer sim, server/net,
+- `npm test`: 128 tests / 14 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
-  architecture guards incl. I-14..I-25).
-- Live ws smoke: server + 2 real WebSocket clients: welcome, 25 snapshots
-  per client per 2.5 s, server-side movement (ack seq 74), mutual remote
-  visibility, shared party, characters persisted on disconnect.
+  architecture guards incl. I-14..I-25, browser lifecycle, and impairment).
+- Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
+  authoritative movement, mutual visibility, and 3,929 / 3,917-byte observed
+  snapshots.
+- `npm run net:bench`: every standard profile connects with zero disconnects,
+  drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
+  p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
 - `npm run ai:bench` after Plan 4 ownership/faction/scaling corrections:
   solo 0/3 under both policies; mechanics at 3 players takes 4,714.2 damage
   with 1/3 clears (57 s), and at 5 takes 8,108.5 with 1/3 clears (166 s).
@@ -97,6 +108,8 @@ session added and TESTED:
 - `npm run ai:bench` - fixed-seed naïve/mechanics comparison.
 - `npm run combat:bench -- seconds=30` - sustained weapon/spell comparison.
 - `npm run world:tour` - deterministic all-space traversal/placement audit.
+- `npm run net:bench` - deterministic four-profile network acceptance matrix.
+- `npm run net:proxy` - real WebSocket impairment relay for browser QA.
 
 ## How to continue
 1. Read CLAUDE.md, DECISIONS.md (D-001..D-024), INVARIANTS.md.

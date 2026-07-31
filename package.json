@@ -14,6 +14,8 @@
     "headless": "tsx src/headless/run.ts",
     "server": "tsx src/server/ws_host.ts",
     "qa:ws": "tsx scripts/qa_ws_smoke.ts",
+    "net:bench": "tsx src/headless/network_bench.ts",
+    "net:proxy": "tsx scripts/ws_impairment_proxy.ts",
     "mp:bench": "tsx src/headless/mp_bench.ts",
     "ai:bench": "tsx src/headless/mp_bench.ts runs=3 policy=compare",
     "combat:bench": "tsx src/headless/combat_bench.ts",

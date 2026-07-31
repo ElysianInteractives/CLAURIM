@@ -134,6 +134,21 @@ describe('server-authoritative movement (D-015)', () => {
     expect(z2).toBeCloseTo(z1, 5); // no queued input -> stops (no double-move)
   });
 
+  it('snapshot ackSeq advances only through inputs consumed by authoritative ticks', () => {
+    const { core } = makeServer();
+    const c = new TestClient(core, 'conn1');
+    c.hello('alva');
+    for (let seq = 1; seq <= 6; seq++) c.input(seq, { moveZ: 1 });
+
+    // The first snapshot follows three authoritative ticks. The remaining
+    // three inputs are still queued and must stay in the reconciliation tail.
+    ticks(core, SNAPSHOT_EVERY);
+    expect(c.last('snapshot')?.ackSeq).toBe(3);
+
+    ticks(core, SNAPSHOT_EVERY);
+    expect(c.last('snapshot')?.ackSeq).toBe(6);
+  });
+
   it('impossible commands are refused by the sim (attack while downed)', () => {
     const { core } = makeServer();
     const c = new TestClient(core, 'conn1');
