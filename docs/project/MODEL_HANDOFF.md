@@ -76,6 +76,16 @@ check, unchanged combat-output comparison, current group benchmark, and
 1280/1920 browser flow pass. Browser QA also removed a hard-coded Kaldwyn
 location label by routing authored space names through `IWorld`.
 
+Plan 9 verifies AV-001/AV-002/CMB-007 through D-031: the renderer now smooths
+observed actor transforms, local camera/terrain following, and caster
+telegraphs with explicit transition/teleport snaps. The browser audio director
+adds master/effects/ambience/music buses, persistent accessible controls,
+mute, and procedural interior/exterior day/night tonal beds. Browser QA also
+caught and fixed focused Escape close plus Plan 8's hard-coded single-bow host
+dispatch. The 17-suite, 173-test exact short-path gate and 1280/1920 browser
+layout/persistence/log checks pass. Exact boundaries are in
+`AUDIO_PRESENTATION_CONTRACT.md`.
+
 ## State as of 2026-07-31 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -105,6 +115,10 @@ session added and TESTED:
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
   authoritative damage flashes/markers/vignette, exact cone/pool/caster
   telegraphs, action rejection feed, and user-gesture synthesized cues.
+- Plan 9 presentation/audio (D-031): host-only one-tick transform smoothing;
+  master/effects/ambience/music routing; persistent volume/mute controls; and
+  procedural tonal soundscape exemplars. Final audio assets/spatial mix remain
+  KL-5.
 - Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
   check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
   all dialogue rewritten with voices + plural-adventurer framing.
@@ -114,10 +128,10 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 166 tests / 16 suites green (multiplayer sim, server/net,
+- `npm test`: 173 tests / 17 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
-  the generic content catalog).
+  the generic content catalog, and host presentation/audio rules).
 - Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 3,852 / 3,840-byte snapshots.
@@ -130,7 +144,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build).
+  build); production JavaScript is 658.33 kB / 174.72 kB gzip.
 
 ## Commands
 - `npm run server` - authoritative server (CLAURIM_PORT / CLAURIM_DATA_DIR).
@@ -144,7 +158,7 @@ session added and TESTED:
 - `npm run net:proxy` - real WebSocket impairment relay for browser QA.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-030), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-031), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

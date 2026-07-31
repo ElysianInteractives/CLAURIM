@@ -3,6 +3,7 @@
 // Observes IWorld and submits intent through it; never resolves outcomes.
 
 import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
+import { DEFAULT_AUDIO_SETTINGS, type AudioBus, type AudioSettings } from '../game/combat_audio';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
@@ -58,6 +59,12 @@ const CSS = `
   #hud .panel .dim { opacity: .55; }
   #hud .panel .speaker { font-style: italic; color: #c9b880; margin-bottom: 8px; }
   #hud .panel .text { line-height: 1.5; margin-bottom: 14px; }
+  #hud .audio-control { display: grid; grid-template-columns: 90px minmax(180px, 1fr) 48px; align-items: center; gap: 12px;
+    padding: 8px; }
+  #hud .audio-control input[type="range"] { width: 100%; accent-color: #cdbd8d; }
+  #hud .audio-value { font: 12px/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace; text-align: right; }
+  #hud .audio-mute { display: flex; align-items: center; gap: 9px; padding: 9px 8px; }
+  #hud .audio-state { color: #cbbd98; padding: 5px 8px 10px; }
   #hud .hint { font-size: 12px; opacity: .6; margin-top: 10px; }
   #hud .death { position: absolute; inset: 0; background: rgba(20,0,0,.72); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
   #hud .death h1 { font-size: 44px; color: #c9b880; }
@@ -107,12 +114,18 @@ const CSS = `
   }
 `;
 
-type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social';
+type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social' | 'settings';
 type ResourceKind = 'health' | 'stamina' | 'magicka';
 type ResourceReadout = Pick<
   ReturnType<IWorld['playerResources']>,
   'health' | 'maxHealth' | 'stamina' | 'maxStamina' | 'magicka' | 'maxMagicka'
 >;
+
+export interface AudioSettingsController {
+  settings(): AudioSettings;
+  setSettings(settings: Partial<AudioSettings>): void;
+  state(): AudioContextState | 'locked';
+}
 
 export class Hud {
   private root: HTMLDivElement;
@@ -131,6 +144,7 @@ export class Hud {
   constructor(
     private world: IWorld,
     private eventObserver?: (events: ReturnType<IWorld['drainEvents']>) => void,
+    private audio?: AudioSettingsController,
   ) {
     const style = document.createElement('style');
     style.textContent = CSS;
@@ -159,6 +173,11 @@ export class Hud {
 
   toggleControls(): void {
     this.controlsOpen = !this.controlsOpen;
+  }
+
+  toggleSettings(): void {
+    this.togglePanel('settings');
+    if (this.panel === 'settings') void document.exitPointerLock?.();
   }
 
   isMenuOpen(): boolean {
@@ -265,7 +284,7 @@ export class Hud {
 
     const html = this.renderHtml();
     const interaction = this.interactionSignature();
-    const stableInteraction = this.chatOpen || this.panel === 'social';
+    const stableInteraction = this.chatOpen || this.panel === 'social' || this.panel === 'settings';
     if (html !== this.renderedHtml && (!stableInteraction || interaction !== this.renderedInteraction)) {
       this.renderedHtml = html;
       this.renderedInteraction = interaction;
@@ -277,6 +296,10 @@ export class Hud {
         input?.setSelectionRange(input.value.length, input.value.length);
       }
     }
+    if (this.panel === 'settings') {
+      const state = this.root.querySelector<HTMLElement>('[data-audio-state]');
+      if (state) state.textContent = audioStateText(this.audio?.state() ?? 'locked');
+    }
   }
 
   private questName(id: string): string {
@@ -285,6 +308,7 @@ export class Hud {
 
   private interactionSignature(): string {
     if (this.chatOpen) return 'chat';
+    if (this.panel === 'settings') return 'settings';
     if (this.panel !== 'social') return this.panel;
     const party = this.world.party().map((member) => ({
       id: member.charId,
@@ -410,6 +434,9 @@ export class Hud {
           this.world.actorsInSpace(),
         );
         break;
+      case 'settings':
+        html += renderAudioSettings(this.audio?.settings() ?? DEFAULT_AUDIO_SETTINGS, this.audio?.state() ?? 'locked');
+        break;
       case 'none':
         break;
     }
@@ -472,6 +499,17 @@ export class Hud {
         }
       };
     }
+    this.root.querySelectorAll<HTMLInputElement>('[data-audio]').forEach((input) => {
+      input.oninput = () => {
+        const bus = input.dataset.audio as AudioBus | 'master';
+        const value = Math.max(0, Math.min(1, Number(input.value) / 100));
+        this.audio?.setSettings({ [bus]: value });
+        const output = this.root.querySelector<HTMLOutputElement>(`[data-audio-value="${bus}"]`);
+        if (output) output.value = `${Math.round(value * 100)}%`;
+      };
+    });
+    const mute = this.root.querySelector<HTMLInputElement>('[data-audio-mute]');
+    if (mute) mute.onchange = () => this.audio?.setSettings({ muted: mute.checked });
   }
 
   closeAll(): void {
@@ -580,6 +618,37 @@ export function renderChatComposer(draft: string, maxLength: number): string {
   </form>`;
 }
 
+export function renderAudioSettings(
+  settings: AudioSettings,
+  state: AudioContextState | 'locked',
+): string {
+  const controls: Array<{ bus: 'master' | AudioBus; label: string }> = [
+    { bus: 'master', label: 'Master' },
+    { bus: 'effects', label: 'Effects' },
+    { bus: 'ambience', label: 'Ambience' },
+    { bus: 'music', label: 'Music' },
+  ];
+  let html = `<section class="panel" aria-label="Audio settings"><h2>Audio</h2>`;
+  for (const { bus, label } of controls) {
+    const percent = Math.round(settings[bus] * 100);
+    html += `<label class="audio-control"><span>${label}</span>` +
+      `<input data-audio="${bus}" type="range" min="0" max="100" step="1" value="${percent}" aria-label="${label} volume" />` +
+      `<output class="audio-value" data-audio-value="${bus}">${percent}%</output></label>`;
+  }
+  html += `<label class="audio-mute"><input data-audio-mute type="checkbox"${settings.muted ? ' checked' : ''} /> Mute all audio</label>`;
+  html += `<div class="audio-state" data-audio-state role="status">${esc(audioStateText(state))}</div>`;
+  html += `<div class="hint"><kbd>Esc</kbd> close · settings persist in this browser</div></section>`;
+  return html;
+}
+
+function audioStateText(state: AudioContextState | 'locked'): string {
+  return state === 'locked'
+    ? 'Audio unlocks after keyboard or pointer input.'
+    : state === 'running'
+      ? 'Audio active.'
+      : `Audio ${state}. Interact with the game to resume.`;
+}
+
 export function renderSocialPanel(
   partyId: string | null,
   members: readonly PartyMemberView[],
@@ -636,7 +705,7 @@ export function renderControlsHelp(expanded: boolean): string {
         <div class="control-row"><kbd>Enter</kbd><span>Nearby chat</span></div>
         <div class="control-row"><kbd>V</kbd><span>Camera</span></div>
         <div class="control-row"><kbd>F5 / F9</kbd><span>Save / load</span></div>
-        <div class="control-row"><kbd>Esc</kbd><span>Close menu</span></div>
+        <div class="control-row"><kbd>Esc</kbd><span>Settings / close</span></div>
       </section>
     </div>
   </aside>`;

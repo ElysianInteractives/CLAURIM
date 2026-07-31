@@ -1,11 +1,11 @@
 # Roadmap
 
 1. M1 Kaldwyn Reach slice - implemented; exit: visual QA + balance pass.
-2. M1.5 Hardening: Plan 8 completes the catalog fills, second cave, and
-   generic content guard; interpolation and the audio architecture decision
-   remain.
+2. M1.5 Hardening - COMPLETE: Plan 8 delivers catalog depth, the second cave,
+   and the generic content guard; Plan 9 delivers host interpolation and the
+   bounded browser audio architecture/control exemplar.
 3. M2 Systems depth: crafting, weather, followers, crime, radiant templates,
-   map/menus, GLB pipeline.
+   map/menus, final audio asset/spatial pipeline, GLB pipeline.
 4. M3 Province: multi-region streaming, main arc, faction line, dragons,
    cities, mounts.
 5. M4 Completeness: shouts/powers, books, housing, accessibility, settings,

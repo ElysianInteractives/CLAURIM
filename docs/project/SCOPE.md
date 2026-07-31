@@ -23,7 +23,8 @@ collision, deterministic spawning with persistent cleared state.
 Player: move/sprint/jump/sneak/block, third-person + first-person camera,
 health/stamina/magicka, melee/bow/spells (flamebolt, mend wounds), damage/
 death/respawn, inventory/equipment/looting, an expanded iron/hide/fur gear
-catalog, use-based skills, six perk trees, save+reload.
+catalog, use-based skills, six perk trees, save+reload, host-smoothed actor/
+camera presentation, and persistent browser audio mixer controls.
 NPCs: Maera (merchant, quest-giver), Brandvar Hale, Eydris Varr with schedules
 and conditional dialogue; raiders (melee+archer), wolves, rats, veteran
 Rimehowl Alpha and Barrow Sentinel variants, the Pale Warden boss;
@@ -38,9 +39,10 @@ relevant QA contract whenever a later phase changes that surface.
 
 ## Milestone 2: Systems depth (Fable-led design, Opus fill)
 Crafting (smithing/alchemy/enchanting), weather in-sim, followers, crime/
-bounty, radiant quest templating, map UI + main menu, audio architecture,
-interpolation + polish, second settlement (repeatability proof), GLB asset
-pipeline. The second cave/interior repeatability proof landed in Plan 8.
+bounty, radiant quest templating, map UI + main menu, final audio asset and
+spatial-source pipeline, second settlement (repeatability proof), GLB asset
+pipeline. The second cave/interior repeatability proof landed in Plan 8;
+host interpolation and the browser mixer/control boundary landed in Plan 9.
 
 ## Milestone 3: Province scale
 Multi-region streaming, main-story arc + one faction line, dragons (flight

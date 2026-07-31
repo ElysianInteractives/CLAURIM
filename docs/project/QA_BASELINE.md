@@ -340,6 +340,32 @@ and the second cave exemplar.
 - A true 1920x1080 Siltroot check has 1920x1080 document dimensions with no
   overflow. Final browser warning/error logs are empty.
 
+### Plan 9 presentation/audio exit
+
+Plan 9 resolves AV-001/AV-002/CMB-007 and locks D-031 without changing the
+simulation, protocol, authoritative combat outcomes, or save schema.
+
+- The exact short-path source gate is green at 17 suites / 173 tests and a
+  658.33 kB JavaScript / 174.72 kB gzip production bundle (HTML 0.49 kB /
+  0.32 kB gzip). Content validation remains 29 items, 6 effects, 3 spells,
+  15 perks, 13 actor templates, 4 spaces, 22 props, 6 doors, 16 spawners,
+  4 containers, 1 quest, and 3 dialogues; the IP scan is clean.
+- `tests/presentation.test.ts` contributes seven focused checks for position/
+  shortest-yaw interpolation, transition/teleport snaps, bounded audio
+  settings, routed bus gains, deterministic soundscapes, accessible markup,
+  focused Escape, and catalog-driven bow dispatch.
+- Direct 1280x720 browser QA opens the Audio panel, changes Master to 60% and
+  Ambience to 20%, toggles mute, reloads, and observes the same persisted
+  values. Browser QA reproduced and fixed Escape being ignored while a range
+  or checkbox held focus; focused Escape now closes the panel.
+- At 1280x720 the 466x321.75 px panel is fully inside the viewport at
+  `(407, 199.125)` with no document overflow. At 1920x1080 it remains
+  466x321.75 px at `(727, 379.125)`, also with no overflow.
+- Final browser warning/error logs are empty. The automation browser kept its
+  Web Audio context suspended despite synthetic interaction, so audible
+  loudness/asset quality remains an explicit human-review gate under KL-5;
+  context construction and controls produced no runtime error.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -359,6 +385,7 @@ and the second cave exemplar.
 | QA-AUTH | Account/session/ownership and secure browser boundary | `tests/authentication.test.ts`, real `qa:ws`, create/login/reload/insecure-URL browser flow | Hash/session/ownership assertions, rotation/replay result, sign-in captures and logs |
 | QA-SOC | Party consent/persistence and nearby chat | `tests/multiplayer_sim.test.ts`, `tests/server_net.test.ts`, `tests/save.test.ts`; two authenticated browser clients at 1280 and 1920 | Solo start, invite/accept/leave, reconnect/offline frame, chat focus/delivery, layout and logs |
 | QA-CNT | Proven-schema content and progression depth | `tests/content_catalog.test.ts`, `tests/navigation.test.ts`, `tests/quest_playthrough.test.ts`, `npm run world:tour`, `npm run ai:bench`; offline browser at 1280 and 1920 | Catalog links/envelopes, perk graph/hook, veteran shape/solo envelope, merchant purchase, all-space traversal, current location, layout and logs |
+| QA-AV | Host interpolation and browser audio/control boundary | `tests/presentation.test.ts`, `tests/combat_audio.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | Transform blend/snap/yaw, catalog bow dispatch, mixer/settings/soundscape rules, persistence, focused Escape, layout/overflow, browser logs |
 
 ## Browser visual-QA procedure
 

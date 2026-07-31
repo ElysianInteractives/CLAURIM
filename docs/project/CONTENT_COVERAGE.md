@@ -53,9 +53,9 @@ PARTIAL / NONE.
 ## Presentation and platform
 | Family | State | Notes |
 |---|---|---|
-| UI surfaces | PARTIAL | HUD/dialogue/shop/inventory/journal/perks exist; missing: map, magic menu, settings, main menu |
-| Audio | NONE | system decision pending (Fable) |
+| UI surfaces | PARTIAL | HUD/dialogue/shop/inventory/journal/perks and audio settings exist; missing: map, magic menu, general settings, main menu |
+| Audio | SYSTEM | D-031 browser mixer, persistent controls, combat cues, and procedural interior/day/night beds exist; final assets, spatial sources, and production mix remain KL-5 |
 | Asset pipeline | NONE->PLANNED | palette/primitive style locked (D-011); GLB pipeline is the upgrade path |
-| Accessibility | NONE | keybind remap, subtitles, colorblind palette: after UI settles |
+| Accessibility | PARTIAL | semantic resource/audio controls exist; keybind remap, subtitles, colorblind palette, and broader settings remain |
 | Save/persistence | DONE | D-009 |
 | Mod/extensibility | PARTIAL | data-as-code registry IS the mod surface; external pack loading later |

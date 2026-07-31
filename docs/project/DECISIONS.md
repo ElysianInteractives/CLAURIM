@@ -22,8 +22,8 @@ needed for tests and future server realms).
 `TICK_RATE = 30` (`src/sim/types.ts`). ClaudeCraft uses 20 Hz for an MMO;
 Claurim's first-person melee wants finer attack-phase granularity (windup 8 /
 active 3 / recover 10 ticks at 33 ms each). 60 Hz doubles sim cost for little
-gain at this combat pacing. Renderer runs at rAF and reads latest state;
-interpolation is an accepted later improvement (see KNOWN_LIMITATIONS KL-1).
+gain at this combat pacing. Renderer runs at rAF; D-031 smooths observed
+transforms in the host without changing this authoritative rate.
 
 ## D-004: Cells + activity window; actors persist, AI ticks locally - LOCKED
 `CELL_SIZE = 64`, `ACTIVE_RADIUS = 2` (5x5 block). The sim keeps ALL actors in
@@ -180,9 +180,9 @@ Combat presentation consumes `ActorView` plus filtered `SimEvent` data:
 facing-selected target frame, phase-aware poses, authoritative damage flashes,
 hit/block/hurt confirmation, exact data-driven danger shapes, and a minimal
 synthesized cue palette. Browser audio unlocks only from user activation and
-cannot submit intent or resolve outcomes. Broader music, ambience, spatial
-mixing, and accessibility volume controls remain open. See
-`COMBAT_CONTRACT.md`.
+cannot submit intent or resolve outcomes. D-031 routes that palette through
+the locked browser mixer. See `COMBAT_CONTRACT.md` and
+`AUDIO_PRESENTATION_CONTRACT.md`.
 
 ## D-025: Shared environmental collision and traversal - LOCKED
 Solid props use authored-yaw oriented footprints and terrain-relative vertical
@@ -258,3 +258,15 @@ balance, and browser checks. This decision adds no weapon type, ability kind,
 stat key, combat formula, save shape, or runtime content schema. The HUD's
 location label resolves the current authored space through `IWorld`; host
 implementations may not hard-code one world-space name.
+
+## D-031: Host-only interpolation and browser audio mixer - LOCKED
+The renderer stores one previous/current transform pair per observed actor and
+interpolates position plus shortest-arc yaw by the fixed-step accumulator.
+First observations, space changes, and jumps over 4 m snap; camera, terrain
+streaming, and caster-anchored telegraphs share the displayed transform. This
+history is read-only presentation and never changes simulation or protocol
+state. Browser audio uses user-gesture Web Audio with master/effects/ambience/
+music buses, persistent bounded controls and mute, authoritative-event combat
+cues, and deterministic interior/exterior day/night procedural tonal beds.
+Final audio assets, spatial sources, device selection, and production mixing
+remain open. Exact boundaries: `AUDIO_PRESENTATION_CONTRACT.md`.

@@ -19,13 +19,15 @@ import {
 import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import { Input } from './game/input';
-import { CombatAudio } from './game/combat_audio';
+import { CombatAudio, parseAudioSettings } from './game/combat_audio';
+import { equippedAttackKind } from './game/host_actions';
 import { AuthGate } from './ui/auth_gate';
 import { DT } from './sim/types';
 import type { IWorld } from './world_api';
 
 const WORLD_SEED = 20260730;
 const SAVE_KEY = 'claurim_save_v1';
+const AUDIO_SETTINGS_KEY = 'claurim_audio_v1';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
@@ -55,8 +57,16 @@ if (online) {
 }
 
 const renderer = new Renderer(world, canvas);
-const combatAudio = new CombatAudio(canvas);
-const hud = new Hud(world, (events) => combatAudio.handle(events, world.player().id));
+const combatAudio = new CombatAudio(
+  canvas,
+  parseAudioSettings(localStorage.getItem(AUDIO_SETTINGS_KEY)),
+  (settings) => localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify(settings)),
+);
+const hud = new Hud(
+  world,
+  (events) => combatAudio.handle(events, world.player().id),
+  combatAudio,
+);
 const input = new Input(canvas);
 if (!online) input.yaw = world.player().yaw;
 
@@ -142,7 +152,10 @@ function frame(now: number): void {
 
   // One-shot commands.
   const cmd = input.drainCommands();
-  if (cmd.escape) hud.closeAll();
+  if (cmd.escape) {
+    if (hud.isInputCaptured()) hud.closeAll();
+    else hud.toggleSettings();
+  }
   if (cmd.toggleInventory) hud.togglePanel('inventory');
   if (cmd.toggleJournal) hud.togglePanel('journal');
   if (cmd.togglePerks) hud.togglePanel('perks');
@@ -155,9 +168,7 @@ function frame(now: number): void {
   if (!menuOpen) {
     if (cmd.melee) {
       // Weapon-appropriate: bow fires, otherwise melee swing.
-      const inv = world.playerInventory();
-      const mainHand = inv.find((i) => i.equipped && i.kind === 'weapon');
-      if (mainHand && mainHand.itemId === 'hunting_bow') world.attackRanged();
+      if (equippedAttackKind(world.playerInventory()) === 'ranged') world.attackRanged();
       else world.attackMelee();
     }
     if (cmd.spell1) world.castSpell('flamebolt');
@@ -222,7 +233,8 @@ function frame(now: number): void {
     hud.setConnectionStatus(latency > 0 ? `Online · ${latency} ms authority` : 'Online', 'online');
     networkBadgeAt = now + 1_000;
   }
-  renderer.render(dtSec);
+  combatAudio.update(world.spaceKind(world.currentSpace()), world.gameHours());
+  renderer.render(dtSec, accumulator / DT);
   requestAnimationFrame(frame);
 }
 

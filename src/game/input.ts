@@ -34,7 +34,8 @@ export class Input {
 
   constructor(private canvas: HTMLCanvasElement) {
     addEventListener('keydown', (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const editableTarget = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (editableTarget && !capturesEditableTargetKey(e.code)) return;
       if (e.repeat) return;
       this.keys.add(e.code);
       switch (e.code) {
@@ -145,6 +146,10 @@ export class Input {
     this.wheelDelta = 0;
     return w;
   }
+}
+
+export function capturesEditableTargetKey(code: string): boolean {
+  return code === 'Escape';
 }
 
 function emptyCommands(): FrameCommands {

@@ -1,9 +1,9 @@
 # Known limitations (honest register; each is deliberate, none is forgotten)
 
-- KL-1 Render interpolation: the renderer draws the latest sim state without
-  interpolating between ticks; at 30 Hz this is visible as slight stepping on
-  fast camera pans. Fix: interpolate ActorView transforms in the renderer
-  (host-side only). Opus ticket exists.
+- KL-1 RESOLVED in Plan 9: actor transforms, the local camera/terrain center,
+  and caster-anchored telegraphs now use host-only previous/current
+  interpolation with first-view, space-change, and >4 m snap boundaries.
+  Automated frame-pacing measurement remains part of KL-7.
 - KL-2 Solid prop collision now honors authored yaw with oriented rectangular
   footprints. Cylinders, tents, and other non-box procedural meshes still use
   that conservative rectangle; add collider shapes only with a locked content
@@ -15,9 +15,11 @@
   inactive NPCs collapse the same valid route to its destination anchor.
   Commute duration is not simulated offscreen, and schedules do not persist a
   mid-door route across save/load.
-- KL-5 Audio is limited to synthesized combat feedback unlocked by a browser
-  user gesture. There is no music, ambience, spatial mix, volume UI, or asset
-  pipeline yet.
+- KL-5 Plan 9 adds a user-gesture browser mixer, master/effects/ambience/music
+  buses, persistent volume/mute UI, combat cues, and deterministic procedural
+  interior/exterior tonal beds. It still has no authored score/ambience asset
+  library, spatial-source placement, device selector, production loudness mix,
+  or audio asset pipeline.
 - KL-6 Projectile sweeps stop on terrain-relative oriented solid props and
   implicit interior walls/floors/ceilings. Non-box meshes retain KL-2's
   conservative rectangle.

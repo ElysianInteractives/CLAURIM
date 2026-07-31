@@ -11,6 +11,7 @@ import { PALETTE } from './palette';
 import { TerrainStreamer, disposeGroup } from './terrain_mesh';
 import { buildContainerMesh, buildDoorMarker, buildInteriorShell, buildProp } from './structures';
 import { buildCharacter, poseCharacter } from './characters';
+import { TransformHistory } from './interpolation';
 
 type TelegraphView = NonNullable<ActorView['telegraph']>;
 
@@ -74,6 +75,7 @@ export class Renderer {
   private projectileMeshes = new Map<number, THREE.Mesh>();
   private aoeMeshes = new Map<number, THREE.Mesh>();
   private telegraphRings = new Map<number, THREE.Mesh>();
+  private actorTransforms = new TransformHistory();
   private collision = new CollisionIndex(CONTENT);
   private builtSpace: string | null = null;
   private clock = 0;
@@ -108,19 +110,18 @@ export class Renderer {
   }
 
   /** Full render pass for the current frame. */
-  render(dtSec: number): void {
+  render(dtSec: number, alpha = 1): void {
     this.clock += dtSec;
     const space = this.world.currentSpace();
     const exterior = this.world.spaceKind(space) === 'exterior';
-    const player = this.world.player();
 
     if (this.builtSpace !== space) this.rebuildSpace(space, exterior);
-    if (exterior) this.terrain.update(player.x, player.z, 2);
     this.updateLighting(exterior);
-    this.updateActors();
+    const displayPlayer = this.updateActors(space, alpha) ?? this.world.player();
+    if (exterior) this.terrain.update(displayPlayer.x, displayPlayer.z, 2);
     this.updateProjectiles();
     this.updateGroundAoes();
-    this.updateCamera(player);
+    this.updateCamera(displayPlayer);
     this.webgl.render(this.scene, this.camera);
   }
 
@@ -135,6 +136,7 @@ export class Renderer {
       disposeGroup(mesh);
     }
     this.actorMeshes.clear();
+    this.actorTransforms.clear();
     if (!exterior) this.terrain.clear();
 
     const seed = this.world.seed();
@@ -179,20 +181,36 @@ export class Renderer {
     this.hemi.intensity = 0.35 + daylight * 0.9;
   }
 
-  private updateActors(): void {
+  private updateActors(space: string, alpha: number): ActorView | null {
     const views = this.world.actorsInSpace();
     const seen = new Set<number>();
+    let displayPlayer: ActorView | null = null;
     for (const v of views) {
       seen.add(v.id);
+      const transform = this.actorTransforms.sample(v.id, {
+        spaceId: space,
+        x: v.x,
+        y: v.y,
+        z: v.z,
+        yaw: v.yaw,
+      }, alpha);
+      const displayView: ActorView = {
+        ...v,
+        x: transform.x,
+        y: transform.y,
+        z: transform.z,
+        yaw: transform.yaw,
+      };
+      if (v.isPlayer && !v.isRemotePlayer) displayPlayer = displayView;
       let mesh = this.actorMeshes.get(v.id);
       if (!mesh) {
         mesh = buildCharacter(v.archetype);
         this.actorMeshes.set(v.id, mesh);
         this.scene.add(mesh);
       }
-      mesh.position.set(v.x, v.y, v.z);
-      mesh.rotation.y = v.yaw;
-      poseCharacter(mesh, v, this.clock);
+      mesh.position.set(displayView.x, displayView.y, displayView.z);
+      mesh.rotation.y = displayView.yaw;
+      poseCharacter(mesh, displayView, this.clock);
       const previousHealth = mesh.userData.lastHealth as number | undefined;
       if (previousHealth !== undefined && v.health < previousHealth) {
         mesh.userData.hitFlashUntil = this.clock + 0.14;
@@ -227,10 +245,10 @@ export class Renderer {
           this.scene.add(ring);
         }
         const targetPlaced = v.telegraph.kind === 'ground_aoe';
-        const telegraphX = targetPlaced ? v.telegraph.x : v.x;
-        const telegraphZ = targetPlaced ? v.telegraph.z : v.z;
+        const telegraphX = targetPlaced ? v.telegraph.x : displayView.x;
+        const telegraphZ = targetPlaced ? v.telegraph.z : displayView.z;
         ring.position.set(telegraphX, this.world.groundHeight(telegraphX, telegraphZ) + 0.06, telegraphZ);
-        ring.rotation.y = v.telegraph.kind === 'frontal_cone' ? v.yaw : 0;
+        ring.rotation.y = v.telegraph.kind === 'frontal_cone' ? displayView.yaw : 0;
         const progress = 1 - v.telegraph.ticks / Math.max(1, v.telegraph.totalTicks);
         const material = ring.material as THREE.MeshBasicMaterial;
         material.opacity = 0.28 + progress * 0.28 + Math.sin(this.clock * 12) * 0.05;
@@ -254,6 +272,8 @@ export class Renderer {
         this.telegraphRings.delete(id);
       }
     }
+    this.actorTransforms.retain(seen);
+    return displayPlayer;
   }
 
   private updateProjectiles(): void {

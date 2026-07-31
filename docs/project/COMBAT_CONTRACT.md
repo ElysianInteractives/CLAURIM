@@ -50,9 +50,12 @@ At 30 Hz:
 | Down / revive | existing downed/recovery UI | low fall / rising recovery |
 | Rejected action | reason in the notification feed | - |
 
-Audio is a minimal synthesized browser-host layer. It unlocks on a user
-gesture, rate-limits repeated cues, has no sim dependency beyond event types,
-and is not yet a music, ambience, spatial-audio, or mixer system.
+Audio is a synthesized browser-host layer. It unlocks on a user gesture,
+rate-limits repeated cues, and has no sim dependency beyond event types.
+D-031 routes it through the master/effects bus while the separate ambience
+and music buses provide procedural tonal exemplars. Final assets, spatial
+sources, and production mixing remain KL-5; see
+`AUDIO_PRESENTATION_CONTRACT.md`.
 
 ## Repeatable acceptance and measurement
 

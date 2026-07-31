@@ -56,18 +56,13 @@ not start those systems from tickets without a new lock.
 
 ---
 
-## OB-1 OPUS_READY - Renderer interpolation between sim ticks
-Why: KL-1; smooths motion at 30 Hz sim.
-Inspect: `src/main.ts` (loop), `src/render/renderer.ts` (updateActors/updateCamera).
-Change: `src/render/renderer.ts` only.
-Exemplar: none in-repo; standard prev/current lerp by accumulator fraction.
-Outline: keep per-actor prev transform in renderer userData; `main.ts` passes
-`alpha = accumulator / DT` to `render()`; lerp positions/yaw for drawing only.
-Invariants: renderer stays read-only; NO sim change.
-Tests: none required (visual); capture before/after screenshot to docs/screenshots.
-Commands: `npm run gate`, `npm run dev`.
-Accept: no stepping on fast pans; gate green.
-Traps: do not lerp across space transitions (snap when spaceId changes).
+## OB-1 DONE - Renderer interpolation between sim ticks
+Plan 9 locks D-031: the browser renderer uses previous/current actor
+transforms and the fixed-step accumulator for position and shortest-arc yaw.
+First observations, space changes, and jumps over 4 m snap. Camera, terrain
+streaming, actor meshes, and caster-anchored telegraphs share the same
+displayed transform; unit and browser acceptance pass without sim/protocol
+changes.
 
 ## OB-2 DONE - Iron-tier weapon and armor fill (12 records)
 Plan 8 adds four weapons and hide/fur armor sets without a new weapon type or
@@ -111,9 +106,10 @@ approach and transition at each door; inactive residents collapse only a valid
 route to the scheduled anchor. Both modes have focused tests.
 
 ## OB-9 FABLE_REQUIRED - Weather system in sim (state, perception/movement
-hooks, render fx), audio architecture, crafting systems, follower package,
-crime/bounty, dragon flight architecture, multi-region streaming, GLB asset
-pipeline. Do not start these from a ticket; they need design.
+hooks, render fx), final audio asset/spatial-source pipeline, crafting systems,
+follower package, crime/bounty, dragon flight architecture, multi-region
+streaming, GLB asset pipeline. Do not start these from a ticket; they need
+design.
 
 ## OB-10 HUMAN_DECISION - Name check ("Claurim" trademark search), license
 choice for the repo (MIT vs proprietary), distribution target (itch/steam/web),
