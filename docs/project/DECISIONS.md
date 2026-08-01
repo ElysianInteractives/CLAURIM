@@ -365,3 +365,14 @@ line distance, but never pathfinds, fast-travels, changes simulation state, or
 crosses the save/protocol boundary. Discovery fog, quest markers, cross-space
 routes, and persistent waypoints remain separate work. Exact rules:
 `MAP_NAVIGATION_CONTRACT.md`.
+
+## D-041: Articulated code-native character rigs - LOCKED
+Humanoids share stable torso/head/face/shoulder/forearm/hand/hip/knee nodes
+with tapered and faceted low-poly detail; equipment follows named hands.
+Renderer-only full-body locomotion adds opposing legs, knee bend, torso weight,
+idle/head motion, and deterministic phase-aware elbows while preserving D-038
+locomotion hysteresis and D-039 weapon poses. Quadrupeds use named diagonal
+leg pivots plus head and tail motion. Actor collision, sim movement, combat,
+protocol v6, and saves remain unchanged. A future GLB pipeline may replace
+geometry behind these stable nodes. Exact rules:
+`CHARACTER_PRESENTATION_CONTRACT.md`.

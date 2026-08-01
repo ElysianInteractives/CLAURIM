@@ -14,29 +14,97 @@ function mat(color: number): THREE.MeshLambertMaterial {
 
 function humanoid(cloth: number, skin: number, scale = 1, hood = false): THREE.Group {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.8, 0.36), mat(cloth));
-  body.position.y = 1.0;
+  g.userData.rigType = 'humanoid';
+
+  const torso = new THREE.Group();
+  torso.name = 'torso';
+  torso.position.y = 1.18;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.66, 6), mat(cloth));
   body.name = 'body';
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.32), mat(skin));
-  head.position.y = 1.62;
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.04), mat(cloth));
+  chest.position.set(0, 0.12, 0.2);
+  torso.add(body, chest);
+
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.24, 6), mat(PALETTE.woodDark));
+  pelvis.name = 'pelvis';
+  pelvis.position.y = 0.78;
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.09, 0.36), mat(PALETTE.leather));
+  belt.position.y = 0.88;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.14, 7), mat(skin));
+  neck.position.y = 1.55;
+
+  const headPivot = new THREE.Group();
+  headPivot.name = 'headPivot';
+  headPivot.position.y = 1.57;
+  const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.23, 0), mat(skin));
+  head.position.y = 0.16;
+  head.scale.set(0.9, 1.1, 0.92);
   head.name = 'head';
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.6, 0.24), mat(PALETTE.woodDark));
-  legL.position.set(-0.16, 0.3, 0);
-  legL.name = 'legL';
-  const legR = legL.clone();
-  legR.position.x = 0.16;
-  legR.name = 'legR';
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.2), mat(cloth));
-  armL.position.set(-0.42, 1.05, 0);
-  armL.name = 'armL';
-  const armR = armL.clone();
-  armR.position.x = 0.42;
-  armR.name = 'armR';
-  g.add(body, head, legL, legR, armL, armR);
+  const face = new THREE.Group();
+  face.name = 'face';
+  face.position.set(0, 0.16, 0.205);
+  for (const x of [-0.085, 0.085]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 5, 4), new THREE.MeshBasicMaterial({ color: 0x2d2926 }));
+    eye.position.set(x, 0.035, 0.005);
+    face.add(eye);
+  }
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.11, 5), mat(skin));
+  nose.rotation.x = Math.PI / 2;
+  nose.position.z = 0.045;
+  face.add(nose);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.225, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), mat(PALETTE.woodDark));
+  hair.position.y = 0.16;
+  hair.scale.set(0.92, 0.55, 0.94);
+  headPivot.add(head, face, hair);
+
+  for (const side of ['L', 'R'] as const) {
+    const direction = side === 'L' ? -1 : 1;
+    const arm = new THREE.Group();
+    arm.name = `arm${side}`;
+    arm.position.set(direction * 0.4, 1.42, 0);
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.115, 6, 5), mat(cloth));
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.34, 6), mat(cloth));
+    upper.position.y = -0.17;
+    const forearm = new THREE.Group();
+    forearm.name = `forearm${side}`;
+    forearm.position.y = -0.34;
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.31, 6), mat(cloth));
+    lower.position.y = -0.15;
+    const hand = new THREE.Group();
+    hand.name = `hand${side}`;
+    hand.position.y = -0.31;
+    const handMesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.09, 0), mat(skin));
+    handMesh.position.y = -0.04;
+    hand.add(handMesh);
+    forearm.add(lower, hand);
+    arm.add(shoulder, upper, forearm);
+    g.add(arm);
+  }
+
+  for (const side of ['L', 'R'] as const) {
+    const direction = side === 'L' ? -1 : 1;
+    const leg = new THREE.Group();
+    leg.name = `leg${side}`;
+    leg.position.set(direction * 0.16, 0.78, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.115, 0.4, 6), mat(PALETTE.woodDark));
+    upper.position.y = -0.2;
+    const knee = new THREE.Group();
+    knee.name = `knee${side}`;
+    knee.position.y = -0.4;
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.36, 6), mat(PALETTE.woodDark));
+    lower.position.y = -0.18;
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.18, 0.34), mat(PALETTE.leather));
+    boot.position.set(0, -0.36, 0.055);
+    knee.add(lower, boot);
+    leg.add(upper, knee);
+    g.add(leg);
+  }
+
+  g.add(torso, pelvis, belt, neck, headPivot);
   if (hood) {
     const hoodMesh = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.4, 5), mat(cloth));
-    hoodMesh.position.y = 1.9;
-    g.add(hoodMesh);
+    hoodMesh.position.y = 0.47;
+    headPivot.add(hoodMesh);
   }
   g.scale.setScalar(scale);
   return g;
@@ -44,23 +112,58 @@ function humanoid(cloth: number, skin: number, scale = 1, hood = false): THREE.G
 
 function quadruped(fur: number, length: number, height: number, scale = 1): THREE.Group {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, length), mat(fur));
+  g.userData.rigType = 'quadruped';
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.45, length), mat(fur));
+  body.name = 'torso';
   body.position.y = height;
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.3, 0.44), mat(fur));
-  head.position.set(0, height + 0.18, length / 2 + 0.18);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.5), mat(fur));
-  tail.position.set(0, height + 0.1, -length / 2 - 0.2);
-  for (const [lx, lz] of [
-    [-0.18, length / 2 - 0.12],
-    [0.18, length / 2 - 0.12],
-    [-0.18, -length / 2 + 0.12],
-    [0.18, -length / 2 + 0.12],
-  ]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, height, 0.14), mat(fur));
-    leg.position.set(lx, height / 2, lz);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.5, length * 0.4), mat(fur));
+  chest.position.set(0, height + 0.03, length * 0.28);
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.35), mat(fur));
+  neck.position.set(0, height + 0.18, length / 2);
+  neck.rotation.x = -0.35;
+  const headPivot = new THREE.Group();
+  headPivot.name = 'headPivot';
+  headPivot.position.set(0, height + 0.25, length / 2 + 0.2);
+  const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25, 0), mat(fur));
+  head.name = 'head';
+  head.scale.set(0.8, 0.72, 1.05);
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.16, 0.28), mat(fur));
+  snout.position.set(0, -0.04, 0.3);
+  for (const x of [-0.11, 0.11]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 4), mat(fur));
+    ear.position.set(x, 0.23, -0.03);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 5, 4), new THREE.MeshBasicMaterial({ color: 0x211b18 }));
+    eye.position.set(x * 0.75, 0.06, 0.23);
+    headPivot.add(ear, eye);
+  }
+  headPivot.add(head, snout);
+  const tail = new THREE.Group();
+  tail.name = 'tail';
+  tail.position.set(0, height + 0.08, -length / 2);
+  const tailA = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 0.48), mat(fur));
+  tailA.position.z = -0.22;
+  tailA.rotation.x = -0.25;
+  const tailB = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.35), mat(fur));
+  tailB.position.set(0, 0.08, -0.55);
+  tailB.rotation.x = -0.45;
+  tail.add(tailA, tailB);
+  for (const [name, lx, lz] of [
+    ['legFL', -0.2, length / 2 - 0.18],
+    ['legFR', 0.2, length / 2 - 0.18],
+    ['legBL', -0.2, -length / 2 + 0.18],
+    ['legBR', 0.2, -length / 2 + 0.18],
+  ] as const) {
+    const leg = new THREE.Group();
+    leg.name = name;
+    leg.position.set(lx, height - 0.08, lz);
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.15, height * 0.72, 0.16), mat(fur));
+    upper.position.y = -height * 0.34;
+    const paw = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.13, 0.24), mat(fur));
+    paw.position.set(0, -height * 0.7, 0.04);
+    leg.add(upper, paw);
     g.add(leg);
   }
-  g.add(body, head, tail);
+  g.add(body, chest, neck, headPivot, tail);
   g.scale.setScalar(scale);
   return g;
 }
@@ -86,7 +189,7 @@ export function buildCharacter(archetype: string): THREE.Group {
     case 'wight': {
       const g = humanoid(PALETTE.wightSkin, PALETTE.wightSkin, 1.25);
       const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 4), new THREE.MeshBasicMaterial({ color: PALETTE.wightGlow }));
-      eyeL.position.set(-0.08, 1.64, 0.18);
+      eyeL.position.set(-0.08, 1.79, 0.2);
       const eyeR = eyeL.clone();
       eyeR.position.x = 0.08;
       g.add(eyeL, eyeR);
@@ -180,7 +283,7 @@ function buildArmor(slot: EquipSlot): THREE.Group {
   const group = gearGroup(slot);
   if (slot === 'body') {
     const cuirass = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.72, 0.41), mat(PALETTE.leather));
-    cuirass.position.y = 1.02;
+    cuirass.position.y = 1.18;
     group.add(cuirass);
   } else if (slot === 'head') {
     const hood = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.42, 7), mat(PALETTE.wolfFur));
@@ -224,12 +327,14 @@ export function syncCharacterEquipment(group: THREE.Group, view: ActorView, mode
     if (!itemId || !CONTENT.items[itemId]) continue;
     const node = slot === 'mainHand' ? buildWeapon(itemId) : slot === 'offHand' ? buildShield() : buildArmor(slot);
     if (slot === 'mainHand' || slot === 'offHand') {
-      const arm = group.getObjectByName(slot === 'mainHand' ? 'armR' : 'armL');
-      if (!arm) continue;
-      node.position.set(0, mode === 'viewmodel' ? -0.26 : -0.34, mode === 'viewmodel' ? 0.12 : 0.1);
+      const side = slot === 'mainHand' ? 'R' : 'L';
+      const attachment = group.getObjectByName(`hand${side}`) ?? group.getObjectByName(`arm${side}`);
+      if (!attachment) continue;
+      node.position.set(0, mode === 'viewmodel' ? -0.04 : -0.06, mode === 'viewmodel' ? 0.1 : 0.08);
       if (mode === 'viewmodel') node.scale.setScalar(0.44);
+      if (mode === 'world' && slot === 'mainHand' && CONTENT.items[itemId]?.weaponType !== 'bow') node.rotation.z = Math.PI;
       if (slot === 'offHand') node.rotation.y = Math.PI;
-      arm.add(node);
+      attachment.add(node);
     } else {
       group.add(node);
     }
@@ -245,9 +350,16 @@ export function buildFirstPersonRig(): THREE.Group {
   rig.name = 'first-person-rig';
   rig.position.set(0, -0.4, -0.95);
   for (const [name, x] of [['armL', -0.27], ['armR', 0.27]] as const) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.36, 0.13), mat(PALETTE.clothBlue));
+    const arm = new THREE.Group();
     arm.name = name;
     arm.position.set(x, -0.02, 0);
+    const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.31, 0.13), mat(PALETTE.clothBlue));
+    sleeve.position.y = -0.12;
+    const hand = new THREE.Group();
+    hand.name = name === 'armL' ? 'handL' : 'handR';
+    hand.position.y = -0.29;
+    hand.add(new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.12, 0.12), mat(PALETTE.skinPale)));
+    arm.add(sleeve, hand);
     rig.add(arm);
   }
   return rig;
@@ -322,6 +434,46 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
   group.position.y = view.y + bob + crouch;
   const baseScaleY = (group.userData.baseScaleY ??= group.scale.y) as number;
   group.scale.y = baseScaleY * (view.sneaking ? 0.85 : 1);
+  const stride = moving ? Math.sin(timeSec * 8) : 0;
+  const torso = group.getObjectByName('torso');
+  const headPivot = group.getObjectByName('headPivot');
+
+  if (group.userData.rigType === 'quadruped') {
+    for (const [name, sign] of [['legFL', 1], ['legFR', -1], ['legBL', -1], ['legBR', 1]] as const) {
+      const leg = group.getObjectByName(name);
+      if (leg) leg.rotation.x = stride * 0.5 * sign;
+    }
+    const tail = group.getObjectByName('tail');
+    if (tail) {
+      tail.rotation.y = Math.sin(timeSec * (moving ? 7 : 3)) * (moving ? 0.35 : 0.18);
+      tail.rotation.x = moving ? 0.12 : -0.08;
+    }
+    if (torso) {
+      torso.rotation.z = stride * 0.025;
+      torso.position.y = (group.userData.quadrupedTorsoY ??= torso.position.y) as number;
+    }
+    if (headPivot) headPivot.rotation.x = moving ? -0.08 + Math.abs(stride) * 0.08 : Math.sin(timeSec * 1.7) * 0.035;
+    return;
+  }
+
+  const legL = group.getObjectByName('legL');
+  const legR = group.getObjectByName('legR');
+  const kneeL = group.getObjectByName('kneeL');
+  const kneeR = group.getObjectByName('kneeR');
+  if (legL) legL.rotation.x = stride * 0.55;
+  if (legR) legR.rotation.x = -stride * 0.55;
+  if (kneeL) kneeL.rotation.x = moving ? Math.max(0, -stride) * 0.68 : 0;
+  if (kneeR) kneeR.rotation.x = moving ? Math.max(0, stride) * 0.68 : 0;
+  if (torso) {
+    torso.rotation.z = stride * 0.045;
+    torso.rotation.x = view.sneaking ? 0.12 : 0;
+    torso.rotation.y = view.attackPhase === 'windup' ? -0.12 : view.attackPhase === 'active' ? 0.2 : 0;
+    torso.scale.set(1, 1 + Math.sin(timeSec * 2.2) * 0.012, 1);
+  }
+  if (headPivot) {
+    headPivot.rotation.x = -view.aimPitch * 0.22;
+    headPivot.rotation.y = moving ? -stride * 0.04 : Math.sin(timeSec * 0.7) * 0.025;
+  }
   const armR = group.getObjectByName('armR');
   const armL = group.getObjectByName('armL');
   const pose = characterCombatPose(view, moving, timeSec);
@@ -333,6 +485,35 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
     armL.rotation.x = pose.leftX;
     armL.rotation.z = pose.leftZ;
   }
+  const forearmR = group.getObjectByName('forearmR');
+  const forearmL = group.getObjectByName('forearmL');
+  let rightForearmX = 0;
+  let rightForearmZ = 0;
+  let leftForearmX = 0;
+  let leftForearmZ = 0;
+  const type = weaponType(view);
+  if (view.blocking) {
+    rightForearmX = -0.35;
+    leftForearmX = -0.72;
+    leftForearmZ = -0.58;
+  } else if (type === 'bow' && view.attackPhase) {
+    rightForearmX = -0.92;
+    rightForearmZ = 0.26;
+    leftForearmX = -0.78;
+    leftForearmZ = -0.38;
+  } else if (view.attackKind === 'spell' && view.attackPhase) {
+    rightForearmX = -0.5;
+    leftForearmX = -0.42;
+  } else if (view.attackPhase === 'windup') {
+    rightForearmX = type === 'axe' ? 0.5 : 0.32;
+  } else if (view.attackPhase === 'active') {
+    rightForearmX = -0.55;
+  } else if (moving) {
+    rightForearmX = Math.max(0, stride) * 0.08;
+    leftForearmX = Math.max(0, -stride) * 0.08;
+  }
+  if (forearmR) forearmR.rotation.set(rightForearmX, 0, rightForearmZ);
+  if (forearmL) forearmL.rotation.set(leftForearmX, 0, leftForearmZ);
 }
 
 /** Pose camera-local arms from the same combat state as the world model. */

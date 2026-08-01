@@ -56,6 +56,9 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   poses (D-039).
 - Current-space exterior/interior maps, authoritative player heading marker,
   and presentation-only landmark bearing/distance guidance (D-040).
+- Stable articulated low-poly humanoid/quadruped rig hierarchy, hand-based
+  equipment attachments, and renderer-only full-body procedural posing
+  (D-041).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

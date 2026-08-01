@@ -138,6 +138,13 @@ distance without changing sim, save, or protocol state. Discovery, quest
 markers, route distance, and fast travel remain explicit later work. Exact
 boundaries are in `MAP_NAVIGATION_CONTRACT.md`.
 
+QA Phase I verifies AV-005 through D-041: the shared code-native character
+factory now builds articulated humanoid and quadruped rigs with faceted and
+tapered detail, stable equipment hands, full-body gait/idle/head motion, and
+phase-aware secondary joints. This remains renderer-only; collision, movement,
+combat outcomes, protocol, and saves are unchanged. Exact boundaries are in
+`CHARACTER_PRESENTATION_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -191,6 +198,9 @@ session added and TESTED:
 - QA Phase H map/navigation (D-040): the Kaldwyn road and five destinations,
   authored interior rooms/exits, current player arrow, and selectable HUD
   bearing/distance form a presentation-only navigation layer.
+- QA Phase I character presentation (D-041): stable humanoid and quadruped
+  joints, tapered/faceted detail, hand-based gear, full gait, and secondary
+  combat posing replace the old rigid-block silhouettes.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -212,7 +222,7 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 214 tests / 25 suites green (multiplayer sim, server/net,
+- `npm test`: 218 tests / 26 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -221,7 +231,8 @@ session added and TESTED:
   multi-seed structure-pad/door-anchor placement, route-complete NPC
   schedules, safe blocked fallback, locomotion dead zones, authoritative
   equipped-item views, gear attachments, weapon-specific poses, authored
-  map/floor-plan coverage, and destination bearing/distance).
+  map/floor-plan coverage, destination bearing/distance, articulated rig
+  structure, full-body gait, and secondary combat/creature posing).
 - Live ws smoke under protocol v6: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,780 / 6,767-byte snapshots.
@@ -234,7 +245,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 695.13 kB / 183.26 kB gzip.
+  build); Vite 8 production JavaScript is 699.03 kB / 184.56 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 

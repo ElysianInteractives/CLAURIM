@@ -631,6 +631,36 @@ unchanged.
   `qa-phase-h-floorplan-1280x720.png`, and
   `qa-phase-h-map-1920x1080.png`.
 
+### QA Phase I articulated-character exit
+
+QA Phase I resolves AV-005 and locks D-041. Character geometry, joint
+hierarchies, equipment attachment nodes, and renderer-only posing change;
+actor collision, movement authority, attack timing/outcomes, protocol v6, and
+save formats remain unchanged.
+
+- The failing reproduction found six rigid humanoid cuboids with no elbows,
+  hands, hips, knees, face, gait, torso motion, or head response, plus static
+  quadruped legs/tail. Focused tests now require at least twenty humanoid mesh
+  parts and every stable primary/secondary joint.
+- Locomotion tests pin opposing legs, non-negative knee bend, and torso weight
+  shift. Bow/block tests pin secondary forearm intent, and quadruped tests pin
+  diagonal opposition plus tail motion. Existing D-038/D-039 pose, equipment,
+  and first-person tests remain green.
+- `npm run ai:bench` exactly preserves the renderer-independent comparison:
+  naive three-player clears 1/3 at 191 s, mechanics five-player clears 1/3 at
+  75 s, and both solo policies clear 0/3. The full gate is green at 26 suites /
+  218 tests. Vite 8 transforms 59 modules and produces 699.03 kB JavaScript /
+  184.56 kB gzip; content and IP checks remain clean.
+- Direct browser QA uses `?qa=inn-shift-change` for an unarmored close-up,
+  `?qa=gear` for the six-slot armored silhouette and inherited first-person
+  hands, and `?qa=rig` for the quadruped encounter. Close and 1920 views show
+  faceted head/hair/hands, tapered torso/limbs, shoulders, elbows, knees, and
+  hand-following gear without reticle obstruction. Browser logs are clean.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-i-rig-close-1280x720.png`,
+  `qa-phase-i-first-person-1280x720.png`, and
+  `qa-phase-i-rig-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -660,6 +690,7 @@ unchanged.
 | QA-NPC | Scheduled NPC reachability, blocked recovery, and pose stability | `tests/npc_schedule_stability.test.ts`, `tests/ai_encounter_reliability.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, `npm run ai:bench`, `npm run gate`; development-only offline `?qa=inn-shift-change` at 1280 and 1920 | exact-route requirement, no wall sliding, safe-home fallback, all authored legs, combat-scope benchmark, locomotion dead zone/hysteresis, before/settled shift, layout/overflow/logs |
 | QA-GEAR | Authoritative equipped-item and combat-pose presentation | `tests/equipment_presentation.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`, `npm run mp:bench`, `npm run world:tour`, `npm run qa:ws`, `npm run gate`; development-only offline `?qa=gear` in third/first person at 1280 and 1920 | local/remote equipped ids, six world gear families, synchronized first-person hands, weapon-specific phases, clear reticle/horizon, layout/overflow/logs |
 | QA-MAP | Current-space map and destination guidance | `tests/world_map.test.ts`, `npm run world:tour`, `npm run gate`; development-only `?qa=falkmoor` and `?qa=mine` at 1280 plus exterior at 1920 | road/five destinations, exact rooms/exit, player yaw marker, semantic selection, relative bearing/distance, clipping/overflow/logs |
+| QA-RIG | Articulated character detail and full-body posing | `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/presentation.test.ts`, `npm run ai:bench`, `npm run gate`; development-only `?qa=inn-shift-change`, `?qa=gear`, and `?qa=rig` at 1280/1920 | stable joints/mesh detail, leg/knee/torso gait, secondary combat joints, quadruped gait/tail, hand-following gear, first-person framing/logs |
 
 ## Browser visual-QA procedure
 

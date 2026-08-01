@@ -116,6 +116,7 @@ describe('development browser QA start points', () => {
     expect(qaStartFromSearch('?qa=gear', true)).toMatchObject({
       equip: expect.arrayContaining(['iron_sword', 'wooden_shield', 'fur_mantle']),
     });
+    expect(qaStartFromSearch('?qa=rig', true)).toMatchObject({ spaceId: 'kaldwyn', x: 0, z: 38 });
     expect(qaTickForHour(20.99)).toBeGreaterThan(0);
   });
 });

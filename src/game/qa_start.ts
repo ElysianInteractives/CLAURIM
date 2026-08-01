@@ -20,6 +20,7 @@ export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
     items: ['iron_sword', 'hunting_bow', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],
     equip: ['iron_sword', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],
   },
+  rig: { spaceId: 'kaldwyn', x: 0, z: 38, yaw: 0 },
   fenharrow: { spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI },
   'fenharrow-door': { spaceId: 'kaldwyn', x: 33, z: 142.5, yaw: 0 },
   inn: { spaceId: 'fenharrow_inn', x: 0, z: 2, yaw: 0 },
