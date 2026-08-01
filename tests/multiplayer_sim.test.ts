@@ -6,13 +6,15 @@
 import { describe, expect, it } from 'vitest';
 import { Sim, IDLE_INPUT, type PlayerInput } from '../src/sim/sim';
 import { beginDialogue } from '../src/sim/dialogue/dialogue_runtime';
-import { INTERRUPT_DAMAGE } from '../src/sim/types';
+import { INTERRUPT_DAMAGE, SCALE_HP_PER_PLAYER } from '../src/sim/types';
 
 const idle: PlayerInput = { ...IDLE_INPUT };
 
 function twoPlayerSim(seed = 42): Sim {
   const sim = new Sim(seed);
   sim.addPlayer('p2', 'Brona');
+  sim.joinParty('p1', 'party:p1');
+  sim.joinParty('p2', 'party:p1');
   return sim;
 }
 
@@ -99,6 +101,66 @@ describe('party quest credit (D-020)', () => {
   });
 });
 
+describe('player-controlled parties', () => {
+  it('starts characters solo and forms a bounded party only after invite acceptance', () => {
+    const sim = new Sim(42);
+    sim.addPlayer('p2', 'Brona');
+    expect(sim.partyOf('p1')).toBeNull();
+    expect(sim.partyOf('p2')).toBeNull();
+    expect(sim.partyMembersOf('p1')).toEqual(['p1']);
+
+    const p2 = sim.playerActor('p2')!;
+    expect(sim.inviteToParty('p1', p2.id)).toBe('sent');
+    expect(sim.pendingPartyInviteFor('p2')).toMatchObject({ fromCharId: 'p1', fromName: 'Wanderer' });
+    expect(sim.acceptPartyInvite('p2')).toBe('joined');
+    expect(sim.partyOf('p1')).toBe('party:p1');
+    expect(sim.partyMembersOf('p2')).toEqual(['p1', 'p2']);
+
+    expect(sim.leaveParty('p2')).toBe(true);
+    expect(sim.partyOf('p1')).toBeNull();
+    expect(sim.partyOf('p2')).toBeNull();
+  });
+
+  it('rejects remote, self, already-grouped, and stale invitations', () => {
+    const sim = new Sim(42);
+    sim.addPlayer('p2', 'Brona');
+    sim.addPlayer('p3', 'Cadan');
+    expect(sim.inviteToParty('p1', sim.playerActor('p1')!.id)).toBe('self');
+    put(sim, 'p2', 'kaldwyn', -300, -300);
+    expect(sim.inviteToParty('p1', sim.playerActor('p2')!.id)).toBe('not-nearby');
+    put(sim, 'p2', 'kaldwyn', sim.playerActor('p1')!.pos.x + 1, sim.playerActor('p1')!.pos.z);
+    expect(sim.inviteToParty('p1', sim.playerActor('p2')!.id)).toBe('sent');
+    sim.removePlayer('p1', { preserveParty: true });
+    expect(sim.acceptPartyInvite('p2')).toBe('none');
+
+    sim.joinParty('p2', 'party:p2');
+    expect(sim.inviteToParty('p3', sim.playerActor('p2')!.id)).toBe('target-in-party');
+  });
+
+  it('preserves accepted membership across despawn and reconnect', () => {
+    const sim = new Sim(42);
+    sim.addPlayer('p2', 'Brona');
+    expect(sim.inviteToParty('p1', sim.playerActor('p2')!.id)).toBe('sent');
+    expect(sim.acceptPartyInvite('p2')).toBe('joined');
+    const record = sim.removePlayer('p2', { preserveParty: true })!;
+    expect(sim.partyMembersOf('p1')).toEqual(['p1', 'p2']);
+    sim.addPlayer('p2', 'Brona', record);
+    expect(sim.partyMembersOf('p2')).toEqual(['p1', 'p2']);
+  });
+
+  it('allows only party members to revive a downed player', () => {
+    const sim = new Sim(42);
+    sim.addPlayer('p2', 'Brona');
+    put(sim, 'p1', 'kaldwyn', 40, -416);
+    put(sim, 'p2', 'kaldwyn', 41, -416);
+    sim.context().dealDamage(sim.playerActor('p1')!.id, 0, 100000, 'physical');
+    expect(sim.nearestInteractableFor('p2')?.kind).not.toBe('revive');
+    sim.joinParty('p1', 'party:p1');
+    sim.joinParty('p2', 'party:p1');
+    expect(sim.nearestInteractableFor('p2')?.kind).toBe('revive');
+  });
+});
+
 describe('downed / revive / release (D-021)', () => {
   it('a player at 0 health goes downed, not dead; a party member revives them', () => {
     const sim = twoPlayerSim();
@@ -134,7 +196,11 @@ describe('downed / revive / release (D-021)', () => {
 describe('boss encounter (D-017/D-018)', () => {
   function bossFight(partySize: 1 | 2): { sim: Sim; bossId: number } {
     const sim = new Sim(42);
-    if (partySize >= 2) sim.addPlayer('p2', 'Brona');
+    if (partySize >= 2) {
+      sim.addPlayer('p2', 'Brona');
+      sim.joinParty('p1', 'party:p1');
+      sim.joinParty('p2', 'party:p1');
+    }
     const boss = [...sim.actors.values()].find((a) => a.templateId === 'barrow_wight')!;
     // In FRONT of the boss (it spawns facing +z), inside its vision cone.
     put(sim, 'p1', 'duskhollow_mine', 1.5, 64);
@@ -154,7 +220,9 @@ describe('boss encounter (D-017/D-018)', () => {
     const duoBoss = duo.sim.actors.get(duo.bossId)!;
     for (let t = 0; t < 30 && duoBoss.brain!.state !== 'combat'; t++) duo.sim.tick(new Map());
     expect(duoBoss.brain!.scaledFor).toBe(2);
-    expect(duoBoss.stats.maxHealth).toBeGreaterThan(soloHp * 1.5);
+    expect(duoBoss.stats.maxHealth).toBeCloseTo(
+      soloHp * (1 + SCALE_HP_PER_PLAYER),
+    );
 
     // Wipe: both players downed -> encounter resets, scaling unlocks.
     for (const charId of ['p1', 'p2']) {
@@ -165,6 +233,16 @@ describe('boss encounter (D-017/D-018)', () => {
     expect(duoBoss.brain!.state).not.toBe('combat');
     expect(duoBoss.brain!.scaledFor).toBe(0);
     expect(duoBoss.health).toBe(duoBoss.stats.maxHealth);
+  });
+
+  it('does not count an ungrouped bystander in first-engage scaling', () => {
+    const sim = new Sim(42);
+    sim.addPlayer('p2', 'Brona');
+    const boss = [...sim.actors.values()].find((actor) => actor.templateId === 'barrow_wight')!;
+    put(sim, 'p1', 'duskhollow_mine', 1.5, 64);
+    put(sim, 'p2', 'duskhollow_mine', -1.5, 64);
+    for (let t = 0; t < 30 && boss.brain!.state !== 'combat'; t++) sim.tick(new Map());
+    expect(boss.brain!.scaledFor).toBe(1);
   });
 
   it('threat: the boss switches to a rival only past the hysteresis factor', () => {

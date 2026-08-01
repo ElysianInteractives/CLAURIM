@@ -8,7 +8,7 @@
 // and headless hosts, or determinism is broken. Keep this green.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -45,6 +45,54 @@ function importsOf(src: string): string[] {
   return out;
 }
 
+function simImportGraph(files: readonly string[]): Map<string, string[]> {
+  const known = new Set(files.map((file) => resolve(file)));
+  const graph = new Map<string, string[]>();
+  for (const file of [...known].sort()) {
+    const edges = new Set<string>();
+    const src = stripComments(readFileSync(file, 'utf8'));
+    for (const spec of importsOf(src)) {
+      if (!spec.startsWith('.')) continue;
+      const base = resolve(dirname(file), spec);
+      const candidates = spec.endsWith('.ts') ? [base] : [`${base}.ts`, join(base, 'index.ts')];
+      const target = candidates.find((candidate) => known.has(candidate));
+      if (target) edges.add(target);
+    }
+    graph.set(file, [...edges].sort());
+  }
+  return graph;
+}
+
+function findCycle(graph: ReadonlyMap<string, readonly string[]>): string[] | null {
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const stack: string[] = [];
+
+  const visit = (node: string): string[] | null => {
+    if (visiting.has(node)) {
+      const start = stack.indexOf(node);
+      return [...stack.slice(start), node];
+    }
+    if (visited.has(node)) return null;
+    visiting.add(node);
+    stack.push(node);
+    for (const target of graph.get(node) ?? []) {
+      const cycle = visit(target);
+      if (cycle) return cycle;
+    }
+    stack.pop();
+    visiting.delete(node);
+    visited.add(node);
+    return null;
+  };
+
+  for (const node of [...graph.keys()].sort()) {
+    const cycle = visit(node);
+    if (cycle) return cycle;
+  }
+  return null;
+}
+
 describe('architecture: src/sim is the host-agnostic deterministic core', () => {
   const simFiles = walk(simRoot);
 
@@ -76,6 +124,22 @@ describe('architecture: src/sim is the host-agnostic deterministic core', () => 
       const hit = src.match(NONDETERMINISM_RE);
       expect(hit, `${file}: ${hit?.[0] ?? ''}`).toBeNull();
     }
+  });
+});
+
+describe('architecture: src/sim module graph remains acyclic', () => {
+  const graph = simImportGraph(walk(simRoot));
+
+  it('finds a non-trivial internal import graph (guard is not vacuous)', () => {
+    const edgeCount = [...graph.values()].reduce((sum, edges) => sum + edges.length, 0);
+    expect(graph.size).toBeGreaterThan(10);
+    expect(edgeCount).toBeGreaterThan(10);
+  });
+
+  it('contains no circular module dependency', () => {
+    const cycle = findCycle(graph);
+    const readable = cycle?.map((file) => relative(simRoot, file).replaceAll('\\', '/')).join(' -> ');
+    expect(cycle, readable ?? '').toBeNull();
   });
 });
 

@@ -26,6 +26,9 @@ Each has an enforcing check. Weakening one requires a DECISIONS.md entry.
 | I-20 | Encounter scaling locks at engage; wipe/leash resets deterministically | same |
 | I-21 | Character + world persistence reject corrupt payloads; migrations tested for every schema bump | `tests/save.test.ts` + `tests/server_net.test.ts` |
 | I-22 | Multiplayer determinism: same seed + same input streams = identical world | `tests/multiplayer_sim.test.ts` + server replay test |
+| I-23 | The `src/sim` module import graph remains acyclic | `tests/architecture.test.ts` |
+| I-24 | A representative four-player dungeon snapshot stays below 32,000 UTF-8 bytes | `tests/server_net.test.ts` |
+| I-25 | Actor movement, navigation, projectiles, rendered interior boundaries, and camera obstruction derive from the same authored environment | `tests/world_traversal.test.ts` + `npm run world:tour` |
+| I-26 | One authored encounter key governs group aggro, scaling, summons, transient mechanics, return, and wipe reset | `tests/ai_encounter_reliability.test.ts` |
 
-Missing guards to add (OPUS_BACKLOG has tickets): circular-dependency check
-across sim modules; bandwidth budget assertion on snapshot size.
+Open QA gaps and future tripwires are tracked in `DEFICIT_REGISTER.md`.

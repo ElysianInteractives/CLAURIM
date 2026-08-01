@@ -35,6 +35,20 @@ export interface ClientTransport {
 interface PendingInput {
   seq: number;
   input: WireInput;
+  sentAtMs: number;
+}
+
+export interface ClientNetworkDiagnostics {
+  ready: boolean;
+  snapshots: number;
+  lastAckSeq: number;
+  pendingInputs: number;
+  lastAckLatencyMs: number;
+  maxAckLatencyMs: number;
+  lastCorrectionMeters: number;
+  maxCorrectionMeters: number;
+  snapshotBytes: number;
+  snapshotBytesPerSecond: number;
 }
 
 /** Position error beyond which the client snaps instead of smoothing. */
@@ -43,6 +57,9 @@ const SNAP_DISTANCE = 3.0;
 const REMOTE_SMOOTH = 0.35;
 
 export class ClientWorld implements IWorld {
+  private transport: ClientTransport | null = null;
+  private sessionActive = false;
+  private awaitingBaseline = true;
   private colliders = new CollisionIndex(CONTENT);
   private snapshot: Extract<ServerMessage, { t: 'snapshot' }> | null = null;
   private welcome: Extract<ServerMessage, { t: 'welcome' }> | null = null;
@@ -55,36 +72,97 @@ export class ClientWorld implements IWorld {
   private display = new Map<number, { x: number; y: number; z: number; yaw: number }>();
   rejectedReason: string | null = null;
   closed = false;
+  private sessionStartedAtMs = 0;
+  private snapshotCount = 0;
+  private lastAckSeq = -1;
+  private lastAckLatencyMs = 0;
+  private maxAckLatencyMs = 0;
+  private lastCorrectionMeters = 0;
+  private maxCorrectionMeters = 0;
+  private snapshotBytes = 0;
 
   constructor(
-    private transport: ClientTransport,
-    readonly charId: string,
-    readonly name: string,
-  ) {
-    this.sendMsg({ t: 'hello', protocol: PROTOCOL_VERSION, charId, name });
+    public charId = '',
+    public name = '',
+    private readonly now: () => number = () => performance.now(),
+  ) {}
+
+  setIdentity(charId: string, name: string): void {
+    if (this.sessionActive) throw new Error('Cannot replace identity during an active world session');
+    this.charId = charId;
+    this.name = name;
   }
 
-  private sendMsg(msg: ClientMessage): void {
+  /** Start one protocol session. The host calls this only after WebSocket OPEN. */
+  beginSession(transport: ClientTransport): void {
+    if (!this.charId) throw new Error('Authenticated character identity is required');
+    this.transport = transport;
+    this.sessionActive = true;
+    this.awaitingBaseline = true;
+    this.welcome = null;
+    this.pending = [];
+    this.eventBuffer = [];
+    this.seq = 0;
+    this.display.clear();
+    this.rejectedReason = null;
+    this.closed = false;
+    this.sessionStartedAtMs = this.now();
+    this.snapshotCount = 0;
+    this.lastAckSeq = -1;
+    this.lastAckLatencyMs = 0;
+    this.maxAckLatencyMs = 0;
+    this.lastCorrectionMeters = 0;
+    this.maxCorrectionMeters = 0;
+    this.snapshotBytes = 0;
+    this.sendMsg({ t: 'hello', protocol: PROTOCOL_VERSION, charId: this.charId });
+  }
+
+  /** Freeze the latest presentation state and reject intent until rejoined. */
+  endSession(reason = 'connection closed'): void {
+    this.transport = null;
+    this.sessionActive = false;
+    this.awaitingBaseline = true;
+    this.welcome = null;
+    this.pending = [];
+    this.closed = true;
+    this.rejectedReason = reason;
+  }
+
+  private sendMsg(msg: ClientMessage): boolean {
+    if (!this.transport || !this.sessionActive) return false;
     this.transport.send(JSON.stringify(msg));
+    return true;
   }
 
   /** Transport delivers raw server data here. */
-  onMessage(json: string): void {
+  onMessage(json: string): ServerMessage | null {
     const msg = parseServerMessage(json);
-    if (!msg) return;
+    if (!msg) return null;
     switch (msg.t) {
       case 'welcome':
+        if (!this.sessionActive) return msg;
         this.welcome = msg;
         break;
       case 'reject':
         this.rejectedReason = msg.reason;
+        this.endSession(msg.reason);
         break;
       case 'bye':
-        this.closed = true;
-        this.rejectedReason = msg.reason;
+        this.endSession(msg.reason);
         break;
       case 'snapshot': {
-        const first = this.snapshot === null;
+        if (!this.sessionActive) return msg;
+        const first = this.awaitingBaseline;
+        const receivedAtMs = this.now();
+        this.snapshotCount++;
+        this.snapshotBytes += new TextEncoder().encode(json).byteLength;
+        this.lastAckSeq = msg.ackSeq;
+        const acknowledged = this.pending.filter((pending) => pending.seq <= msg.ackSeq);
+        const latestAcknowledged = acknowledged[acknowledged.length - 1];
+        if (latestAcknowledged) {
+          this.lastAckLatencyMs = Math.max(0, receivedAtMs - latestAcknowledged.sentAtMs);
+          this.maxAckLatencyMs = Math.max(this.maxAckLatencyMs, this.lastAckLatencyMs);
+        }
         this.snapshot = msg;
         this.eventBuffer.push(...msg.events);
         // Reconciliation (D-015): drop acknowledged inputs, then re-run the
@@ -96,12 +174,15 @@ export class ClientWorld implements IWorld {
           this.predicted = serverPos;
           this.predictedSpace = msg.self.spaceId;
           this.pending = [];
+          this.lastCorrectionMeters = 0;
         } else {
           let replay = { ...serverPos };
           for (const p of this.pending) {
             replay = this.stepMovement(replay, msg.self.spaceId, p.input, msg.self);
           }
           const err = Math.hypot(replay.x - this.predicted.x, replay.z - this.predicted.z);
+          this.lastCorrectionMeters = err;
+          this.maxCorrectionMeters = Math.max(this.maxCorrectionMeters, err);
           if (err > SNAP_DISTANCE) {
             this.predicted = replay;
           } else {
@@ -111,15 +192,17 @@ export class ClientWorld implements IWorld {
             this.predicted.y = replay.y;
           }
         }
+        this.awaitingBaseline = false;
         break;
       }
       case 'pong':
         break;
     }
+    return msg;
   }
 
   ready(): boolean {
-    return this.welcome !== null && this.snapshot !== null;
+    return this.sessionActive && !this.awaitingBaseline && this.welcome !== null && this.snapshot !== null;
   }
 
   /** Deterministic client-side movement: the same resolveMove + terrain the
@@ -151,9 +234,13 @@ export class ClientWorld implements IWorld {
   step(input: Parameters<IWorld['step']>[0]): void {
     if (!this.ready() || !this.snapshot) return;
     const wire: WireInput = { seq: ++this.seq, ...input };
-    this.pending.push({ seq: wire.seq, input: wire });
+    const pending = { seq: wire.seq, input: wire, sentAtMs: this.now() };
+    this.pending.push(pending);
     if (this.pending.length > 120) this.pending.splice(0, this.pending.length - 120);
-    this.sendMsg({ t: 'input', inputs: [wire] });
+    if (!this.sendMsg({ t: 'input', inputs: [wire] })) {
+      this.pending = this.pending.filter((entry) => entry !== pending);
+      return;
+    }
     // Predict own movement locally (position only; resources are server truth).
     if (!this.snapshot.self.downed) {
       this.predicted = this.stepMovement(this.predicted, this.predictedSpace, wire, this.snapshot.self);
@@ -161,42 +248,36 @@ export class ClientWorld implements IWorld {
   }
 
   attackMelee(): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'melee' });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'melee' });
   }
 
   attackRanged(): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'ranged' });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'ranged' });
   }
 
   castSpell(spellId: string): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'cast', arg: spellId });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'cast', arg: spellId });
   }
 
   interact(): 'none' | 'door' | 'container' | 'dialogue' | 'loot' {
-    this.sendMsg({ t: 'cmd', kind: 'interact' });
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'interact' });
     return 'none'; // authoritative result arrives via snapshot state
   }
 
   useItem(itemId: string): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'useItem', arg: itemId });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'useItem', arg: itemId });
   }
 
   equipItem(itemId: string): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'equip', arg: itemId });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'equip', arg: itemId });
   }
 
   takePerk(perkId: string): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'perk', arg: perkId });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'perk', arg: perkId });
   }
 
   respawn(): void {
-    this.sendMsg({ t: 'cmd', kind: 'respawn' });
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'respawn' });
   }
 
   saveGame(): string {
@@ -205,29 +286,59 @@ export class ClientWorld implements IWorld {
   }
 
   chat(text: string): void {
-    this.sendMsg({ t: 'cmd', kind: 'chat', arg: text });
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'chat', arg: text });
+  }
+
+  partyInvite(targetEntityId: number): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyInvite', targetId: targetEntityId });
+  }
+
+  partyAccept(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyAccept' });
+  }
+
+  partyDecline(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyDecline' });
+  }
+
+  partyLeave(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'partyLeave' });
   }
 
   dialogueChoose(index: number): void {
-    this.sendMsg({ t: 'cmd', kind: 'dialogueChoose', index });
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'dialogueChoose', index });
   }
 
   dialogueEnd(): void {
-    this.sendMsg({ t: 'cmd', kind: 'dialogueEnd' });
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'dialogueEnd' });
   }
 
   shopBuy(itemId: string): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'shopBuy', arg: itemId });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'shopBuy', arg: itemId });
   }
 
   shopSell(itemId: string): boolean {
-    this.sendMsg({ t: 'cmd', kind: 'shopSell', arg: itemId });
-    return true;
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'shopSell', arg: itemId });
   }
 
   shopClose(): void {
-    this.sendMsg({ t: 'cmd', kind: 'shopClose' });
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'shopClose' });
+  }
+
+  diagnostics(): ClientNetworkDiagnostics {
+    const elapsedSeconds = Math.max(0.001, (this.now() - this.sessionStartedAtMs) / 1_000);
+    return {
+      ready: this.ready(),
+      snapshots: this.snapshotCount,
+      lastAckSeq: this.lastAckSeq,
+      pendingInputs: this.pending.length,
+      lastAckLatencyMs: this.lastAckLatencyMs,
+      maxAckLatencyMs: this.maxAckLatencyMs,
+      lastCorrectionMeters: this.lastCorrectionMeters,
+      maxCorrectionMeters: this.maxCorrectionMeters,
+      snapshotBytes: this.snapshotBytes,
+      snapshotBytesPerSecond: this.snapshotBytes / elapsedSeconds,
+    };
   }
 
   // --- read ---------------------------------------------------------------
@@ -238,6 +349,10 @@ export class ClientWorld implements IWorld {
 
   currentSpace(): string {
     return this.snapshot?.self.spaceId ?? 'kaldwyn';
+  }
+
+  spaceName(spaceId: string): string {
+    return CONTENT.spaces[spaceId]?.name ?? spaceId;
   }
 
   spaceKind(spaceId: string): 'exterior' | 'interior' {
@@ -311,6 +426,7 @@ export class ClientWorld implements IWorld {
       blocking: false,
       attacking: false,
       attackKind: null,
+      attackPhase: null,
       telegraphTicks: 0,
       isPlayer: true,
       isRemotePlayer: false,
@@ -320,8 +436,16 @@ export class ClientWorld implements IWorld {
     };
   }
 
+  partyId(): string | null {
+    return this.snapshot?.self.partyId ?? null;
+  }
+
   party(): PartyMemberView[] {
     return this.snapshot?.self.party ?? [];
+  }
+
+  partyInvites() {
+    return this.snapshot?.self.partyInvites ?? [];
   }
 
   playerResources() {

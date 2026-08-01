@@ -9,7 +9,7 @@ import { ACTORS, LOOT_TABLES } from './actors';
 import { CONTAINERS, DOORS, PROPS, SPACES, SPAWNERS } from './world';
 import { DIALOGUES, QUESTS } from './quests';
 
-export const CONTENT_VERSION = '0.1.0';
+export const CONTENT_VERSION = '0.2.0';
 
 export const CONTENT: ContentRegistry = {
   version: CONTENT_VERSION,

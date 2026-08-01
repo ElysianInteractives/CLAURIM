@@ -144,6 +144,11 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
 export type AttackKind = 'melee' | 'ranged' | 'spell';
 export type AttackPhase = 'windup' | 'active' | 'recover';
 
+export interface QueuedAttack {
+  kind: AttackKind;
+  spellId?: ContentId;
+}
+
 export interface AttackState {
   kind: AttackKind;
   phase: AttackPhase;
@@ -162,6 +167,8 @@ export interface AttackState {
   /** Damage absorbed during an interruptible telegraph; crossing
    * INTERRUPT_DAMAGE cancels the cast. */
   interruptDamage?: number;
+  /** One authoritative follow-up accepted during active/recovery. */
+  queued?: QueuedAttack;
 }
 
 export type AiState = 'idle' | 'schedule' | 'combat' | 'search' | 'flee' | 'return' | 'dead';
@@ -177,6 +184,9 @@ export interface Brain {
   pathIdx: number;
   /** Ticks until the next path recompute is allowed. */
   repathCooldown: number;
+  /** Consecutive ticks without movement toward the current goal. Used only
+   * to recover from a provably unreachable static route. */
+  stuckTicks: number;
   alertness: number;
   /** Threat table: attacker entity id -> accumulated threat (D-017).
    * Transient (not serialized): combat state resets across saves. */
@@ -281,6 +291,7 @@ export interface Projectile {
 
 export type SimEvent =
   | { type: 'damage'; targetId: EntityId; sourceId: EntityId; amount: number; channel: DamageChannel; blocked: boolean }
+  | { type: 'actionRejected'; actorId: EntityId; action: AttackKind; reason: 'busy' | 'stamina' | 'weapon' | 'ammo' | 'magicka' | 'unknown' | 'incapacitated' }
   | { type: 'death'; targetId: EntityId; sourceId: EntityId; templateId: ContentId }
   | { type: 'heal'; targetId: EntityId; amount: number }
   | { type: 'itemAdded'; actorId: EntityId; itemId: ContentId; count: number }
@@ -303,6 +314,7 @@ export type SimEvent =
   | { type: 'bossPhase'; bossId: EntityId; phase: number }
   | { type: 'telegraph'; sourceId: EntityId; abilityId: ContentId; ticks: number; interruptible: boolean }
   | { type: 'interrupted'; sourceId: EntityId; abilityId: ContentId }
+  | { type: 'partyStatus'; charId: CharacterId; text: string }
   | { type: 'chat'; playerId: EntityId; text: string };
 
 // ---------------------------------------------------------------------------
@@ -329,7 +341,9 @@ export interface QuestState {
 // ---------------------------------------------------------------------------
 
 export const MELEE_RANGE = 2.4;
+export const MELEE_HEIGHT_TOLERANCE = 1.5;
 export const MELEE_ARC_COS = Math.cos((100 * Math.PI) / 180 / 2);
+export const BLOCK_ARC_COS = Math.cos((120 * Math.PI) / 180 / 2);
 export const MELEE_WINDUP_TICKS = 8;
 export const MELEE_ACTIVE_TICKS = 3;
 export const MELEE_RECOVER_TICKS = 10;
@@ -360,8 +374,8 @@ export const THREAT_SWITCH_FACTOR = 1.25;
 /** Encounter scaling per extra engaged player (health / damage). Damage
  * scales gently: big parties should feel pressure from ADDS and mechanics,
  * not from one-shot cleaves (measured via npm run mp:bench, 2026-07-31). */
-export const SCALE_HP_PER_PLAYER = 0.6;
-export const SCALE_DMG_PER_PLAYER = 0.12;
+export const SCALE_HP_PER_PLAYER = 0.4;
+export const SCALE_DMG_PER_PLAYER = 0.08;
 /** Radius for counting engaged players + party quest credit (meters). */
 export const ENGAGE_RADIUS = 60;
 /** Downed state duration before auto-release (ticks: 30 s). */

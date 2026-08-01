@@ -1,4 +1,4 @@
-// Save architecture: round-trips, the FULL migration chain (v0 -> v1 -> v2),
+// Save architecture: round-trips, the FULL migration chain (v0 -> v1 -> v2 -> v3),
 // corruption rejection, and persistence of world deltas. The invariants these
 // protect predate multiplayer and must stay: byte-identical round-trips,
 // reject-never-half-load, and a working migration path for every old schema.
@@ -29,11 +29,12 @@ function makeV1Save(sim: Sim): Record<string, unknown> {
   delete v1.questLogs;
   delete v1.knownSpells;
   delete v1.containersLootedBy;
+  delete v1.characterNames;
   delete v1.parties;
   return v1;
 }
 
-describe('save round-trip (v2)', () => {
+describe('save round-trip (v3)', () => {
   it('serialize -> load -> serialize is byte-identical', () => {
     const sim = new Sim(99);
     for (let t = 0; t < 120; t++) sim.tick(idle);
@@ -57,6 +58,8 @@ describe('save round-trip (v2)', () => {
   it('multiplayer state survives: two characters, parties, per-char journals', () => {
     const sim = new Sim(7);
     sim.addPlayer('p2', 'Second');
+    sim.joinParty('p1', 'party:p1');
+    sim.joinParty('p2', 'party:p1');
     sim.startQuestFor('p2', 'hollow_delve');
     const loaded = Sim.load(sim.saveToJson());
     expect(loaded.players.size).toBe(2);
@@ -78,7 +81,7 @@ describe('save round-trip (v2)', () => {
 });
 
 describe('migrations', () => {
-  it('a v1 (single-player) save migrates to v2 multiplayer shape and loads', () => {
+  it('a v1 single-player save migrates through multiplayer into the explicit-party shape', () => {
     const sim = new Sim(3);
     sim.playerStartQuest('hollow_delve');
     sim.containersLootedOf('p1').add('ruin_chest');
@@ -86,11 +89,19 @@ describe('migrations', () => {
     const migrated = parseSave(JSON.stringify(v1));
     expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
     expect(migrated.players).toEqual([{ charId: 'p1', entityId: sim.player().id }]);
-    expect(migrated.parties).toEqual([{ partyId: 'fellowship', members: ['p1'] }]);
+    expect(migrated.parties).toEqual([]);
     const loaded = Sim.load(JSON.stringify(v1));
     expect(loaded.player().name).toBe('Wanderer');
     expect(loaded.questLogOf('p1').get('hollow_delve')?.stageId).toBe('entrance');
     expect(loaded.containersLootedOf('p1').has('ruin_chest')).toBe(true);
+  });
+
+  it('removes the legacy global fellowship when a v2 world first upgrades', () => {
+    const sim = new Sim(3);
+    const raw = sim.serialize() as unknown as Record<string, unknown>;
+    raw.schemaVersion = 2;
+    raw.parties = [{ partyId: 'fellowship', members: ['p1', 'p2'] }];
+    expect(parseSave(JSON.stringify(raw)).parties).toEqual([]);
   });
 
   it('a v0 save (no bookkeeping at all) migrates through the whole chain', () => {

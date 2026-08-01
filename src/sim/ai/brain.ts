@@ -1,7 +1,8 @@
 // NPC/creature AI: perception (distance + vision cone + stealth), the state
 // machine (idle/schedule <-> combat <-> search <-> flee <-> return), schedule
-// packages, and combat positioning for melee vs ranged archetypes.
-// Ticks only for actors inside the streaming activity window.
+// packages, and combat positioning for melee vs ranged archetypes. Full
+// decisions use the streaming activity window; cooldown/threat maintenance
+// and valid offscreen schedule advancement remain resident.
 
 import {
   DT,
@@ -15,11 +16,19 @@ import {
 } from '../types';
 import type { SimContext } from '../sim_context';
 import type { CollisionIndex } from '../world/collision';
-import { resolveMove } from '../world/collision';
+import { nearestTraversablePoint, resolveMove } from '../world/collision';
 import { findPath, lineWalkable } from '../navigation/navgrid';
 import { startMelee, startRanged } from '../combat/combat';
-import { availableAbilities, startAbility, tickAbilityCooldowns, updatePhase } from './abilities';
-import type { ContentRegistry, ScheduleEntry } from '../content/schema';
+import {
+  availableAbilities,
+  canUseAbility,
+  startAbility,
+  tickAbilityCooldowns,
+  updatePhase,
+} from './abilities';
+import type { ContentRegistry } from '../content/schema';
+import { encounterMembers } from './encounters';
+import { currentScheduleEntry, findDoorRoute } from './schedules';
 
 const SEARCH_SECONDS = 8;
 const ATTACK_PAUSE_TICKS_MIN = 12;
@@ -27,6 +36,9 @@ const ATTACK_PAUSE_TICKS_MAX = 30;
 const RANGED_PREFERRED_DIST = 14;
 const ARRIVE_DIST = 0.8;
 const LEASH_DIST = 70;
+const RETURN_RECOVERY_TICKS = 90;
+
+type MoveResult = 'arrived' | 'moving' | 'blocked';
 
 export function makeBrain(home: Actor['pos']): NonNullable<Actor['brain']> {
   return {
@@ -38,6 +50,7 @@ export function makeBrain(home: Actor['pos']): NonNullable<Actor['brain']> {
     path: null,
     pathIdx: 0,
     repathCooldown: 0,
+    stuckTicks: 0,
     alertness: 0,
     threat: {},
     scaledFor: 0,
@@ -73,6 +86,13 @@ export function canPerceive(ctx: SimContext, observer: Actor, target: Actor): bo
   const dz = target.pos.z - observer.pos.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
   if (dist > range) return false;
+  const clearLineOfSight =
+    ctx.projectileObstruction(
+      observer.pos.spaceId,
+      { x: observer.pos.x, y: observer.pos.y + 1.2, z: observer.pos.z },
+      { x: target.pos.x, y: target.pos.y + 1.2, z: target.pos.z },
+    ) === null;
+  if (!clearLineOfSight) return false;
   // Touch range bypasses the vision cone, but a sneaking target can get much
   // closer before being noticed (backstab window).
   if (dist < (target.sneaking ? 1.0 : 2.5)) return true;
@@ -94,14 +114,15 @@ function moveToward(
   colliders: CollisionIndex,
   a: Actor,
   goal: { x: number; z: number },
-): boolean {
+): MoveResult {
   const brain = a.brain!;
   const dx = goal.x - a.pos.x;
   const dz = goal.z - a.pos.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
   if (dist < ARRIVE_DIST) {
     brain.path = null;
-    return true;
+    brain.stuckTicks = 0;
+    return 'arrived';
   }
 
   // Use straight-line movement when clear; otherwise follow / compute a path.
@@ -132,6 +153,8 @@ function moveToward(
   const sdx = stepGoal.x - a.pos.x;
   const sdz = stepGoal.z - a.pos.z;
   const sdist = Math.hypot(sdx, sdz);
+  const beforeX = a.pos.x;
+  const beforeZ = a.pos.z;
   if (sdist > 0.01) {
     a.yaw = Math.atan2(sdx, sdz);
     const step = a.stats.moveSpeed * DT;
@@ -148,24 +171,20 @@ function moveToward(
     a.pos.y = moved.y;
     a.pos.z = moved.z;
   }
-  return false;
-}
-
-function currentScheduleEntry(ctx: SimContext, a: Actor): ScheduleEntry | null {
-  const tpl = ctx.content.actors[a.templateId];
-  if (!tpl?.schedule || tpl.schedule.length === 0) return null;
-  const hour = ctx.gameHours() % 24;
-  for (const e of tpl.schedule) {
-    if (hour >= e.fromHour && hour < e.toHour) return e;
+  if (Math.hypot(a.pos.x - beforeX, a.pos.z - beforeZ) < 0.001) {
+    brain.stuckTicks++;
+    return 'blocked';
   }
-  return tpl.schedule[0];
+  brain.stuckTicks = 0;
+  return 'moving';
 }
 
 // ---------------------------------------------------------------------------
 // Threat + encounter helpers (D-017 / D-018)
 // ---------------------------------------------------------------------------
 
-/** Highest-threat perceivable target with switch hysteresis. */
+/** Highest-threat valid target with hysteresis, except that an unseen current
+ * target yields immediately to the highest-threat target actually perceived. */
 function selectThreatTarget(ctx: SimContext, a: Actor): EntityId {
   const brain = a.brain!;
   let bestId = 0;
@@ -183,6 +202,19 @@ function selectThreatTarget(ctx: SimContext, a: Actor): EntityId {
   const current = ctx.actors.get(brain.targetId);
   const currentValid = current && !current.dead && !current.downed && current.pos.spaceId === a.pos.spaceId;
   if (!currentValid) return bestId;
+  if (!canPerceive(ctx, a, current)) {
+    let visibleId = 0;
+    let visibleThreat = -1;
+    for (const [idStr, threat] of Object.entries(brain.threat)) {
+      const candidate = ctx.actors.get(Number(idStr));
+      if (!candidate || !canPerceive(ctx, a, candidate)) continue;
+      if (threat > visibleThreat) {
+        visibleThreat = threat;
+        visibleId = candidate.id;
+      }
+    }
+    if (visibleId !== 0) return visibleId;
+  }
   const currentThreat = brain.threat[brain.targetId] ?? 0;
   // Switch only when a rival meaningfully out-threatens the current target.
   if (bestId !== brain.targetId && bestThreat > currentThreat * THREAT_SWITCH_FACTOR) return bestId;
@@ -198,48 +230,92 @@ function decayThreat(a: Actor): void {
   }
 }
 
-/** Lock encounter scaling to the engaged party size at first aggro; also
- * pull same-spawner allies into the fight (group aggro). */
+function scaleForEngagement(ctx: SimContext, actor: Actor, partySize: number): void {
+  const brain = actor.brain!;
+  if (brain.scaledFor !== 0) return;
+  brain.scaledFor = partySize;
+  const healthFrac = actor.stats.maxHealth > 0 ? actor.health / actor.stats.maxHealth : 1;
+  ctx.recalcStats(actor.id);
+  actor.health = actor.stats.maxHealth * healthFrac;
+}
+
+/** Lock encounter scaling to the engaged party size and pull every authored
+ * member, including actors placed by separate spawners, into the same fight. */
 function engage(ctx: SimContext, a: Actor, targetId: EntityId): void {
   const brain = a.brain!;
-  if (brain.state !== 'combat') {
-    brain.state = 'combat';
-    brain.targetId = targetId;
-    brain.threat[targetId] = Math.max(brain.threat[targetId] ?? 0, 5);
-    if (brain.scaledFor === 0) {
-      // Count players in this space within ENGAGE_RADIUS: the locked scale.
-      let n = 0;
-      for (const charId of ctx.playerCharIds()) {
-        const p = ctx.actorByCharId(charId);
-        if (!p || p.dead) continue;
-        if (p.pos.spaceId !== a.pos.spaceId) continue;
-        if (Math.hypot(p.pos.x - a.pos.x, p.pos.z - a.pos.z) <= ENGAGE_RADIUS) n++;
-      }
-      brain.scaledFor = Math.max(1, n);
-      const frac = a.stats.maxHealth > 0 ? a.health / a.stats.maxHealth : 1;
-      ctx.recalcStats(a.id);
-      a.health = a.stats.maxHealth * frac;
+  brain.state = 'combat';
+  brain.targetId = targetId;
+  brain.threat[targetId] = Math.max(brain.threat[targetId] ?? 0, 5);
+
+  const targetCharId = ctx.charIdOf(targetId);
+  const eligibleCharacters = targetCharId ? ctx.partyMembersOf(targetCharId) : ctx.playerCharIds();
+  let nearbyPlayers = 0;
+  for (const charId of eligibleCharacters) {
+    const player = ctx.actorByCharId(charId);
+    if (!player || player.dead || player.pos.spaceId !== a.pos.spaceId) continue;
+    if (Math.hypot(player.pos.x - a.pos.x, player.pos.z - a.pos.z) <= ENGAGE_RADIUS) {
+      nearbyPlayers++;
     }
-    // Group aggro: allies from the same spawner within 20 m join.
-    if (a.spawnerId) {
-      for (const ally of ctx.actors.values()) {
-        if (ally.id === a.id || ally.dead || !ally.brain) continue;
-        if (ally.spawnerId !== a.spawnerId) continue;
-        if (ally.pos.spaceId !== a.pos.spaceId) continue;
-        if (Math.hypot(ally.pos.x - a.pos.x, ally.pos.z - a.pos.z) > 20) continue;
-        if (ally.brain.state !== 'combat') {
-          ally.brain.state = 'combat';
-          ally.brain.targetId = targetId;
-          ally.brain.threat[targetId] = (ally.brain.threat[targetId] ?? 0) + 3;
-          if (ally.brain.scaledFor === 0) {
-            ally.brain.scaledFor = brain.scaledFor;
-            const f = ally.stats.maxHealth > 0 ? ally.health / ally.stats.maxHealth : 1;
-            ctx.recalcStats(ally.id);
-            ally.health = ally.stats.maxHealth * f;
-          }
-        }
-      }
+  }
+  const partySize = brain.scaledFor || Math.max(1, nearbyPlayers);
+  scaleForEngagement(ctx, a, partySize);
+
+  for (const ally of encounterMembers(ctx.content, ctx.actors, a)) {
+    if (ally.id === a.id || ally.dead || !ally.brain) continue;
+    if (ally.pos.spaceId !== a.pos.spaceId) continue;
+    ally.brain.threat[targetId] = Math.max(ally.brain.threat[targetId] ?? 0, 3);
+    if (ally.brain.state !== 'combat') {
+      ally.brain.state = 'combat';
+      ally.brain.targetId = targetId;
     }
+    scaleForEngagement(ctx, ally, partySize);
+  }
+}
+
+function continueEncounterSearch(ctx: SimContext, actor: Actor): boolean {
+  const brain = actor.brain!;
+  for (const member of encounterMembers(ctx.content, ctx.actors, actor)) {
+    if (
+      member.id === actor.id ||
+      member.dead ||
+      member.brain?.state !== 'combat'
+    ) {
+      continue;
+    }
+    const target = ctx.actors.get(member.brain.targetId);
+    if (
+      !target ||
+      target.dead ||
+      target.downed ||
+      target.pos.spaceId !== actor.pos.spaceId ||
+      !ctx.isHostile(actor, target)
+    ) {
+      continue;
+    }
+    brain.state = 'search';
+    brain.targetId = target.id;
+    brain.threat[target.id] = Math.max(brain.threat[target.id] ?? 0, 1);
+    brain.lastKnownPos = member.brain.lastKnownPos
+      ? { ...member.brain.lastKnownPos }
+      : { ...target.pos };
+    brain.timer = Math.round(SEARCH_SECONDS / DT);
+    return true;
+  }
+  return false;
+}
+
+function beginReturn(ctx: SimContext, anchor: Actor): void {
+  for (const member of encounterMembers(ctx.content, ctx.actors, anchor)) {
+    if (member.dead || !member.brain) continue;
+    member.brain.state = 'return';
+    member.brain.targetId = 0;
+    member.brain.lastKnownPos = null;
+    member.brain.threat = {};
+    member.brain.path = null;
+    member.brain.pathIdx = 0;
+    member.brain.repathCooldown = 0;
+    member.brain.stuckTicks = 0;
+    member.attack = null;
   }
 }
 
@@ -250,16 +326,42 @@ function engage(ctx: SimContext, a: Actor, targetId: EntityId): void {
 export function tickBrain(ctx: SimContext, actorId: EntityId): void {
   const a = ctx.actors.get(actorId);
   if (!a || a.dead || !a.brain) return;
-  if (!ctx.isActorActive(a)) return;
   const brain = a.brain;
   const content = ctx.content;
   const colliders = ctx.colliders;
+  tickAbilityCooldowns(a);
+  decayThreat(a);
+
+  const scheduled = currentScheduleEntry(content, a, ctx.gameHours());
+  if (!ctx.isActorActive(a)) {
+    if (
+      scheduled &&
+      (brain.state === 'idle' || brain.state === 'schedule') &&
+      scheduled.spaceId !== a.pos.spaceId &&
+      findDoorRoute(content, a.pos.spaceId, scheduled.spaceId)
+    ) {
+      const destination = nearestTraversablePoint(
+        content,
+        colliders,
+        scheduled.spaceId,
+        scheduled.x,
+        scheduled.z,
+        ctx.seed,
+      );
+      if (destination) {
+        a.pos = { spaceId: scheduled.spaceId, ...destination };
+        brain.homePos = { ...a.pos };
+        brain.state = 'schedule';
+        brain.path = null;
+        brain.stuckTicks = 0;
+      }
+    }
+    return;
+  }
   if (brain.repathCooldown > 0) brain.repathCooldown--;
   if (a.attack) return; // committed to a swing
 
   const tpl = content.actors[a.templateId];
-  tickAbilityCooldowns(a);
-  decayThreat(a);
 
   // Perception scan: hostiles only (aggressive actors scan for every hostile
   // actor including all player characters; villagers only fight back via
@@ -281,8 +383,30 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
   switch (brain.state) {
     case 'idle':
     case 'schedule': {
-      const entry = currentScheduleEntry(ctx, a);
-      if (entry && entry.spaceId === a.pos.spaceId) {
+      const entry = scheduled;
+      if (entry && entry.spaceId !== a.pos.spaceId) {
+        const route = findDoorRoute(content, a.pos.spaceId, entry.spaceId);
+        const door = route?.[0];
+        if (door) {
+          brain.state = 'schedule';
+          if (moveToward(ctx, content, colliders, a, door) === 'arrived') {
+            const arrival = nearestTraversablePoint(
+              content,
+              colliders,
+              door.targetSpaceId,
+              door.targetX,
+              door.targetZ,
+              ctx.seed,
+            );
+            if (arrival) {
+              a.pos = { spaceId: door.targetSpaceId, ...arrival };
+              a.yaw = door.targetYaw;
+              brain.path = null;
+              brain.stuckTicks = 0;
+            }
+          }
+        }
+      } else if (entry) {
         brain.state = 'schedule';
         let goal: { x: number; z: number } = entry;
         if (entry.activity === 'wander') {
@@ -298,10 +422,10 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
           brain.timer--;
           if (brain.lastKnownPos) goal = brain.lastKnownPos;
         }
-        moveToward(ctx, content, colliders, a, goal);
+        if (moveToward(ctx, content, colliders, a, goal) === 'arrived') {
+          brain.homePos = { ...a.pos };
+        }
       }
-      // NOTE: cross-space schedule travel is teleport-on-arrival-window for the
-      // slice (KL-4): NPCs whose schedule entry is in another space stay put.
       break;
     }
 
@@ -312,15 +436,13 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
       const target = ctx.actors.get(brain.targetId);
       if (!target || target.dead || target.downed) {
         // No valid threat left: everyone is dead, downed, or gone.
-        brain.state = 'return';
-        brain.targetId = 0;
-        brain.threat = {};
+        beginReturn(ctx, a);
         break;
       }
+      engage(ctx, a, target.id);
       // Leash.
       if (Math.hypot(a.pos.x - brain.homePos.x, a.pos.z - brain.homePos.z) > LEASH_DIST) {
-        brain.state = 'return';
-        brain.targetId = 0;
+        beginReturn(ctx, a);
         break;
       }
       // Flee check.
@@ -340,7 +462,10 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
       const abilities = availableAbilities(ctx, a);
       if (abilities.length > 0 && brain.timer <= 0) {
         for (const ability of abilities) {
-          if ((brain.abilityCooldowns[ability.id] ?? 0) > 0) continue;
+          if (!canUseAbility(ctx, a, ability)) continue;
+          if (ability.kind === 'frontal_cone' || ability.kind === 'ground_aoe') {
+            a.yaw = Math.atan2(target.pos.x - a.pos.x, target.pos.z - a.pos.z);
+          }
           if (startAbility(ctx, a, ability)) {
             brain.timer = ctx.rng.int(ATTACK_PAUSE_TICKS_MIN, ATTACK_PAUSE_TICKS_MAX);
             break;
@@ -394,13 +519,13 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
 
     case 'search': {
       if (brain.timer <= 0 || !brain.lastKnownPos) {
-        brain.state = 'return';
+        if (!continueEncounterSearch(ctx, a)) beginReturn(ctx, a);
         break;
       }
       brain.timer--;
-      const arrived = moveToward(ctx, content, colliders, a, brain.lastKnownPos);
+      const move = moveToward(ctx, content, colliders, a, brain.lastKnownPos);
       // Re-acquire if the target becomes visible again (scan above handles it).
-      if (arrived) {
+      if (move === 'arrived') {
         // Look around: rotate deterministically.
         a.yaw += 1.5 * DT;
       }
@@ -410,7 +535,7 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
     case 'flee': {
       const target = ctx.actors.get(brain.targetId);
       if (!target || target.dead || Math.hypot(target.pos.x - a.pos.x, target.pos.z - a.pos.z) > 40) {
-        brain.state = 'return';
+        if (!continueEncounterSearch(ctx, a)) beginReturn(ctx, a);
         break;
       }
       const away = {
@@ -422,20 +547,22 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
     }
 
     case 'return': {
-      const arrived = moveToward(ctx, content, colliders, a, brain.homePos);
-      if (arrived) {
-        // Full encounter reset (D-018/D-021): heal, clear threat, unlock
-        // scaling, drop back to base phase. Deterministic anti-exploit: the
-        // NEXT engagement re-locks scaling for the party actually present.
-        brain.state = 'idle';
-        brain.targetId = 0;
-        brain.lastKnownPos = null;
-        brain.threat = {};
-        brain.phase = 0;
-        brain.abilityCooldowns = {};
-        brain.scaledFor = 0;
-        ctx.recalcStats(a.id);
-        a.health = a.stats.maxHealth;
+      const move = moveToward(ctx, content, colliders, a, brain.homePos);
+      if (move === 'arrived') {
+        ctx.resetEncounter(a.id);
+      } else if (move === 'blocked' && brain.stuckTicks >= RETURN_RECOVERY_TICKS) {
+        const home = nearestTraversablePoint(
+          content,
+          colliders,
+          brain.homePos.spaceId,
+          brain.homePos.x,
+          brain.homePos.z,
+          ctx.seed,
+        );
+        if (home) {
+          a.pos = { spaceId: brain.homePos.spaceId, ...home };
+          ctx.resetEncounter(a.id);
+        }
       }
       break;
     }

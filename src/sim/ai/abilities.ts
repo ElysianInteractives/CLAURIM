@@ -3,9 +3,10 @@
 // gated by phases. This is the reusable mechanic system every elite/boss
 // uses; the Pale Warden is the exemplar (content/actors.ts).
 
-import { THREAT_PER_HEAL, type Actor, type ContentId, type EntityId } from '../types';
+import type { Actor, ContentId } from '../types';
 import type { SimContext } from '../sim_context';
 import type { AbilityDef } from '../content/schema';
+import { encounterMembers } from './encounters';
 
 function abilityOf(ctx: SimContext, actor: Actor, abilityId: ContentId): AbilityDef | null {
   const tpl = ctx.content.actors[actor.templateId];
@@ -28,11 +29,78 @@ export function availableAbilities(ctx: SimContext, actor: Actor): AbilityDef[] 
   return tpl.abilities.filter((a) => !lockedLater.has(a.id));
 }
 
+function hostileTarget(ctx: SimContext, actor: Actor): Actor | null {
+  const target = actor.brain ? ctx.actors.get(actor.brain.targetId) : null;
+  if (!target || target.dead || target.downed) return null;
+  if (target.pos.spaceId !== actor.pos.spaceId || !ctx.isHostile(actor, target)) return null;
+  return target;
+}
+
+function hasLineOfSight(ctx: SimContext, actor: Actor, target: Actor): boolean {
+  return (
+    ctx.projectileObstruction(
+      actor.pos.spaceId,
+      { x: actor.pos.x, y: actor.pos.y + 1.2, z: actor.pos.z },
+      { x: target.pos.x, y: target.pos.y + 1.2, z: target.pos.z },
+    ) === null
+  );
+}
+
+function mostInjuredAlly(
+  ctx: SimContext,
+  actor: Actor,
+  range: number,
+): Actor | null {
+  let best: Actor | null = null;
+  let bestFrac = 1;
+  for (const other of encounterMembers(ctx.content, ctx.actors, actor)) {
+    if (other.id === actor.id || other.dead || other.downed) continue;
+    if (other.pos.spaceId !== actor.pos.spaceId || ctx.isHostile(actor, other)) continue;
+    if (Math.hypot(other.pos.x - actor.pos.x, other.pos.z - actor.pos.z) > range) continue;
+    const frac = other.stats.maxHealth > 0 ? other.health / other.stats.maxHealth : 1;
+    if (frac < bestFrac) {
+      bestFrac = frac;
+      best = other;
+    }
+  }
+  return best;
+}
+
+function livingSummonCount(ctx: SimContext, actor: Actor): number {
+  return [...ctx.actors.values()].filter(
+    (candidate) => candidate.summonedBy === actor.id && !candidate.dead,
+  ).length;
+}
+
+/** Whether a ready ability has a legal, useful target right now. */
+export function canUseAbility(
+  ctx: SimContext,
+  actor: Actor,
+  ability: AbilityDef,
+): boolean {
+  if (actor.attack || actor.dead || !actor.brain) return false;
+  if ((actor.brain.abilityCooldowns[ability.id] ?? 0) > 0) return false;
+  if (ability.kind === 'heal_ally') {
+    return mostInjuredAlly(ctx, actor, ability.range ?? 18) !== null;
+  }
+  if (ability.kind === 'summon') {
+    return livingSummonCount(ctx, actor) < (ability.maxActiveSummons ?? Number.POSITIVE_INFINITY);
+  }
+  const target = hostileTarget(ctx, actor);
+  if (!target) return false;
+  const distance = Math.hypot(target.pos.x - actor.pos.x, target.pos.z - actor.pos.z);
+  if (ability.kind === 'frontal_cone') {
+    return distance <= (ability.range ?? 8) && hasLineOfSight(ctx, actor, target);
+  }
+  const targetRange =
+    ability.range ?? ctx.content.actors[actor.templateId]?.perceptionRange ?? 30;
+  return distance <= targetRange && hasLineOfSight(ctx, actor, target);
+}
+
 /** Begin a telegraphed ability cast (attack state machine takes over). */
 export function startAbility(ctx: SimContext, actor: Actor, ability: AbilityDef): boolean {
-  if (actor.attack || actor.dead) return false;
+  if (actor.attack || actor.dead || !actor.brain) return false;
   const brain = actor.brain;
-  if (!brain) return false;
   if ((brain.abilityCooldowns[ability.id] ?? 0) > 0) return false;
   brain.abilityCooldowns[ability.id] = ability.cooldownTicks;
   actor.attack = {
@@ -53,8 +121,6 @@ export function startAbility(ctx: SimContext, actor: Actor, ability: AbilityDef)
   });
   return true;
 }
-
-let nextAoeId = 1;
 
 /** Resolve an ability at the end of its telegraph. */
 export function executeAbility(ctx: SimContext, actor: Actor, abilityId: ContentId): void {
@@ -81,14 +147,13 @@ export function executeAbility(ctx: SimContext, actor: Actor, abilityId: Content
     }
     case 'ground_aoe': {
       // Drop a pool under the current highest-threat target (area denial).
-      const brain = actor.brain;
-      const target = brain ? ctx.actors.get(brain.targetId) : null;
-      const at = target && target.pos.spaceId === actor.pos.spaceId ? target.pos : actor.pos;
+      const target = hostileTarget(ctx, actor);
+      if (!target) break;
       ctx.groundAoes.push({
-        id: nextAoeId++,
+        id: ctx.allocateGroundAoeId(),
         spaceId: actor.pos.spaceId,
-        x: at.x,
-        z: at.z,
+        x: target.pos.x,
+        z: target.pos.z,
         radius: ability.aoeRadius ?? 3,
         dps: (ability.aoeDps ?? 6) * damageMult(ctx, actor),
         channel: ability.channel ?? 'frost',
@@ -98,7 +163,12 @@ export function executeAbility(ctx: SimContext, actor: Actor, abilityId: Content
       break;
     }
     case 'summon': {
-      const n = ability.summonCount ?? 1;
+      const remaining = Math.max(
+        0,
+        (ability.maxActiveSummons ?? Number.POSITIVE_INFINITY) -
+          livingSummonCount(ctx, actor),
+      );
+      const n = Math.min(ability.summonCount ?? 1, remaining);
       for (let i = 0; i < n; i++) {
         const ang = ctx.rng.range(0, Math.PI * 2);
         const r = ctx.rng.range(1.5, 3.5);
@@ -112,31 +182,9 @@ export function executeAbility(ctx: SimContext, actor: Actor, abilityId: Content
       break;
     }
     case 'heal_ally': {
-      // Heal the most-injured living hostile-to-players ally in range.
-      let best: Actor | null = null;
-      let bestFrac = 1;
-      for (const other of ctx.actors.values()) {
-        if (other.id === actor.id || other.dead) continue;
-        if (other.pos.spaceId !== actor.pos.spaceId) continue;
-        if (other.kind === 'player' || ctx.isHostile(actor, other)) continue;
-        const d = Math.hypot(other.pos.x - actor.pos.x, other.pos.z - actor.pos.z);
-        if (d > (ability.range ?? 18)) continue;
-        const frac = other.health / other.stats.maxHealth;
-        if (frac < bestFrac) {
-          bestFrac = frac;
-          best = other;
-        }
-      }
+      const best = mostInjuredAlly(ctx, actor, ability.range ?? 18);
       if (best) {
         ctx.applyHeal(best.id, ability.healAmount ?? 10);
-        // Healing generates threat on every enemy engaged with the healer's side.
-        for (const enemy of ctx.actors.values()) {
-          void enemy;
-        }
-        // Support enemies draw player attention via the priority-target rule
-        // documented in ENCOUNTER_DESIGN.md; healing threat applies to PLAYER
-        // healers via applyHeal wiring (sim.ts).
-        void THREAT_PER_HEAL;
       }
       break;
     }

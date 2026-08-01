@@ -22,6 +22,7 @@ function humanoid(cloth: number, skin: number, scale = 1, hood = false): THREE.G
   legR.position.x = 0.16;
   const armL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.2), mat(cloth));
   armL.position.set(-0.42, 1.05, 0);
+  armL.name = 'armL';
   const armR = armL.clone();
   armR.position.x = 0.42;
   armR.name = 'armR';
@@ -112,9 +113,20 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
   const bob = moving ? Math.abs(Math.sin(timeSec * 8)) * 0.06 : 0;
   const crouch = view.sneaking ? -0.25 : 0;
   group.position.y = view.y + bob + crouch;
-  group.scale.y = view.sneaking ? 0.85 : 1;
-  const arm = group.getObjectByName('armR');
-  if (arm) {
-    arm.rotation.x = view.attacking ? -1.8 : view.blocking ? -0.9 : moving ? Math.sin(timeSec * 8) * 0.4 : 0;
+  const baseScaleY = (group.userData.baseScaleY ??= group.scale.y) as number;
+  group.scale.y = baseScaleY * (view.sneaking ? 0.85 : 1);
+  const armR = group.getObjectByName('armR');
+  const armL = group.getObjectByName('armL');
+  if (armR) {
+    const walkSwing = moving ? Math.sin(timeSec * 8) * 0.4 : 0;
+    if (view.attackPhase === 'windup') armR.rotation.x = view.attackKind === 'spell' ? -1.1 : 0.75;
+    else if (view.attackPhase === 'active') armR.rotation.x = -2.15;
+    else if (view.attackPhase === 'recover') armR.rotation.x = -0.45;
+    else armR.rotation.x = view.blocking ? -0.75 : walkSwing;
+    armR.rotation.z = view.blocking ? 0.28 : 0;
+  }
+  if (armL) {
+    armL.rotation.x = view.blocking ? -1.35 : moving ? -Math.sin(timeSec * 8) * 0.4 : 0;
+    armL.rotation.z = view.blocking ? -0.5 : 0;
   }
 }

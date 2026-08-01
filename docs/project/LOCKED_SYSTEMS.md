@@ -19,7 +19,8 @@ amendment; "a later model prefers a different shape" is not a defect.
 
 Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Multiplayer state model: one Sim, many characters, per-char keyed state (D-013).
-- Server-authoritative WebSocket protocol v1 + interest-scoped 10 Hz snapshots (D-014).
+- Server-authoritative WebSocket protocol v2 + authenticated pre-hello boundary
+  + interest-scoped 10 Hz snapshots (D-014/D-028).
 - Client prediction/reconciliation via sequenced intent (D-015).
 - StorageProvider persistence: server-owned characters + world (D-016).
 - Threat tables with decay + switch hysteresis (D-017).
@@ -29,8 +30,24 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Downed/revive/release + wipe reset (D-021).
 - Naming/dialogue originality regime + automated IP gate (D-022).
 - Third-person primary camera with collision (D-023).
+- Authoritative combat feedback views/events and minimal cue layer (D-024).
+- Shared oriented environmental collision, route validation, and water policy
+  (D-025).
+- Authored encounter ownership, wall-aware perception, useful ability
+  selection, atomic reset, and door-graph NPC schedules (D-026).
+- Account/password authentication, rotating opaque sessions, character
+  ownership, and secure remote browser transport boundary (D-028).
+- Player-controlled five-character parties with durable membership, scoped
+  cooperative benefits, and sanitized/throttled nearby chat (D-029).
+- Proven-schema content depth: catalog-safe gear/perk fills, veteran variants,
+  repeatable interior authoring, and host-neutral space naming (D-030).
+- Host-only one-tick transform interpolation and the browser audio mixer/
+  persistent control boundary (D-031).
+- Node support floor, Vite 8/Vitest 4 development toolchain, committed-lock
+  reproducibility, and zero-advisory acceptance boundary (D-032).
 
-Not locked (open design space): weather, audio, crafting, followers, crime,
+Not locked (open design space): weather, final audio assets/spatial sources/
+production mixing, crafting, followers, crime,
 dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
-accounts/authentication service, explicit party UI/matchmaking, dungeon
+account recovery/MFA/operations, matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading.

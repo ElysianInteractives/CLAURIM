@@ -8,7 +8,7 @@ import type { WorldReadFacet } from './world_read';
 import type { PlayerIntentFacet } from './player_intent';
 import type { MenuFacet } from './menus';
 
-export type { ActorView, GroundAoeView, PartyMemberView, ProjectileView, WorldReadFacet } from './world_read';
+export type { ActorView, GroundAoeView, PartyInviteView, PartyMemberView, ProjectileView, WorldReadFacet } from './world_read';
 export type { PlayerIntentFacet } from './player_intent';
 export type { MenuFacet, DialogueView, ShopView, JournalView } from './menus';
 

@@ -21,6 +21,21 @@ export const SPACES: Record<string, SpaceDef> = {
       ],
     },
   },
+  siltroot_burrow: {
+    id: 'siltroot_burrow',
+    name: 'Siltroot Burrow',
+    kind: 'interior',
+    interior: {
+      ceilingY: 3.8,
+      rooms: [
+        { x0: -5, z0: 0, x1: 5, z1: 10 }, // root-cut entry
+        { x0: -1.75, z0: 10, x1: 1.75, z1: 22 }, // descending throat
+        { x0: -9, z0: 22, x1: 9, z1: 36 }, // feeding chamber
+        { x0: -1.75, z0: 36, x1: 1.75, z1: 44 }, // narrow run
+        { x0: -8, z0: 44, x1: 8, z1: 58 }, // brood hollow
+      ],
+    },
+  },
   fenharrow_inn: {
     id: 'fenharrow_inn',
     name: 'The Fenharrow Hearth',
@@ -58,6 +73,9 @@ export const PROPS: PropDef[] = [
   { id: 'mine_arch', spaceId: 'kaldwyn', kind: 'mine_entrance', x: 118, z: 340, sx: 6, sy: 5, sz: 3, solid: false },
   { id: 'mine_cart', spaceId: 'kaldwyn', kind: 'cart', x: 112, z: 332, yaw: 0.5, sx: 3, sy: 1.5, sz: 2, solid: true },
 
+  // Riverbank entrance to the repeatable cave exemplar.
+  { id: 'siltroot_arch', spaceId: 'kaldwyn', kind: 'mine_entrance', x: -33, z: 75, yaw: Math.PI / 2, sx: 5, sy: 3.5, sz: 2, solid: false },
+
   // Mine interior props
   { id: 'mine_pillar_a', spaceId: 'duskhollow_mine', kind: 'pillar', x: -4, z: 32, sx: 1.5, sy: 4, sz: 1.5, solid: true },
   { id: 'mine_pillar_b', spaceId: 'duskhollow_mine', kind: 'pillar', x: 4, z: 34, sx: 1.5, sy: 4, sz: 1.5, solid: true },
@@ -94,6 +112,28 @@ export const DOORS: DoorDef[] = [
     targetYaw: Math.PI,
   },
   {
+    id: 'door_siltroot_in',
+    spaceId: 'kaldwyn',
+    x: -30,
+    z: 75,
+    name: 'Siltroot Burrow',
+    targetSpaceId: 'siltroot_burrow',
+    targetX: 0,
+    targetZ: 2,
+    targetYaw: 0,
+  },
+  {
+    id: 'door_siltroot_out',
+    spaceId: 'siltroot_burrow',
+    x: 0,
+    z: 0.8,
+    name: 'Kaldwyn Reach',
+    targetSpaceId: 'kaldwyn',
+    targetX: -28,
+    targetZ: 75,
+    targetYaw: Math.PI,
+  },
+  {
     id: 'door_inn_in',
     spaceId: 'kaldwyn',
     x: 33,
@@ -108,7 +148,7 @@ export const DOORS: DoorDef[] = [
     id: 'door_inn_out',
     spaceId: 'fenharrow_inn',
     x: 0,
-    z: 0.4,
+    z: 0.8,
     name: 'Fenharrow',
     targetSpaceId: 'kaldwyn',
     targetX: 33,
@@ -119,30 +159,36 @@ export const DOORS: DoorDef[] = [
 
 export const SPAWNERS: SpawnerDef[] = [
   // Wilderness encounter: wolves near the road bend
-  { id: 'sp_wolves_road', spaceId: 'kaldwyn', x: -6, z: 52, actorId: 'frostfang_wolf', count: 2, radius: 12, respawnGameHours: 48 },
+  { id: 'sp_wolves_road', spaceId: 'kaldwyn', x: -6, z: 52, actorId: 'frostfang_wolf', count: 2, radius: 12, encounterId: 'road_wolves', respawnGameHours: 48 },
+  { id: 'sp_wolves_alpha', spaceId: 'kaldwyn', x: 4, z: 56, actorId: 'frostfang_alpha', count: 1, radius: 3, encounterId: 'road_wolves', respawnGameHours: 48 },
   // Bandit camp on the road
-  { id: 'sp_camp_raider', spaceId: 'kaldwyn', x: 28, z: -298, actorId: 'redclaw_raider', count: 1, radius: 6, respawnGameHours: 'never' },
+  { id: 'sp_camp_raider', spaceId: 'kaldwyn', x: 28, z: -298, actorId: 'redclaw_raider', count: 1, radius: 6, encounterId: 'road_camp', respawnGameHours: 'never' },
   // Mine gate camp (quest stage: clear the entrance)
-  { id: 'sp_gate_raiders', spaceId: 'kaldwyn', x: 108, z: 324, actorId: 'redclaw_raider', count: 2, radius: 8, respawnGameHours: 'never' },
-  { id: 'sp_gate_archer', spaceId: 'kaldwyn', x: 114, z: 328, actorId: 'redclaw_archer', count: 1, radius: 6, respawnGameHours: 'never' },
+  { id: 'sp_gate_raiders', spaceId: 'kaldwyn', x: 108, z: 324, actorId: 'redclaw_raider', count: 2, radius: 8, encounterId: 'mine_gate', respawnGameHours: 'never' },
+  { id: 'sp_gate_archer', spaceId: 'kaldwyn', x: 114, z: 328, actorId: 'redclaw_archer', count: 1, radius: 6, encounterId: 'mine_gate', respawnGameHours: 'never' },
   // Mine gate veteran (target-priority + interrupt teaching pull)
-  { id: 'sp_gate_reaver', spaceId: 'kaldwyn', x: 111, z: 327, actorId: 'redclaw_reaver', count: 1, radius: 3, respawnGameHours: 'never' },
+  { id: 'sp_gate_reaver', spaceId: 'kaldwyn', x: 111, z: 327, actorId: 'redclaw_reaver', count: 1, radius: 3, encounterId: 'mine_gate', respawnGameHours: 'never' },
   // Mine interior: rat pack guarded by a healing matron (priority target)
-  { id: 'sp_mine_rats', spaceId: 'duskhollow_mine', x: 0, z: 33, actorId: 'marsh_rat', count: 5, radius: 6, respawnGameHours: 'never' },
-  { id: 'sp_mine_matron', spaceId: 'duskhollow_mine', x: -5, z: 36, actorId: 'mire_matron', count: 1, radius: 2, respawnGameHours: 'never' },
+  { id: 'sp_mine_rats', spaceId: 'duskhollow_mine', x: 0, z: 33, actorId: 'marsh_rat', count: 5, radius: 6, encounterId: 'flooded_gallery', respawnGameHours: 'never' },
+  { id: 'sp_mine_matron', spaceId: 'duskhollow_mine', x: -5, z: 36, actorId: 'mire_matron', count: 1, radius: 2, encounterId: 'flooded_gallery', respawnGameHours: 'never' },
   // Deep corridor thralls (multi-enemy pull before the vault)
-  { id: 'sp_mine_thralls', spaceId: 'duskhollow_mine', x: 0, z: 46, actorId: 'barrow_thrall', count: 2, radius: 3, respawnGameHours: 'never' },
-  { id: 'sp_mine_boss', spaceId: 'duskhollow_mine', x: 0, z: 60, actorId: 'barrow_wight', count: 1, radius: 2, respawnGameHours: 'never' },
+  { id: 'sp_mine_thralls', spaceId: 'duskhollow_mine', x: 0, z: 46, actorId: 'barrow_thrall', count: 2, radius: 3, encounterId: 'deep_corridor', respawnGameHours: 'never' },
+  { id: 'sp_mine_sentinel', spaceId: 'duskhollow_mine', x: 0, z: 47, actorId: 'barrow_sentinel', count: 1, radius: 1, encounterId: 'deep_corridor', respawnGameHours: 'never' },
+  { id: 'sp_mine_boss', spaceId: 'duskhollow_mine', x: 0, z: 60, actorId: 'barrow_wight', count: 1, radius: 2, encounterId: 'pale_vault', respawnGameHours: 'never' },
+  // Second cave exemplar: a compact rat den with one proven support veteran.
+  { id: 'sp_burrow_rats', spaceId: 'siltroot_burrow', x: 0, z: 29, actorId: 'marsh_rat', count: 3, radius: 5, encounterId: 'siltroot_feeding', respawnGameHours: 36 },
+  { id: 'sp_burrow_matron', spaceId: 'siltroot_burrow', x: 0, z: 50, actorId: 'mire_matron', count: 1, radius: 3, encounterId: 'siltroot_brood', respawnGameHours: 36 },
   // Villagers (spawned via schedule system, one per spawner)
-  { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 3, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },
-  { id: 'sp_bronn', spaceId: 'kaldwyn', x: 62, z: 133, actorId: 'bronn', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 4, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_bronn', spaceId: 'kaldwyn', x: 67, z: 132, actorId: 'bronn', count: 1, radius: 1, respawnGameHours: 'never' },
   { id: 'sp_ysolde', spaceId: 'kaldwyn', x: 12, z: 182, actorId: 'ysolde', count: 1, radius: 1, respawnGameHours: 'never' },
 ];
 
 export const CONTAINERS: ContainerDef[] = [
   { id: 'mine_supply_cache', spaceId: 'duskhollow_mine', x: -6, z: 36, name: 'Supply Cache', lootTable: 'mine_cache' },
   { id: 'hadrin_pack', spaceId: 'duskhollow_mine', x: 6, z: 66, name: "Hadrin's Pack", lootTable: 'journal_cache' },
-  { id: 'ruin_chest', spaceId: 'kaldwyn', x: 44, z: -424, name: 'Weathered Chest', lootTable: 'mine_cache' },
+  { id: 'ruin_chest', spaceId: 'kaldwyn', x: 45, z: -422, name: 'Weathered Chest', lootTable: 'mine_cache' },
+  { id: 'siltroot_cache', spaceId: 'siltroot_burrow', x: 6, z: 52, name: 'Rootbound Cache', lootTable: 'burrow_cache' },
 ];
 
 /** Player spawn (new game). */

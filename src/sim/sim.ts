@@ -33,11 +33,21 @@ import {
 } from './types';
 import { CONTENT, CONTENT_VERSION, PLAYER_START } from './content';
 import { validateContent, type ContentRegistry } from './content/schema';
-import { CollisionIndex, resolveMove } from './world/collision';
+import {
+  CollisionIndex,
+  nearestTraversablePoint,
+  projectileObstructionT,
+  resolveMove,
+} from './world/collision';
 import { groundHeight } from './world/spaces';
 import { isActiveAt } from './world/cells';
 import { createActor, recalcActorStats } from './actors/actor';
 import { makeBrain, tickBrain } from './ai/brain';
+import {
+  encounterKeyForActor,
+  encounterMembers,
+  hasAuthoredEncounter,
+} from './ai/encounters';
 import {
   dealDamage,
   resetProjectileIds,
@@ -78,8 +88,8 @@ import {
   type SaveGame,
 } from './save/save';
 
-/** Factions hostile to each other (symmetric). Wild creatures (factionId null,
- * aggressive) are hostile to everything but their own faction. */
+/** Factions hostile to each other (symmetric). Aggressive templates always
+ * oppose players; authored faction ids keep members of one encounter allied. */
 const HOSTILE_PAIRS: ReadonlySet<string> = new Set([
   'redclaw|fenharrow',
   'fenharrow|redclaw',
@@ -87,7 +97,19 @@ const HOSTILE_PAIRS: ReadonlySet<string> = new Set([
   'player|redclaw',
 ]);
 
-export const DEFAULT_PARTY: PartyId = 'fellowship';
+export const PARTY_INVITE_RADIUS = 30;
+export const PARTY_MAX_MEMBERS = 5;
+
+export type PartyInviteResult =
+  | 'sent'
+  | 'no-player'
+  | 'self'
+  | 'not-nearby'
+  | 'already-party'
+  | 'target-in-party'
+  | 'party-full';
+
+export type PartyAcceptResult = 'joined' | 'none' | 'stale' | 'already-party' | 'party-full';
 
 export interface PlayerInput {
   /** Normalized move intent in the player's local heading space. */
@@ -128,6 +150,7 @@ export class Sim {
   events: SimEvent[] = [];
   tickCount = 0;
   nextEntityId = 1;
+  private nextGroundAoeId = 1;
 
   // --- per-character state (D-013) -----------------------------------------
   readonly players = new Map<CharacterId, EntityId>();
@@ -136,6 +159,8 @@ export class Sim {
   readonly knownSpellsBy = new Map<CharacterId, ContentId[]>();
   readonly containersLootedByChar = new Map<CharacterId, Set<string>>();
   readonly parties = new Map<PartyId, CharacterId[]>();
+  readonly characterNames = new Map<CharacterId, string>();
+  private readonly partyInvites = new Map<CharacterId, CharacterId>();
   readonly dialogueSessions = new Map<CharacterId, DialogueSession>();
   readonly shopMerchantBy = new Map<CharacterId, EntityId>();
   private transientBy = new Map<CharacterId, PlayerTransient>();
@@ -216,8 +241,10 @@ export class Sim {
       containersLootedBy: (charId) => sim.containersLootedOf(charId),
       spawnFromTemplate: (templateId, spaceId, pos, summonedBy) =>
         sim.spawnFromTemplate(templateId, spaceId, pos, summonedBy),
+      allocateGroundAoeId: () => sim.nextGroundAoeId++,
       emit: (e) => sim.events.push(e),
-      dealDamage: (t, s, a, c) => dealDamage(sim.ctx, t, s, a, c),
+      dealDamage: (t, s, a, c, blockable, blockOrigin) =>
+        dealDamage(sim.ctx, t, s, a, c, blockable, blockOrigin),
       applyHeal: (t, amount) => {
         const actor = sim.actors.get(t);
         if (!actor || actor.dead || actor.downed) return;
@@ -254,6 +281,8 @@ export class Sim {
       isActorActive: (a) => sim.isActorActive(a),
       isHostile: (a, b) => sim.isHostile(a, b),
       ground: (spaceId, x, z) => groundHeight(sim.content, spaceId, x, z, sim.seed),
+      projectileObstruction: (spaceId, from, to) =>
+        projectileObstructionT(sim.content, sim.colliders, spaceId, from, to, sim.seed),
     };
   }
 
@@ -308,12 +337,22 @@ export class Sim {
   spawnFromTemplate(templateId: ContentId, spaceId: SpaceId, pos: Vec3, summonedBy: EntityId): EntityId {
     const tpl = this.content.actors[templateId];
     if (!tpl) return NO_ENTITY;
+    const safe = nearestTraversablePoint(
+      this.content,
+      this.colliders,
+      spaceId,
+      pos.x,
+      pos.z,
+      this.seed,
+      summonedBy === NO_ENTITY ? 8 : 4,
+    );
+    if (!safe) return NO_ENTITY;
     const id = this.nextEntityId++;
     const position: Position = {
       spaceId,
-      x: pos.x,
-      y: groundHeight(this.content, spaceId, pos.x, pos.z, this.seed),
-      z: pos.z,
+      x: safe.x,
+      y: safe.y,
+      z: safe.z,
     };
     const actor = createActor(id, tpl.kind, tpl.id, tpl.name, position);
     actor.factionId = tpl.factionId ?? null;
@@ -354,11 +393,30 @@ export class Sim {
       pos.x = PLAYER_START.x;
       pos.z = PLAYER_START.z;
     }
-    pos.y = groundHeight(this.content, pos.spaceId, pos.x, pos.z, this.seed);
+    const safe = nearestTraversablePoint(
+      this.content,
+      this.colliders,
+      pos.spaceId,
+      pos.x,
+      pos.z,
+      this.seed,
+      8,
+    );
+    if (safe) {
+      pos.x = safe.x;
+      pos.y = safe.y;
+      pos.z = safe.z;
+    } else {
+      pos.spaceId = PLAYER_START.spaceId;
+      pos.x = PLAYER_START.x;
+      pos.z = PLAYER_START.z;
+      pos.y = groundHeight(this.content, pos.spaceId, pos.x, pos.z, this.seed);
+    }
     const player = createActor(id, 'player', 'player', restore?.name ?? name, pos);
     player.factionId = 'player';
     this.actors.set(id, player);
     this.players.set(charId, id);
+    this.characterNames.set(charId, player.name);
     if (!this.primaryCharId) this.primaryCharId = charId;
     this.transientBy.set(charId, { vy: 0, airborne: false, lastYaw: restore?.yaw ?? PLAYER_START.yaw });
     player.yaw = restore?.yaw ?? PLAYER_START.yaw;
@@ -395,13 +453,11 @@ export class Sim {
       player.magicka = player.stats.maxMagicka;
     }
 
-    // Milestone party policy (D-020): everyone joins one deterministic party.
-    this.joinParty(charId, DEFAULT_PARTY);
     return id;
   }
 
   /** Remove a character from the live world, returning its durable record. */
-  removePlayer(charId: CharacterId): CharacterSave | null {
+  removePlayer(charId: CharacterId, opts: { preserveParty?: boolean } = {}): CharacterSave | null {
     const id = this.players.get(charId);
     if (id === undefined) return null;
     const record = this.extractCharacter(charId);
@@ -410,12 +466,8 @@ export class Sim {
     this.dialogueSessions.delete(charId);
     this.shopMerchantBy.delete(charId);
     this.transientBy.delete(charId);
-    const partyId = this.partyOf(charId);
-    if (partyId) {
-      const members = this.parties.get(partyId)!.filter((m) => m !== charId);
-      if (members.length > 0) this.parties.set(partyId, members);
-      else this.parties.delete(partyId);
-    }
+    this.clearInvitesFor(charId);
+    if (!opts.preserveParty) this.leaveParty(charId);
     if (this.primaryCharId === charId) {
       this.primaryCharId = this.players.size > 0 ? [...this.players.keys()][0] : null;
     }
@@ -456,11 +508,119 @@ export class Sim {
     const current = this.partyOf(charId);
     if (current === partyId) return;
     if (current) {
-      this.parties.set(current, this.parties.get(current)!.filter((m) => m !== charId));
+      const remaining = this.parties.get(current)!.filter((m) => m !== charId);
+      if (remaining.length > 1) this.parties.set(current, remaining);
+      else this.parties.delete(current);
     }
     const members = this.parties.get(partyId) ?? [];
-    members.push(charId);
+    if (!members.includes(charId)) members.push(charId);
     this.parties.set(partyId, members);
+  }
+
+  inviteToParty(fromCharId: CharacterId, targetEntityId: EntityId): PartyInviteResult {
+    const fail = (result: PartyInviteResult, text: string): PartyInviteResult => {
+      this.events.push({ type: 'partyStatus', charId: fromCharId, text });
+      return result;
+    };
+    const from = this.playerActor(fromCharId);
+    const targetCharId = this.charIdForEntity(targetEntityId);
+    const target = targetCharId ? this.playerActor(targetCharId) : null;
+    if (!from || !target || !targetCharId) return fail('no-player', 'That player is no longer available.');
+    if (targetCharId === fromCharId) return fail('self', 'You cannot invite yourself.');
+    if (
+      from.pos.spaceId !== target.pos.spaceId ||
+      Math.hypot(from.pos.x - target.pos.x, from.pos.z - target.pos.z) > PARTY_INVITE_RADIUS
+    ) return fail('not-nearby', 'Party invitations require a nearby player.');
+    const fromParty = this.partyOf(fromCharId);
+    const targetParty = this.partyOf(targetCharId);
+    if (fromParty && targetParty === fromParty) return fail('already-party', `${target.name} is already in your party.`);
+    if (targetParty) return fail('target-in-party', `${target.name} is already in a party.`);
+    if (fromParty && (this.parties.get(fromParty)?.length ?? 0) >= PARTY_MAX_MEMBERS) {
+      return fail('party-full', 'Your party is full.');
+    }
+    this.partyInvites.set(targetCharId, fromCharId);
+    this.events.push({ type: 'partyStatus', charId: fromCharId, text: `Invitation sent to ${target.name}.` });
+    this.events.push({ type: 'partyStatus', charId: targetCharId, text: `${from.name} invited you. Press O to respond.` });
+    return 'sent';
+  }
+
+  pendingPartyInviteFor(
+    charId: CharacterId,
+  ): { fromCharId: CharacterId; fromName: string; fromEntityId: EntityId } | null {
+    const fromCharId = this.partyInvites.get(charId);
+    if (!fromCharId) return null;
+    const from = this.playerActor(fromCharId);
+    if (!from) return null;
+    return { fromCharId, fromName: from.name, fromEntityId: from.id };
+  }
+
+  acceptPartyInvite(charId: CharacterId): PartyAcceptResult {
+    const fromCharId = this.partyInvites.get(charId);
+    this.partyInvites.delete(charId);
+    if (!fromCharId) return 'none';
+    if (this.partyOf(charId)) {
+      this.events.push({ type: 'partyStatus', charId, text: 'Leave your current party before accepting another invitation.' });
+      return 'already-party';
+    }
+    const inviter = this.playerActor(fromCharId);
+    const invitee = this.playerActor(charId);
+    if (!inviter || !invitee) {
+      this.events.push({ type: 'partyStatus', charId, text: 'That party invitation is no longer available.' });
+      return 'stale';
+    }
+    let partyId = this.partyOf(fromCharId);
+    if (partyId && (this.parties.get(partyId)?.length ?? 0) >= PARTY_MAX_MEMBERS) {
+      this.events.push({ type: 'partyStatus', charId, text: 'That party is now full.' });
+      return 'party-full';
+    }
+    if (!partyId) {
+      partyId = `party:${fromCharId}`;
+      this.joinParty(fromCharId, partyId);
+    }
+    this.joinParty(charId, partyId);
+    this.clearInvitesFor(charId);
+    this.events.push({ type: 'partyStatus', charId, text: `You joined ${inviter.name}'s party.` });
+    this.events.push({ type: 'partyStatus', charId: fromCharId, text: `${invitee.name} joined your party.` });
+    return 'joined';
+  }
+
+  declinePartyInvite(charId: CharacterId): boolean {
+    const fromCharId = this.partyInvites.get(charId);
+    if (!this.partyInvites.delete(charId)) return false;
+    this.events.push({ type: 'partyStatus', charId, text: 'Party invitation declined.' });
+    if (fromCharId) {
+      const name = this.characterNames.get(charId) ?? charId;
+      this.events.push({ type: 'partyStatus', charId: fromCharId, text: `${name} declined your invitation.` });
+    }
+    return true;
+  }
+
+  leaveParty(charId: CharacterId): boolean {
+    const partyId = this.partyOf(charId);
+    if (!partyId) return false;
+    const members = this.parties.get(partyId) ?? [];
+    const remaining = members.filter((member) => member !== charId);
+    if (remaining.length > 1) this.parties.set(partyId, remaining);
+    else this.parties.delete(partyId);
+    this.clearInvitesFor(charId);
+    this.events.push({ type: 'partyStatus', charId, text: 'You left the party.' });
+    const name = this.characterNames.get(charId) ?? charId;
+    for (const member of remaining) {
+      this.events.push({ type: 'partyStatus', charId: member, text: `${name} left the party.` });
+    }
+    return true;
+  }
+
+  private clearInvitesFor(charId: CharacterId): void {
+    this.partyInvites.delete(charId);
+    for (const [target, inviter] of this.partyInvites) {
+      if (inviter === charId) this.partyInvites.delete(target);
+    }
+  }
+
+  private charIdForEntity(entityId: EntityId): CharacterId | null {
+    for (const [charId, id] of this.players) if (id === entityId) return charId;
+    return null;
   }
 
   partyOf(charId: CharacterId): PartyId | null {
@@ -539,6 +699,8 @@ export class Sim {
     if (HOSTILE_PAIRS.has(`${fa}|${fb}`)) return true;
     const ta = this.content.actors[a.templateId];
     const tb = this.content.actors[b.templateId];
+    if (ta?.aggressive && b.kind === 'player') return true;
+    if (tb?.aggressive && a.kind === 'player') return true;
     if (a.factionId === null && ta?.aggressive) return true;
     if (b.factionId === null && tb?.aggressive) return true;
     return false;
@@ -551,7 +713,12 @@ export class Sim {
   /** Advance one tick. Accepts a per-character input map; a bare PlayerInput
    * drives the primary character (single-player hosts, legacy tests). */
   tick(inputs: PlayerInput | Map<CharacterId, PlayerInput>): void {
-    this.events = [];
+    // Commands arrive between fixed ticks. Preserve rejection feedback until
+    // the host gets a chance to drain it; all tick-generated events remain
+    // current-tick only as before.
+    this.events = this.events.filter(
+      (event) => event.type === 'actionRejected' || event.type === 'chat' || event.type === 'partyStatus',
+    );
     this.tickCount++;
 
     const inputMap: Map<CharacterId, PlayerInput> =
@@ -596,7 +763,10 @@ export class Sim {
     p.yaw = input.yaw;
     tr.lastYaw = input.yaw;
     p.sneaking = input.sneak;
-    p.blocking = input.block && p.stamina > 0;
+    // Defensive cancel is intentionally limited to recovery. Windup/active
+    // frames remain committed, and block can never overlap an attack.
+    if (input.block && p.attack?.phase === 'recover') p.attack = null;
+    p.blocking = input.block && p.stamina > 0 && p.attack === null;
     p.sprinting = input.sprint && p.stamina > 0 && !input.sneak;
 
     let speed = p.stats.moveSpeed;
@@ -662,7 +832,7 @@ export class Sim {
         if (p.pos.spaceId !== aoe.spaceId) continue;
         const d = Math.hypot(p.pos.x - aoe.x, p.pos.z - aoe.z);
         if (d <= aoe.radius) {
-          dealDamage(this.ctx, id, aoe.sourceId, aoe.dps * DT, aoe.channel);
+          dealDamage(this.ctx, id, aoe.sourceId, aoe.dps * DT, aoe.channel, false);
         }
       }
     }
@@ -680,10 +850,14 @@ export class Sim {
     // its space is downed or absent, the encounter resets and the downed
     // players release immediately (D-021).
     if (this.tickCount % 15 !== 0) return;
+    const checkedEncounters = new Set<string>();
     for (const boss of this.actors.values()) {
       const tpl = this.content.actors[boss.templateId];
       if (!tpl || (tpl.tier !== 'boss' && tpl.tier !== 'elite')) continue;
       if (!boss.brain || boss.brain.state !== 'combat' || boss.dead) continue;
+      const encounterKey = encounterKeyForActor(this.content, this.actors, boss);
+      if (checkedEncounters.has(encounterKey)) continue;
+      checkedEncounters.add(encounterKey);
       let anyUp = false;
       const downedHere: CharacterId[] = [];
       for (const [charId, entityId] of this.players) {
@@ -700,35 +874,69 @@ export class Sim {
     }
   }
 
-  /** Reset an encounter: heal + rehome the anchor and its spawner-mates,
-   * despawn its summons, clear its pools (D-018/D-021). */
+  /** Reset one authored encounter atomically: remove owned transient state,
+   * restore every preplaced member, and unlock scaling for the next pull. */
   resetEncounter(bossId: EntityId): void {
     const boss = this.actors.get(bossId);
     if (!boss) return;
-    const group = [...this.actors.values()].filter(
-      (a) => a.id === bossId || (boss.spawnerId !== null && a.spawnerId === boss.spawnerId),
+    const group = encounterMembers(this.content, this.actors, boss);
+    const ownedIds = new Set(group.map((actor) => actor.id));
+    const revivePreplaced = group.some(
+      (actor) => actor.summonedBy === NO_ENTITY && hasAuthoredEncounter(this.content, actor),
     );
+
+    // Pools/projectiles disappear before their sources are removed.
+    for (let index = this.groundAoes.length - 1; index >= 0; index--) {
+      if (ownedIds.has(this.groundAoes[index].sourceId)) this.groundAoes.splice(index, 1);
+    }
+    for (let index = this.projectiles.length - 1; index >= 0; index--) {
+      if (ownedIds.has(this.projectiles[index].sourceId)) this.projectiles.splice(index, 1);
+    }
+
+    // Summons and summon descendants are transient encounter state.
+    for (const member of group) {
+      if (member.summonedBy !== NO_ENTITY) this.actors.delete(member.id);
+    }
+
     for (const a of group) {
-      if (a.dead || !a.brain) continue;
+      if (a.summonedBy !== NO_ENTITY || !a.brain) continue;
+      if (a.dead && !revivePreplaced) continue;
+      a.dead = false;
+      a.downed = false;
+      a.downedTicks = 0;
       a.brain.state = 'idle';
       a.brain.targetId = 0;
+      a.brain.lastKnownPos = null;
       a.brain.threat = {};
       a.brain.phase = 0;
       a.brain.abilityCooldowns = {};
       a.brain.scaledFor = 0;
+      a.brain.timer = 0;
+      a.brain.path = null;
+      a.brain.pathIdx = 0;
+      a.brain.repathCooldown = 0;
+      a.brain.stuckTicks = 0;
       a.attack = null;
-      a.pos.x = a.brain.homePos.x;
-      a.pos.z = a.brain.homePos.z;
-      a.pos.y = groundHeight(this.content, a.pos.spaceId, a.pos.x, a.pos.z, this.seed);
+      const home = nearestTraversablePoint(
+        this.content,
+        this.colliders,
+        a.brain.homePos.spaceId,
+        a.brain.homePos.x,
+        a.brain.homePos.z,
+        this.seed,
+      );
+      if (home) a.pos = { spaceId: a.brain.homePos.spaceId, ...home };
+      a.effects = [];
+      if (a.lootRolled) {
+        a.inventory = [];
+        a.gold = 0;
+        a.lootRolled = false;
+      }
       recalcActorStats(this.content, a);
       a.health = a.stats.maxHealth;
-    }
-    // Despawn summons belonging to the boss.
-    for (const [id, a] of [...this.actors]) {
-      if (a.summonedBy === bossId) this.actors.delete(id);
-    }
-    for (let i = this.groundAoes.length - 1; i >= 0; i--) {
-      if (this.groundAoes[i].sourceId === bossId) this.groundAoes.splice(i, 1);
+      a.stamina = a.stats.maxStamina;
+      a.magicka = a.stats.maxMagicka;
+      if (a.spawnerId) this.spawnerClearedAt.delete(a.spawnerId);
     }
   }
 
@@ -786,20 +994,23 @@ export class Sim {
 
   meleeFor(charId: CharacterId): boolean {
     const p = this.playerActor(charId);
-    if (!p || p.downed) return false;
+    if (!p) return false;
     return startMelee(this.ctx, p.id);
   }
 
   rangedFor(charId: CharacterId): boolean {
     const p = this.playerActor(charId);
-    if (!p || p.downed) return false;
+    if (!p) return false;
     return startRanged(this.ctx, p.id);
   }
 
   castFor(charId: CharacterId, spellId: ContentId): boolean {
     const p = this.playerActor(charId);
-    if (!p || p.downed) return false;
-    if (!(this.knownSpellsBy.get(charId) ?? []).includes(spellId)) return false;
+    if (!p) return false;
+    if (!(this.knownSpellsBy.get(charId) ?? []).includes(spellId)) {
+      this.events.push({ type: 'actionRejected', actorId: p.id, action: 'spell', reason: 'unknown' });
+      return false;
+    }
     return startSpell(this.ctx, p.id, spellId);
   }
 
@@ -835,11 +1046,15 @@ export class Sim {
     return journalFor(this.ctx, charId);
   }
 
-  chatFrom(charId: CharacterId, text: string): void {
+  chatFrom(charId: CharacterId, text: string): boolean {
     const p = this.playerActor(charId);
-    if (!p) return;
-    const clean = text.slice(0, 200);
+    if (!p) return false;
+    const clean = [...text.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().replace(/\s+/g, ' ')]
+      .slice(0, 200)
+      .join('');
+    if (!clean) return false;
     this.events.push({ type: 'chat', playerId: p.id, text: clean });
+    return true;
   }
 
   /** The nearest interactable within reach for one character: door,
@@ -850,6 +1065,7 @@ export class Sim {
   ): { kind: 'door' | 'container' | 'npc' | 'corpse' | 'revive'; id: string; name: string } | null {
     const p = this.playerActor(charId);
     if (!p) return null;
+    const party = new Set(this.partyMembersOf(charId));
     const reach = 3.0;
     const looted = this.containersLootedOf(charId);
     let best: { kind: 'door' | 'container' | 'npc' | 'corpse' | 'revive'; id: string; name: string; d: number } | null =
@@ -868,7 +1084,7 @@ export class Sim {
       if (a.id === p.id || a.pos.spaceId !== p.pos.spaceId) continue;
       const d = Math.hypot(a.pos.x - p.pos.x, a.pos.z - p.pos.z);
       if (d >= reach) continue;
-      if (a.kind === 'player' && a.downed) {
+      if (a.kind === 'player' && a.downed && party.has(this.charIdForEntity(a.id) ?? '')) {
         if (!best || d < best.d) best = { kind: 'revive', id: String(a.id), name: a.name, d };
       } else if (a.dead && (a.inventory.length > 0 || a.gold > 0)) {
         if (!best || d < best.d) best = { kind: 'corpse', id: String(a.id), name: a.name, d };
@@ -939,15 +1155,27 @@ export class Sim {
     const p = this.playerActor(charId);
     const tr = this.transientBy.get(charId);
     if (!p) return;
+    const safe = nearestTraversablePoint(this.content, this.colliders, spaceId, x, z, this.seed, 4);
+    if (!safe) return;
     p.pos.spaceId = spaceId;
-    p.pos.x = x;
-    p.pos.z = z;
-    p.pos.y = groundHeight(this.content, spaceId, x, z, this.seed);
+    p.pos.x = safe.x;
+    p.pos.z = safe.z;
+    p.pos.y = safe.y;
     p.yaw = yaw;
+    p.vel.x = 0;
+    p.vel.y = 0;
+    p.vel.z = 0;
+    p.moveIntent.x = 0;
+    p.moveIntent.z = 0;
+    p.attack = null;
+    p.blocking = false;
+    p.sprinting = false;
     if (tr) {
       tr.airborne = false;
       tr.vy = 0;
     }
+    this.dialogueSessions.delete(charId);
+    this.shopMerchantBy.delete(charId);
     this.events.push({ type: 'spaceEntered', playerId: p.id, spaceId });
     onQuestEvent(this.ctx, { type: 'spaceEntered', playerId: p.id, spaceId });
   }
@@ -1107,7 +1335,7 @@ export class Sim {
   }
 
   // -------------------------------------------------------------------------
-  // Save / load (world save, schema v2)
+  // Save / load (world save, schema v3)
   // -------------------------------------------------------------------------
 
   serialize(): SaveGame {
@@ -1163,6 +1391,7 @@ export class Sim {
       })),
       knownSpells: [...this.knownSpellsBy].map(([charId, spells]) => ({ charId, spells: [...spells] })),
       containersLootedBy: [...this.containersLootedByChar].map(([charId, ids]) => ({ charId, ids: [...ids] })),
+      characterNames: [...this.characterNames].map(([charId, name]) => ({ charId, name })),
       parties: [...this.parties].map(([partyId, members]) => ({ partyId, members: [...members] })),
       spawnersSpawned: [...this.spawnersSpawned],
     };
@@ -1235,6 +1464,9 @@ export class Sim {
     }
     for (const entry of save.containersLootedBy) {
       sim.containersLootedByChar.set(entry.charId, new Set(entry.ids));
+    }
+    for (const entry of save.characterNames) {
+      sim.characterNames.set(entry.charId, entry.name);
     }
     for (const entry of save.parties) {
       sim.parties.set(entry.partyId, [...entry.members]);

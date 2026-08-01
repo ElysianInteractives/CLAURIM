@@ -16,12 +16,12 @@ and persistent world changes. Clients submit INTENT only: per-tick movement
 inputs and discrete commands. Clients never send positions. The client
 predicts its own movement and presentation; nothing else.
 
-## Protocol (v1, `src/net/protocol.ts`)
-Versioned JSON messages, validated on receipt; malformed input is rejected
-(and repeated violations disconnect). Client: hello / input / cmd / ping.
-Server: welcome / reject / snapshot / pong / bye. Protocol-version mismatch
-rejects at hello. No runtime objects cross the wire; every payload is built
-from explicit view types.
+## Protocol (v2, `src/net/protocol.ts`)
+Versioned JSON messages, validated on receipt. Before authentication, clients
+may send only register / login / resume; the server returns authOk / authError.
+After authentication: hello / input / cmd / ping and welcome / reject /
+snapshot / pong / bye. Protocol-version mismatch rejects at hello. No runtime
+objects cross the wire; every payload is built from explicit view types.
 
 ## Rates (measured 2026-07-31, in-sandbox smoke run)
 - Sim tick: 30 Hz (unchanged, D-003).
@@ -44,7 +44,8 @@ the party frame via the self.party block, not as world actors.
 ## Prediction + reconciliation (D-015)
 Inputs carry sequence numbers. The client predicts its own movement by
 running the SAME deterministic `resolveMove` + terrain code the server runs.
-Snapshots carry `ackSeq` + authoritative position; the client drops
+Snapshots carry `ackSeq` for the highest input consumed by an authoritative
+tick plus authoritative position; the client drops
 acknowledged inputs, replays the unacknowledged tail from the server
 position, then blends (snap beyond 3 m, 40% exponential correction under).
 Space transitions always snap; never lerp through a door. Remote actors use
@@ -52,17 +53,25 @@ exponential smoothing (0.35/frame) toward the latest snapshot. Combat is not
 predicted beyond animation state.
 
 ## Connection lifecycle
-hello -> validate protocol/charId -> load-or-create character (storage) ->
-welcome (seed, tick, snapshotEvery) -> snapshots. Disconnect: persist +
-despawn (linkdead policy). Reconnect: same charId restores the persisted
-record; a second connection for a live character supersedes the first
-('session superseded'). Late join: first snapshot is a full baseline (JSON
-snapshots are always self-contained).
+register/login/resume -> issue/rotate opaque session -> authenticated hello ->
+validate protocol/account ownership -> load-or-create owned character ->
+welcome (seed, tick, snapshotEvery) -> snapshots. Disconnect persists and
+despawns (linkdead policy). Reconnect resumes with a rotated session and
+restores the owned character; a second connection from the same account for a
+live character supersedes the first. Late join receives a full baseline.
+
+The browser host never gives ClientWorld a transport until WebSocket `open`.
+Unexpected loss clears pending intent, generation-guards the old socket, and
+uses the bounded D-027 retry schedule. Supersession, authentication failure,
+and protocol rejection are terminal until the user explicitly submits
+credentials again; all lifecycle phases are visible in the HUD. Exact retry,
+impairment, and acceptance rules are in `NETWORK_RELIABILITY_CONTRACT.md`.
 
 ## Security / trust boundary
-All inputs validated + clamped server-side; movement derives only from
-intent through the sim's collision (no teleport injection path exists);
-commands route through sim methods that re-check legality (downed, unknown
-spells, unowned items, gold). charId doubles as the identity token for the
-milestone: NO real authentication yet - documented as the top trust
-limitation (KL-11) and a Fable-required follow-up (accounts service).
+All inputs are validated and clamped server-side; movement derives only from
+intent and commands re-check gameplay legality. D-028 additionally puts
+`AuthGateway` before `ServerCore`, uses salted scrypt credentials and rotating
+opaque sessions, and restricts character selection to authenticated ownership.
+Remote browser transport is secure and origin-allowlisted; credentials and
+tokens never enter browser persistence or URLs. Exact controls and remaining
+operations limits: `AUTHENTICATION_THREAT_MODEL.md`.

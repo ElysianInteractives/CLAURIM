@@ -45,6 +45,10 @@ export class SimWorld implements IWorld {
     return this.actor().pos.spaceId;
   }
 
+  spaceName(spaceId: string): string {
+    return this.sim.content.spaces[spaceId]?.name ?? spaceId;
+  }
+
   spaceKind(spaceId: string): 'exterior' | 'interior' {
     return this.sim.content.spaces[spaceId]?.kind ?? 'exterior';
   }
@@ -56,6 +60,31 @@ export class SimWorld implements IWorld {
   private toView(a: Actor): ActorView {
     const tpl = this.sim.content.actors[a.templateId];
     const self = this.actor();
+    const attack = a.attack;
+    const ability = attack?.abilityId ? tpl?.abilities?.find((candidate) => candidate.id === attack.abilityId) : undefined;
+    let telegraph: ActorView['telegraph'];
+    if (attack?.telegraph && attack.phase === 'windup' && ability) {
+      let x = a.pos.x;
+      let z = a.pos.z;
+      if (ability.kind === 'ground_aoe' && a.brain) {
+        const target = this.sim.actors.get(a.brain.targetId);
+        if (target?.pos.spaceId === a.pos.spaceId) {
+          x = target.pos.x;
+          z = target.pos.z;
+        }
+      }
+      telegraph = {
+        kind: ability.kind,
+        ticks: attack.t,
+        totalTicks: ability.telegraphTicks,
+        interruptible: ability.interruptible,
+        range: ability.range ?? 3,
+        angleDegrees: ability.coneDegrees ?? 90,
+        radius: ability.aoeRadius ?? 1.6,
+        x,
+        z,
+      };
+    }
     return {
       id: a.id,
       templateId: a.templateId,
@@ -73,7 +102,9 @@ export class SimWorld implements IWorld {
       blocking: a.blocking,
       attacking: a.attack !== null && a.attack.phase !== 'recover',
       attackKind: a.attack?.kind ?? null,
+      attackPhase: a.attack?.phase ?? null,
       telegraphTicks: a.attack?.telegraph && a.attack.phase === 'windup' ? a.attack.t : 0,
+      telegraph,
       isPlayer: a.kind === 'player',
       isRemotePlayer: a.kind === 'player' && a.id !== self.id,
       hostileToPlayer: a.kind !== 'player' && this.sim.isHostile(self, a),
@@ -109,19 +140,30 @@ export class SimWorld implements IWorld {
     return this.toView(this.actor());
   }
 
+  partyId(): string | null {
+    return this.sim.partyOf(this.charId);
+  }
+
   party(): PartyMemberView[] {
     return this.sim.partyMembersOf(this.charId).map((memberId) => {
       const a = this.sim.playerActor(memberId);
       return {
         charId: memberId,
-        name: a?.name ?? memberId,
+        entityId: a?.id ?? null,
+        name: a?.name ?? this.sim.characterNames.get(memberId) ?? memberId,
         health: a?.health ?? 0,
         maxHealth: a?.stats.maxHealth ?? 1,
         downed: a?.downed ?? false,
         spaceId: a?.pos.spaceId ?? 'kaldwyn',
         isSelf: memberId === this.charId,
+        online: a !== null,
       };
     });
+  }
+
+  partyInvites() {
+    const invite = this.sim.pendingPartyInviteFor(this.charId);
+    return invite ? [invite] : [];
   }
 
   playerResources() {
@@ -189,6 +231,8 @@ export class SimWorld implements IWorld {
         return e.charId === this.charId;
       case 'itemAdded':
       case 'itemRemoved':
+        return e.actorId === selfId;
+      case 'actionRejected':
         return e.actorId === selfId;
       case 'spaceEntered':
       case 'talkedTo':
@@ -284,6 +328,22 @@ export class SimWorld implements IWorld {
 
   chat(text: string): void {
     this.sim.chatFrom(this.charId, text);
+  }
+
+  partyInvite(targetEntityId: number): void {
+    this.sim.inviteToParty(this.charId, targetEntityId);
+  }
+
+  partyAccept(): void {
+    this.sim.acceptPartyInvite(this.charId);
+  }
+
+  partyDecline(): void {
+    this.sim.declinePartyInvite(this.charId);
+  }
+
+  partyLeave(): void {
+    this.sim.leaveParty(this.charId);
   }
 
   // --- menus --------------------------------------------------------------

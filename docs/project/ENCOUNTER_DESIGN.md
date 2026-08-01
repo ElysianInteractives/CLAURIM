@@ -25,26 +25,76 @@ predictably. Taunts: a declared hook (add a large threat bump through the
 same table) - not yet a player ability.
 
 ## Group aggro + scaling
-Aggro pulls same-spawner allies within 20 m (multi-enemy pulls are the norm).
-Encounter scaling LOCKS at first aggro to the count of players within 60 m:
-maxHealth x(1 + 0.6/extra player), damage x(1 + 0.12/extra player), applied
-through the standard modifier system (auditable in stat traces). Rapid
-enter/exit cannot recount mid-fight; only a full reset unlocks (anti-exploit).
+Aggro pulls every living member of the spawner's authored `encounterId`;
+untagged content falls back to its individual spawner. Summons inherit the
+root owner. Encounter scaling LOCKS at first aggro to the count of players
+within 60 m: maxHealth x(1 + 0.4/extra player), damage x(1 + 0.08/extra
+player), applied through the standard modifier system (auditable in stat
+traces). Rapid enter/exit cannot recount mid-fight; only one atomic full
+encounter reset unlocks it (anti-exploit). See `AI_ENCOUNTER_CONTRACT.md`.
 
 ## The exemplar: Duskhollow Mine (group dungeon)
 - Gate camp (exterior): 2 raiders + rock-perch archer + Redclaw Reaver
   (veteran, interruptible 110-degree cleave) - the interrupt/priority lesson.
 - Flooded gallery: 5 marsh rats + Mire Matron (support healer, interruptible
   heal) - the kill-the-healer-first lesson.
-- Deep corridor: 2 barrow thralls - a pull that punishes charging ahead.
+- Deep corridor: 2 barrow thralls + Barrow Sentinel (veteran, interruptible
+  gravefrost pool) - a pull that punishes charging ahead and standing still.
 - The Pale Vault: The Pale Warden (boss, 380 base HP, frost):
   - pale_breath: 1.5 s telegraphed frontal cone, 42 frost, INTERRUPTIBLE.
   - grave_chill: pools under the current target (move or melt).
-  - call_thralls: phase-1 unlock, 2 adds per cast (priority targets).
+  - call_thralls: phase-1 unlock, 2 adds per cast, 4 living adds maximum
+    (priority targets).
   - Phase 2 (<=33%): +30% damage escalation.
   - Wipe -> deterministic full reset; personal loot per party member.
 
-## Difficulty targets and MEASURED baseline (npm run mp:bench, 2026-07-31)
+## Plan 8 current two-policy baseline (`npm run ai:bench`, 2026-07-31)
+
+The Barrow Sentinel is now part of the deep-corridor encounter. Both policies
+still use identical fixed seeds, iron sword/shield, three draughts, and the
+same Warden endpoint. The prepared solo catalog check separately proves that
+Rimehowl Alpha remains beatable with an iron sword/shield and two draughts.
+
+| policy | party | kills | avg kill | wipes | downs | revives | blocks | damage taken |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| naive | 1 | 0/3 | - | 5 | 23 | 0 | 0 | 1,840.8 |
+| mechanics | 1 | 0/3 | - | 9 | 15 | 0 | 15 | 1,115.2 |
+| naive | 3 | 1/3 | 191 s | 7 | 83 | 47 | 0 | 5,691.0 |
+| mechanics | 3 | 1/3 | 135 s | 7 | 63 | 28 | 78 | 5,392.4 |
+| naive | 5 | 1/3 | 53 s | 7 | 108 | 67 | 0 | 7,883.4 |
+| mechanics | 5 | 1/3 | 75 s | 2 | 92 | 31 | 64 | 7,297.1 |
+
+The locked envelope remains intact: neither solo policy clears, while both
+group sizes can clear. This is a regression boundary for authored pressure,
+not a final difficulty verdict; the simple fixed-seed bots remain KL-13.
+
+## Plan 4 historical two-policy baseline (`npm run ai:bench`, 2026-07-31)
+
+Correct faction allegiance means the Warden and its thralls are allies rather
+than damaging one another. The prior +60% health/+12% damage extra-player
+curve was therefore retuned to +40%/+8%; solo base values did not change.
+Both policies use identical fixed seeds, iron sword/shield, three draughts,
+and the same encounter. The mechanics policy pre-moves target pools, spreads
+on approach, blocks, prioritizes adds, and actively revives.
+
+| policy | party | kills | avg kill | wipes | downs | revives | blocks | damage taken | max phase |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| naïve | 1 | 0/3 | - | 5 | 23 | 0 | 0 | 1,775.1 | 0 |
+| mechanics | 1 | 0/3 | - | 6 | 23 | 0 | 14 | 1,410.7 | 0 |
+| naïve | 3 | 1/3 | 80 s | 6 | 79 | 46 | 0 | 5,467.0 | 2 |
+| mechanics | 3 | 1/3 | 57 s | 5 | 65 | 41 | 53 | 4,714.2 | 2 |
+| naïve | 5 | 0/3 | - | 8 | 180 | 95 | 0 | 11,593.2 | 2 |
+| mechanics | 5 | 1/3 | 166 s | 8 | 99 | 39 | 54 | 8,108.5 | 2 |
+
+The prepared solo policy still cannot reach phase 1. Mechanics-aware parties
+take 14-30% less damage, and the five-player policy earns a clear where the
+naïve one does not; downs remain high, so this is evidence for mechanic value
+and a lower performance bound, not a final “easy” verdict. Plan 4 browser
+observation confirms telegraph, party, add-cap, and support-heal readability;
+the fixed-seed benchmark supplies the clear evidence.
+
+## Original naïve baseline (`npm run mp:bench`, 2026-07-31)
+
 Targets: overworld solo-viable; dungeons for ~3-5; bosses defeat an
 unprepared solo player; success from mechanics, not damage sponging.
 Scripted bot parties (iron sword + shield + 3 draughts; naive AI that never
@@ -53,15 +103,33 @@ blocks, clusters in cleaves, and rarely revives) against the boss:
 | party | runs | kills | avg kill time | wipes | max phase |
 |---|---|---|---|---|---|
 | 1 | 3 | 0 | - | 9 (limit 3/run) | 1 |
-| 3 | 3 | 1 | 25 s | 6 | 2 |
-| 5 | 3 | 2 | 24 s | 3 | 2 |
+| 3 | 3 | 2 | 25 s | 3 | 2 |
+| 5 | 3 | 2 | 23 s | 3 | 2 |
 
-Reading: the boss reliably defeats solo players; clumsy parties of 3 can
-win; parties of 5 win more often; success scales with numbers and the bots'
-biggest killer is standing in the cleave (mechanics matter). Real players
-who block, interrupt, spread, and revive will outperform these floors.
-Remaining uncertainty: bot quality bounds the estimate from below; a
-blocking/interrupting bot policy is an Opus benchmark ticket (OB-M6).
+Reading: the boss reliably defeats solo players; clumsy parties of 3 and 5
+can win. Plan 3's physically swept navigation and accurate prop footprints
+replace the earlier coarse-world baseline, so enemies and bots take different
+routes without any D-024 combat-number change. The bots' biggest killer
+remains standing in cleaves (mechanics matter). Real players who block,
+interrupt, spread, and revive should outperform these floors.
+This older result predates correct undead allegiance and remains historical
+context only. Use the Plan 4 two-policy table for current tuning.
+
+## Plan 2 sustained-output baseline (`npm run combat:bench -- seconds=30`)
+
+Same fixed boss target, 30 seconds, natural regeneration, buffered legal
+inputs, authoritative mitigation:
+
+| loadout | hits | damage | DPS | resource wait |
+|---|---:|---:|---:|---:|
+| worn dagger | 40 | 229.6 | 7.65 | 1.8 s stamina |
+| iron sword | 40 | 362.2 | 12.07 | 1.8 s stamina |
+| steel sword | 40 | 455.4 | 15.18 | 1.8 s stamina |
+| hunting bow | 30 | 170.7 | 5.69 | 0.0 s |
+| Flamebolt | 13 | 132.4 | 4.41 | 20.5 s magicka |
+
+This table is a regression comparison, not a final balance verdict. Bow range
+and Flamebolt's burning utility are not represented by direct-hit DPS.
 
 ## Death and recovery
 See MULTIPLAYER_STATE_MODEL.md (downed 30 s / revive 30% / release 40% at

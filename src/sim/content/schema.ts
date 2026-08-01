@@ -139,6 +139,8 @@ export interface AbilityDef {
   /** summon */
   summonActorId?: string;
   summonCount?: number;
+  /** Maximum living summons owned by this caster for the ability. */
+  maxActiveSummons?: number;
   /** heal_ally */
   healAmount?: number;
 }
@@ -232,6 +234,8 @@ export interface SpawnerDef {
   actorId: ContentId;
   count: number;
   radius: number;
+  /** Authored pull/reset ownership shared across one or more spawners. */
+  encounterId?: string;
   /** 'never' = cleared stays cleared (dungeon persistence). */
   respawnGameHours: number | 'never';
 }
@@ -449,6 +453,15 @@ export function validateContent(c: ContentRegistry): string[] {
         err(`actor ${id}: ability ${ab.id} summon needs summonActorId/summonCount`);
       if (ab.kind === 'summon' && ab.summonActorId && !c.actors[ab.summonActorId])
         err(`actor ${id}: ability ${ab.id} unknown summon actor ${ab.summonActorId}`);
+      if (ab.maxActiveSummons !== undefined && ab.maxActiveSummons < 1)
+        err(`actor ${id}: ability ${ab.id} maxActiveSummons must be >= 1`);
+      if (
+        ab.kind === 'summon' &&
+        ab.maxActiveSummons !== undefined &&
+        ab.summonCount !== undefined &&
+        ab.maxActiveSummons < ab.summonCount
+      )
+        err(`actor ${id}: ability ${ab.id} maxActiveSummons must cover one cast`);
       if (ab.kind === 'heal_ally' && !ab.healAmount)
         err(`actor ${id}: ability ${ab.id} heal_ally needs healAmount`);
     }
@@ -491,11 +504,22 @@ export function validateContent(c: ContentRegistry): string[] {
     if (!c.spaces[d.targetSpaceId]) err(`door ${d.id}: unknown target space`);
   }
 
+  const encounterSpaces = new Map<string, SpaceId>();
   for (const s of c.spawners) {
     uniq('spawner', s.id);
     if (!c.spaces[s.spaceId]) err(`spawner ${s.id}: unknown space`);
     if (!c.actors[s.actorId]) err(`spawner ${s.id}: unknown actor ${s.actorId}`);
     if (s.count < 1) err(`spawner ${s.id}: count must be >= 1`);
+    if (s.encounterId !== undefined) {
+      if (s.encounterId.trim().length === 0) {
+        err(`spawner ${s.id}: encounterId must not be empty`);
+      }
+      const existingSpace = encounterSpaces.get(s.encounterId);
+      if (existingSpace !== undefined && existingSpace !== s.spaceId) {
+        err(`encounter ${s.encounterId}: spawners must share one space`);
+      }
+      encounterSpaces.set(s.encounterId, s.spaceId);
+    }
   }
 
   for (const ct of c.containers) {

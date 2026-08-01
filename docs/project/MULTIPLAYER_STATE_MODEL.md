@@ -1,4 +1,4 @@
-# Multiplayer state model (D-013 / D-019 / D-020 / D-021)
+# Multiplayer state model (D-013 / D-019 / D-020 / D-021 / D-029)
 
 ## Identity
 - CharacterId: persistent string, the durable identity ('alva'). Validated
@@ -29,11 +29,21 @@ input map; player order is sorted charId, actor order ascending entity id
 | Downed/downedTicks | per-character actor state, persisted |
 
 ## Party
-`Sim.parties: Map<PartyId, CharacterId[]>`. Milestone policy: every character
-auto-joins the deterministic party 'fellowship' (temporary; explicit
-party creation is an Opus-ready follow-up on this exemplar). Party effects:
-shared kill quest credit within ENGAGE_RADIUS + same space, personal boss
-loot eligibility, extended visibility in the party frame, wipe detection.
+`Sim.parties: Map<PartyId, CharacterId[]>`. Characters start solo. A player
+may invite one nearby active character; the target explicitly accepts or
+declines, and either member can leave. Parties are capped at five. Accepted
+membership persists through disconnect and world restart; pending invitations
+are transient and disappear when either character leaves the live world.
+Save schema v3 removes the old automatic `fellowship` membership on upgrade.
+Party effects remain shared kill quest credit within ENGAGE_RADIUS + same
+space, personal boss loot eligibility, revive access, encounter scaling, and
+the party frame. Offline members remain visible but do not count as active.
+
+## Nearby chat
+Enter opens a focused HUD composer, Enter/Send submits, and Escape cancels.
+The server strips control characters, normalizes whitespace, caps messages at
+200 code points, throttles each client to one accepted line per 15 ticks, and
+delivers the event only to characters in the speaker's current space.
 
 ## Quest credit rules
 kill: killer + nearby party members (60 m, same space). collect/talkTo/
@@ -54,11 +64,12 @@ party actually present (anti-exploit: no mid-fight recount, D-018).
 
 ## Join / leave / reconnect
 Join: restore from character storage or create fresh at Falkmoor. Leave:
-persist + despawn (no linkdead body in this milestone). Reconnect: restore
-exactly (position, journal, inventory, downed state cleared to released
-values via extractCharacter policy). Server restart: world save restores
-world deltas; characters rejoin individually.
+persist + despawn (no linkdead body in this milestone) while retaining
+accepted party membership. Reconnect: restore exactly (position, journal,
+inventory, party; downed state cleared to released values via
+extractCharacter policy). Server restart: world save restores world deltas
+and party/name records; characters rejoin individually.
 
 ## Saves
-World schema v2 (multi-character), migration v1->v2 exemplar + tests.
+World schema v3 (explicit parties), migrations v1->v2->v3 + tests.
 Character schema v1 (independent versioning + migration registry).

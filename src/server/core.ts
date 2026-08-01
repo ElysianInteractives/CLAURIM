@@ -18,6 +18,7 @@ import {
   type ServerMessage,
 } from '../net/protocol';
 import type { StorageProvider } from './storage';
+import type { AuthenticatedIdentity } from './auth';
 
 /** Snapshots every N sim ticks: 30 Hz sim / 3 = 10 Hz replication (D-014). */
 export const SNAPSHOT_EVERY = 3;
@@ -29,14 +30,17 @@ export type SendFn = (msg: ServerMessage) => void;
 
 interface ClientState {
   connId: string;
+  identity: AuthenticatedIdentity;
   charId: string | null;
   send: SendFn;
-  inputQueue: PlayerInput[];
+  inputQueue: { seq: number; input: PlayerInput }[];
   lastInput: PlayerInput;
+  lastReceivedSeq: number;
   ackSeq: number;
   pendingEvents: SimEvent[];
   view: SimWorld | null;
   protocolErrors: number;
+  lastChatTick: number;
 }
 
 export class ServerCore {
@@ -62,7 +66,7 @@ export class ServerCore {
       if (loaded) {
         // Characters persist individually; the world save only carries world
         // deltas. Remove any character actors that were resident at save time.
-        for (const charId of [...loaded.players.keys()]) loaded.removePlayer(charId);
+        for (const charId of [...loaded.players.keys()]) loaded.removePlayer(charId, { preserveParty: true });
         this.sim = loaded;
       } else {
         this.sim = new Sim(seed, undefined, { noDefaultPlayer: true });
@@ -76,17 +80,20 @@ export class ServerCore {
   // Connection lifecycle
   // -------------------------------------------------------------------------
 
-  connect(connId: string, send: SendFn): void {
+  connect(connId: string, send: SendFn, identity: AuthenticatedIdentity): void {
     this.clients.set(connId, {
       connId,
+      identity,
       charId: null,
       send,
       inputQueue: [],
       lastInput: { ...IDLE_INPUT },
+      lastReceivedSeq: -1,
       ackSeq: -1,
       pendingEvents: [],
       view: null,
       protocolErrors: 0,
+      lastChatTick: Number.NEGATIVE_INFINITY,
     });
   }
 
@@ -97,8 +104,9 @@ export class ServerCore {
       this.persistCharacter(client.charId);
       // Character leaves the live world on disconnect (linkdead policy:
       // immediate despawn; documented in MULTIPLAYER_STATE_MODEL.md).
-      this.sim.removePlayer(client.charId);
+      this.sim.removePlayer(client.charId, { preserveParty: true });
       this.connByChar.delete(client.charId);
+      this.storage.saveWorld(this.sim.saveToJson());
     }
     this.clients.delete(connId);
   }
@@ -128,19 +136,22 @@ export class ServerCore {
     switch (msg.t) {
       case 'input': {
         for (const input of msg.inputs) {
-          if (input.seq <= client.ackSeq) continue; // duplicate/replay
+          if (input.seq <= client.lastReceivedSeq) continue; // duplicate/replay
+          client.lastReceivedSeq = input.seq;
           // Bound the queue: a client cannot bank unlimited future movement.
-          if (client.inputQueue.length >= 12) client.inputQueue.shift();
+          if (client.inputQueue.length >= 12) continue;
           client.inputQueue.push({
-            moveX: clamp(input.moveX, -1, 1),
-            moveZ: clamp(input.moveZ, -1, 1),
-            yaw: input.yaw % (Math.PI * 2),
-            sprint: input.sprint,
-            sneak: input.sneak,
-            block: input.block,
-            jump: input.jump,
+            seq: input.seq,
+            input: {
+              moveX: clamp(input.moveX, -1, 1),
+              moveZ: clamp(input.moveZ, -1, 1),
+              yaw: input.yaw % (Math.PI * 2),
+              sprint: input.sprint,
+              sneak: input.sneak,
+              block: input.block,
+              jump: input.jump,
+            },
           });
-          client.ackSeq = input.seq;
         }
         break;
       }
@@ -162,12 +173,21 @@ export class ServerCore {
       client.send({ t: 'reject', reason: 'already joined' });
       return;
     }
+    const character = client.identity.characters.find((owned) => owned.charId === msg.charId);
+    if (!character) {
+      client.send({ t: 'reject', reason: 'character not owned by account' });
+      return;
+    }
     // Reconnect-takeover: a live connection for the same character is
     // superseded (old socket gets bye; character state persists in place).
     const existingConn = this.connByChar.get(msg.charId);
     if (existingConn) {
       const old = this.clients.get(existingConn);
       if (old) {
+        if (old.identity.accountId !== client.identity.accountId) {
+          client.send({ t: 'reject', reason: 'character already active' });
+          return;
+        }
         old.send({ t: 'bye', reason: 'session superseded by new connection' });
         old.charId = null;
         this.clients.delete(existingConn);
@@ -175,10 +195,10 @@ export class ServerCore {
       this.connByChar.delete(msg.charId);
       // Keep the actor in-world: seamless takeover.
       if (!this.sim.players.has(msg.charId)) {
-        this.spawnCharacter(msg.charId, msg.name);
+        this.spawnCharacter(msg.charId, character.name);
       }
     } else if (!this.sim.players.has(msg.charId)) {
-      this.spawnCharacter(msg.charId, msg.name);
+      this.spawnCharacter(msg.charId, character.name);
     }
     client.charId = msg.charId;
     client.view = new SimWorld(this.sim, msg.charId);
@@ -254,7 +274,21 @@ export class ServerCore {
         sim.releasePlayer(charId);
         break;
       case 'chat':
-        if (msg.arg) sim.chatFrom(charId, msg.arg);
+        if (msg.arg && sim.tickCount - client.lastChatTick >= 15) {
+          if (sim.chatFrom(charId, msg.arg)) client.lastChatTick = sim.tickCount;
+        }
+        break;
+      case 'partyInvite':
+        if (msg.targetId !== undefined) sim.inviteToParty(charId, msg.targetId);
+        break;
+      case 'partyAccept':
+        if (sim.acceptPartyInvite(charId) === 'joined') this.storage.saveWorld(sim.saveToJson());
+        break;
+      case 'partyDecline':
+        sim.declinePartyInvite(charId);
+        break;
+      case 'partyLeave':
+        if (sim.leaveParty(charId)) this.storage.saveWorld(sim.saveToJson());
         break;
     }
   }
@@ -271,10 +305,13 @@ export class ServerCore {
     for (const client of this.clients.values()) {
       if (!client.charId) continue;
       const next = client.inputQueue.shift();
-      if (next) client.lastInput = next;
+      if (next) {
+        client.lastInput = next.input;
+        client.ackSeq = next.seq;
+      }
       // Starvation policy: reuse last MOVEMENT-neutral form of the input
       // (keep yaw/stances, stop translation) after a short gap.
-      const input = next ?? { ...client.lastInput, moveX: 0, moveZ: 0, jump: false };
+      const input = next?.input ?? { ...client.lastInput, moveX: 0, moveZ: 0, jump: false };
       inputs.set(client.charId, input);
     }
     this.sim.tick(inputs);
@@ -310,8 +347,12 @@ export class ServerCore {
       case 'questCompleted':
       case 'objectiveProgress':
         return e.charId === charId;
+      case 'partyStatus':
+        return e.charId === charId;
       case 'itemAdded':
       case 'itemRemoved':
+        return e.actorId === selfId;
+      case 'actionRejected':
         return e.actorId === selfId;
       case 'spaceEntered':
       case 'talkedTo':
@@ -381,7 +422,9 @@ export class ServerCore {
         knownSpells: view.knownSpells(),
         journal: view.journal(),
         perks: view.perks(),
+        partyId: view.partyId(),
         party: view.party(),
+        partyInvites: view.partyInvites(),
         dialogue: view.dialogueView(),
         shop: view.shopView(),
         prompt: view.nearestInteractablePrompt(),

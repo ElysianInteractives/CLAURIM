@@ -25,8 +25,21 @@ export interface ActorView {
   blocking: boolean;
   attacking: boolean;
   attackKind: string | null;
+  attackPhase: 'windup' | 'active' | 'recover' | null;
   /** Remaining telegraph ticks when winding up a telegraphed ability. */
   telegraphTicks: number;
+  /** Authoritative danger shape for a currently winding-up ability. */
+  telegraph?: {
+    kind: 'frontal_cone' | 'ground_aoe' | 'summon' | 'heal_ally';
+    ticks: number;
+    totalTicks: number;
+    interruptible: boolean;
+    range: number;
+    angleDegrees: number;
+    radius: number;
+    x: number;
+    z: number;
+  };
   isPlayer: boolean;
   /** True for player characters other than the viewing player. */
   isRemotePlayer: boolean;
@@ -53,18 +66,28 @@ export interface GroundAoeView {
 
 export interface PartyMemberView {
   charId: string;
+  entityId: EntityId | null;
   name: string;
   health: number;
   maxHealth: number;
   downed: boolean;
   spaceId: SpaceId;
   isSelf: boolean;
+  online: boolean;
+}
+
+export interface PartyInviteView {
+  fromCharId: string;
+  fromName: string;
+  fromEntityId: EntityId;
 }
 
 export interface WorldReadFacet {
   seed(): number;
   /** Space the viewing player currently occupies. */
   currentSpace(): SpaceId;
+  /** Display name for an authored space. */
+  spaceName(spaceId: SpaceId): string;
   spaceKind(spaceId: SpaceId): 'exterior' | 'interior';
   gameHours(): number;
   /** Actors in the viewing player's space (renderer culls further). */
@@ -72,7 +95,9 @@ export interface WorldReadFacet {
   projectilesInSpace(): ProjectileView[];
   groundAoesInSpace(): GroundAoeView[];
   player(): ActorView;
+  partyId(): string | null;
   party(): PartyMemberView[];
+  partyInvites(): PartyInviteView[];
   playerResources(): {
     health: number;
     maxHealth: number;

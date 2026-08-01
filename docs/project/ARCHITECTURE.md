@@ -26,8 +26,9 @@ src/game       src/render       src/ui        src/headless
 1. clear events; advance tick counter
 2. player: stance flags, movement (axis-slide collision), jump/gravity,
    interact cooldown
-3. per actor ascending id: effects (DoT/HoT/expiry) -> brain (if active
-   window) -> attack state machine -> regen
+3. per actor ascending id: effects (DoT/HoT/expiry) -> brain maintenance
+   (cooldowns/threat and inactive schedule abstraction; full decisions only in
+   an active window) -> attack state machine -> regen
 4. projectiles step + hit
 5. every 10 ticks: positional reach objectives; every 300: respawn checks
 
@@ -43,6 +44,12 @@ around the player is "active": AI ticks there, terrain meshes exist there.
 All actors stay resident (D-004). Transitions teleport the player through
 door records and emit `spaceEntered`.
 
+Scheduled resident NPCs use the directed authored door graph. Active NPCs
+walk to each door before transitioning; inactive NPCs may collapse the same
+valid route to the scheduled anchor. Encounter ownership is separately
+authored on spawners and resolved by pure helpers under `sim/ai`, so aggro and
+`Sim`-owned wipe/reset lifecycle use one key without a reverse dependency.
+
 ## Where things resolve
 - Damage: only `combat/damage` via `SimContext.dealDamage`.
 - Loot: rolled once per corpse at death; containers roll once on first open;
@@ -57,13 +64,20 @@ Streams terrain cells, swaps space contents on `currentSpace()` change,
 poses characters from ActorView state. May not import `Sim` (only
 `game/sim_world.ts` may) and may not write back.
 
+Environmental geometry is the other permitted pure-data seam: renderer props
+use the same yaw/scale records as `CollisionIndex`; interior walls use
+`roomBoundarySegments`; the camera reads `worldObstructionT`. These imports
+query immutable content/geometry and do not expose or mutate simulation state
+(D-025).
+
 ## Save
 See D-009 and `src/sim/save/save.ts`. The envelope carries schemaVersion +
 contentVersion + seed + rng state + full actor/quest/bookkeeping state.
 Loads validate, migrate linearly, and reject rather than half-load.
 
-## Performance envelope (measured this session)
-- Headless: ~50k ticks/s (Node 22, sandbox container) => sim budget is a
-  rounding error at slice scale.
-- Bundle: 559 kB (147 kB gzip), three.js dominant.
+## Performance envelope (Plan 0 baseline, 2026-07-31)
+- Headless: 56,962 ticks/s for `ticks=9000 seed=42` on Node 26 / Windows.
+- Bundle: 592.86 kB (156.62 kB gzip), three.js dominant.
+- Representative four-player mine snapshots: 8,077 bytes maximum against the
+  32,000-byte tripwire.
 - Terrain cell build: 33x33 vertex grid + scatter; 25 cells live worst case.
