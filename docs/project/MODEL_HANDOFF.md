@@ -160,6 +160,13 @@ harts, hostile briarboars, and a veteran den matriarch. Gloamroot's arrival is
 third-person safe and faces a lit natural interior. Exact boundaries are in
 `WORLD_CONTENT_EXPANSION_CONTRACT.md`.
 
+QA Phase L verifies NAR-001 through D-044: `A Bitter Root` and `The Stone
+Toll` give Gloamroot and Weeping Stones persistent quest use; Tamsin, Corren,
+and Vael provide state-aware original conversations. Dialogue entry selection
+now occurs before `talkedTo` quest credit so an authored return scene remains
+visible even when that conversation completes the objective. Exact boundaries
+are in `WORLD_NARRATIVE_EXPANSION_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -226,6 +233,11 @@ session added and TESTED:
   five-room den, loot, lit dressing, and two briarboar tiers; ridge harts roam
   bounded complete routes; the deterministic conifer pass is denser and more
   varied.
+- QA Phase L narrative expansion (D-044): two original side quests use the new
+  den and landmark through existing reach/kill/talk objectives; all Thornmere
+  residents have conditional dialogue; pre-credit entry capture preserves the
+  visible return scene while rewards, personal state, saves, and party kill
+  credit remain authoritative.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -241,13 +253,14 @@ session added and TESTED:
 - Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
   check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
   all dialogue rewritten with voices + plural-adventurer framing.
-- Proven-schema content depth (D-030/D-042/D-043): content v0.4 contains 36
+- Proven-schema content depth (D-030/D-042/D-043/D-044): content v0.5 contains 36
   items, 6 spells, 15 perks, 19 actor templates, 5 spaces, 42 props, 8 doors,
-  24 spawners, and 6 containers; magic and world-expansion records extend the
-  validated catalog while existing save envelopes remain stable.
+  24 spawners, 6 containers, 3 quests, and 6 dialogues; magic, world, and
+  narrative records extend the validated catalog while existing save
+  envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 228 tests / 28 suites green (multiplayer sim, server/net,
+- `npm test`: 232 tests / 29 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -259,11 +272,12 @@ session added and TESTED:
   map/floor-plan coverage, destination bearing/distance, articulated rig
   structure, full-body gait, secondary combat/creature posing, primer-gated
   spell learning, discipline grouping, effects, legacy skill defaults,
-  expanded original geography, wildlife behavior/presentation, and cavern
-  arrival/readability).
+  expanded original geography, wildlife behavior/presentation, cavern
+  arrival/readability, complete Thornmere quest playthroughs, save/load,
+  rewards, conditional reactions, and visible return scenes).
 - Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 6,755 / 6,742-byte snapshots.
+  replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -273,7 +287,7 @@ session added and TESTED:
 - `npm run world:tour`: all 5 spaces, 31 routes, and 69 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 713.64 kB / 187.86 kB gzip.
+  build); Vite 8 production JavaScript is 722.80 kB / 190.72 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -291,7 +305,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-043), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-044), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

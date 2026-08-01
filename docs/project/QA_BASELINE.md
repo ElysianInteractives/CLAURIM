@@ -728,6 +728,41 @@ game's map, names, layout, stories, or encounters.
   `qa-phase-k-gloamroot-1280x720.png`, and
   `qa-phase-k-map-1920x1080.png`.
 
+### QA Phase L narrative-expansion exit
+
+QA Phase L resolves NAR-001 and locks D-044. It gives D-043's new residents
+and places durable original narrative use without adding a bespoke quest
+system or changing multiplayer ownership.
+
+- `A Bitter Root` is acquired from Tamsin, discovers Gloamroot, clears its four
+  briarboars and veteran matriarch, returns visibly to Tamsin, and grants
+  personal gold/items/XP. `The Stone Toll` is acquired from Vael, investigates
+  Weeping Stones, clears its sounder, and returns visibly for its own reward.
+- Corren provides wildlife guidance and reacts to active/completed Gloamroot
+  states. All three Thornmere residents retain their route-complete schedules.
+- Dialogue now captures the matching entry node before emitting `talkedTo`.
+  The conversation may complete the return objective and grant its reward, but
+  still displays the authored turn-in scene selected from the pre-talk state.
+- Content v0.5 validates 3 quests and 6 dialogues alongside Phase K's 36 items,
+  8 effects, 6 spells, 15 perks, 19 actors, 5 spaces, 42 props, 8 doors, 24
+  spawners, and 6 containers. All new prose passes the originality gate.
+- Both new quests pass real acquisition, reach, combat credit, save/load,
+  reward, journal, and conditional-dialogue tests. `The Hollow Delve` also
+  pins its now-visible return scene.
+- `npm run gate` is green at 29 suites / 232 tests. Vite 8 transforms 59
+  modules and produces 722.80 kB JavaScript / 190.72 kB gzip. All five
+  benchmark/traversal programs retain their locked results.
+- Live WebSocket smoke reports ack 30, 4.4 m movement, mutual visibility,
+  session/replay safety, preserved ownership, and 6,743/6,730-byte snapshots.
+- Direct scheduled-position browser QA accepts `A Bitter Root` at 1280,
+  verifies its journal objective, and accepts `The Stone Toll` at 1920.
+  Warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-l-bitter-root-accepted-1280x720.png`,
+  `qa-phase-l-bitter-root-journal-1280x720.png`,
+  `qa-phase-l-vael-dialogue-1920x1080.png`, and
+  `qa-phase-l-stone-toll-accepted-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -760,6 +795,7 @@ game's map, names, layout, stories, or encounters.
 | QA-RIG | Articulated character detail and full-body posing | `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/presentation.test.ts`, `npm run ai:bench`, `npm run gate`; development-only `?qa=inn-shift-change`, `?qa=gear`, and `?qa=rig` at 1280/1920 | stable joints/mesh detail, leg/knee/torso gait, secondary combat joints, quadruped gait/tail, hand-following gear, first-person framing/logs |
 | QA-MAGIC | Magic initiation, disciplines, and persistent loadout | `tests/magic_progression.test.ts`, `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `npm run combat:bench`, `npm run net:bench`, `npm run qa:ws`, `npm run gate`; development-only `?qa=magic` at 1280/1920 | empty fresh state, atomic primer study/duplicate safety, four schools, ward/veil effects and skill XP, legacy save normalization, private protocol state, manual equip/cast, responsive layout/logs |
 | QA-WORLD-EXPANSION | Original settlement, landmark, den, forest, and wildlife volume | `tests/world_content_expansion.test.ts`, `tests/world_map.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere`, `?qa=thornmere-harts`, `?qa=weeping-stones`, and `?qa=gloamroot` at 1280 plus map at 1920 | shared terrain pads, route-complete locations/schedules, cavern arrival/readability, ambient/hostile wildlife behavior and silhouettes, eight destinations, content/IP validation, layout/overflow/logs |
+| QA-NARRATIVE | Original Thornmere dialogue, Gloamroot/Weeping Stones side quests, and visible turn-ins | `tests/world_narrative_expansion.test.ts`, `tests/quest_playthrough.test.ts`, `tests/content_catalog.test.ts`, `tests/save.test.ts`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere-tamsin` at 1280 and `?qa=thornmere-vael` at 1920 | dialogue acquisition/branches, reach/kill/talk progression, per-character reward, save/load, pre-credit return entry, journal, conditional reactions, originality, responsive layout/logs |
 
 ## Browser visual-QA procedure
 

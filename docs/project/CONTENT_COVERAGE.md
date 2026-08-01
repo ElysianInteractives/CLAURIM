@@ -41,11 +41,11 @@ PARTIAL / NONE.
 ## Narrative
 | Family | Dep | State | Exemplar | Remaining | Fable | Opus | Review | Accept |
 |---|---|---|---|---|---|---|---|---|
-| Side quests | quest runtime D-010 | DONE (1) | The Hollow Delve | dozens | only quests needing new objective KINDS | template quests | prose review | e2e per quest |
+| Side quests | quest runtime D-010/D-044 | DONE (3) | The Hollow Delve, A Bitter Root, The Stone Toll | dozens | only quests needing new objective KINDS | template quests | prose review | e2e per quest |
 | Main story | quest + world events | NONE | - | 1 arc | world-event orchestration, staged world state | scenes after | yes | e2e chain |
 | Faction lines | factions + quests | NONE | - | ~4 | faction rank/disposition model | quests after | yes | e2e |
 | Radiant activities | quest templating | NONE | - | system | radiant generator over template pool | templates | yes | generator tests |
-| Dialogue | dialogue runtime | DONE | 3 NPCs, conditional entries | all NPCs | only new condition/action kinds | trees per template | prose review | validation + e2e |
+| Dialogue | dialogue runtime | DONE (6) | Fenharrow and Thornmere NPCs, conditional entries/turn-ins | all NPCs | only new condition/action kinds | trees per template | prose review | validation + e2e |
 | Books/lore | ui reading | NONE | - | ~100 | reading UI + book item kind | original texts | prose review | validation |
 | NPC archetypes | ai/schedules | DONE (10) | Fenharrow/Thornmere residents, raiders, boss | dozens | new BEHAVIOR archetypes only | records | light | brain tests |
 | Creatures | ai | SYSTEM | wolf/rat/wight, ambient hart, briarboar, and veteran variants | ~26 | new locomotion modes (fly/swim/burrow) | melee/ranged variants | light | combat tests |

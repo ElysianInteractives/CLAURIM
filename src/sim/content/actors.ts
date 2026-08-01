@@ -593,6 +593,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     fleeBelowHealthFrac: 0.35,
     perceptionRange: 22,
     factionId: 'thornmere',
+    dialogueId: 'tamsin_dialogue',
     schedule: [
       { fromHour: 6, toHour: 18, spaceId: 'kaldwyn', x: -22, z: -176, activity: 'work' },
       { fromHour: 18, toHour: 22, spaceId: 'kaldwyn', x: -8, z: -165, activity: 'idle' },
@@ -615,6 +616,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     fleeBelowHealthFrac: 0.3,
     perceptionRange: 28,
     factionId: 'thornmere',
+    dialogueId: 'corren_dialogue',
     schedule: [
       { fromHour: 5, toHour: 17, spaceId: 'kaldwyn', x: 8, z: -176, activity: 'wander' },
       { fromHour: 17, toHour: 22, spaceId: 'kaldwyn', x: -8, z: -165, activity: 'idle' },
@@ -637,6 +639,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     fleeBelowHealthFrac: 0.4,
     perceptionRange: 20,
     factionId: 'thornmere',
+    dialogueId: 'vael_dialogue',
     schedule: [
       { fromHour: 6, toHour: 19, spaceId: 'kaldwyn', x: -5, z: -205, activity: 'work' },
       { fromHour: 19, toHour: 23, spaceId: 'kaldwyn', x: -18, z: -175, activity: 'idle' },

@@ -397,3 +397,12 @@ doors, schedules, spawns, and containers remain under the existing traversal
 and placement authority. Denser varied trees remain presentation-only, and
 all names/layouts are original Claurim content. Exact rules:
 `WORLD_CONTENT_EXPANSION_CONTRACT.md`.
+
+## D-044: Data-driven Thornmere quests and visible turn-ins - LOCKED
+The D-043 locations receive two original, per-character side quests and three
+state-aware resident dialogues using only existing reach/kill/talk objective
+kinds, party kill-credit rules, rewards, saves, and protocol authority. A
+dialogue captures its entry node before emitting `talkedTo`, ensuring a return
+objective can complete without skipping the authored turn-in scene; later
+conversations select the completed entry normally. Content v0.5 contains three
+quests and six dialogues. Exact rules: `WORLD_NARRATIVE_EXPANSION_CONTRACT.md`.

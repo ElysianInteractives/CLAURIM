@@ -64,14 +64,20 @@ export function beginDialogue(ctx: SimContext, charId: CharacterId, npcId: Entit
   if (!tpl?.dialogueId) return null;
   const def = ctx.content.dialogues[tpl.dialogueId];
   if (!def) return null;
-  ctx.emit({ type: 'talkedTo', playerId: playerActor.id, npcTemplateId: npc.templateId });
-  ctx.onQuestEvent({ type: 'talkedTo', playerId: playerActor.id, npcTemplateId: npc.templateId });
+  // Capture the entry against the pre-conversation quest state. A talkTo
+  // objective may complete the quest below, but the player must still see the
+  // authored return/turn-in scene selected for that state.
+  let selectedNode: string | null = null;
   for (const entry of def.entries) {
     if (evalConditions(ctx, charId, entry.conditions)) {
-      return { charId, npcId, dialogueId: def.id, nodeId: entry.node, shopRequested: false };
+      selectedNode = entry.node;
+      break;
     }
   }
-  return null;
+  if (!selectedNode) return null;
+  ctx.emit({ type: 'talkedTo', playerId: playerActor.id, npcTemplateId: npc.templateId });
+  ctx.onQuestEvent({ type: 'talkedTo', playerId: playerActor.id, npcTemplateId: npc.templateId });
+  return { charId, npcId, dialogueId: def.id, nodeId: selectedNode, shopRequested: false };
 }
 
 export function currentNode(ctx: SimContext, session: DialogueSession): DialogueNodeDef | null {

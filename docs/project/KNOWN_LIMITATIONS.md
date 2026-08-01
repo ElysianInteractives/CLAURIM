@@ -73,3 +73,7 @@
   scale exterior region. Most buildings are exterior shells, trees have no
   gameplay collision/harvesting, and wildlife uses bounded wandering plus the
   existing combat AI rather than ecology, hunting, or population simulation.
+- KL-22 D-044 raises the slice to three persistent side quests and six NPC
+  conversations, but it does not add branching world consequences, faction
+  reputation, escort/defend/crafting objectives, quest markers, cinematics,
+  voiced dialogue, shared party conversation choices, or radiant generation.

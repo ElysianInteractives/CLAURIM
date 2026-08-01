@@ -40,8 +40,9 @@ wildlife, and the traversal/presentation rules that keep the added volume safe.
 - Harts and briarboars use distinct articulated quadruped silhouettes. Wildlife
   does not yet provide hunting, taming, breeding, ecology, flight, swimming, or
   burrowing systems.
-- Thornmere residents are intentionally non-quest NPCs in this phase. Dialogue
-  and quest additions remain Phase L work over the existing data runtimes.
+- Thornmere residents entered Phase K without quest dependencies. D-044 now
+  attaches dialogue and two side quests over the existing data runtimes while
+  preserving their schedules and D-043 world placement.
 
 ## Acceptance
 

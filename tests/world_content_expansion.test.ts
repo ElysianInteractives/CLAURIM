@@ -82,11 +82,10 @@ describe('QA Phase K original world and wildlife expansion', () => {
     expect(glowcaps.children.some((child) => child.type === 'PointLight')).toBe(true);
   });
 
-  it('adds three scheduled non-quest residents to Thornmere', () => {
+  it('adds three scheduled residents to Thornmere', () => {
     for (const id of ['tamsin', 'corren', 'vael']) {
       const actor = CONTENT.actors[id];
       expect(actor.kind, id).toBe('npc');
-      expect(actor.dialogueId, id).toBeUndefined();
       expect(actor.schedule?.length, id).toBeGreaterThanOrEqual(3);
       expect(actor.schedule?.every((entry) => entry.spaceId === 'kaldwyn'), id).toBe(true);
     }

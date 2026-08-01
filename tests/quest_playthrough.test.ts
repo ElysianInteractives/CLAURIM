@@ -70,6 +70,7 @@ function runQuest(reloadEachStage: boolean): Sim {
   const goldBefore = sim.player().gold;
   const s2 = beginDialogue(sim.context(), 'p1', maera2.id);
   expect(s2).toBeTruthy();
+  expect(s2?.nodeId).toBe('turnin');
   const q = sim.questLogOf('p1').get('hollow_delve')!;
   expect(q.completed).toBe(true);
   expect(sim.player().gold).toBe(goldBefore + 150);
