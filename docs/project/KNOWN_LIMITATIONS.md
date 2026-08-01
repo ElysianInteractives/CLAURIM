@@ -8,9 +8,9 @@
   footprints. Cylinders, tents, and other non-box procedural meshes still use
   that conservative rectangle; add collider shapes only with a locked content
   schema package.
-- KL-3 First-person mode is a camera toggle; the body hides but hands/weapon
-  are not drawn. The camera abstraction supports it; the view model is art
-  work, not architecture.
+- KL-3 RESOLVED in QA Phase G: first-person hides the world body while a
+  camera-local rig draws sleeves plus the authoritative main/off-hand gear.
+  Primitive asset quality may improve behind D-039's attachment factories.
 - KL-4 Active NPCs now follow authored doors for cross-space schedules, while
   inactive NPCs collapse the same valid route to its destination anchor.
   Commute duration is not simulated offscreen, and schedules do not persist a
