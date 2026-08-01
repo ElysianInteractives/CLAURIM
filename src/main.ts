@@ -20,7 +20,7 @@ import { Renderer } from './render/renderer';
 import { Hud } from './ui/hud';
 import { Input } from './game/input';
 import { CombatAudio, parseAudioSettings } from './game/combat_audio';
-import { equippedAttackKind } from './game/host_actions';
+import { equippedAttackKind, spellForHotkey } from './game/host_actions';
 import { AuthGate } from './ui/auth_gate';
 import { DT } from './sim/types';
 import type { IWorld } from './world_api';
@@ -168,11 +168,17 @@ function frame(now: number): void {
   if (!menuOpen) {
     if (cmd.melee) {
       // Weapon-appropriate: bow fires, otherwise melee swing.
-      if (equippedAttackKind(world.playerInventory()) === 'ranged') world.attackRanged();
+      if (equippedAttackKind(world.playerEquipment()) === 'ranged') world.attackRanged();
       else world.attackMelee();
     }
-    if (cmd.spell1) world.castSpell('flamebolt');
-    if (cmd.spell2) world.castSpell('mend_wounds');
+    if (cmd.spell1) {
+      const spellId = spellForHotkey(world.equippedSpells(), 'spell1');
+      if (spellId) world.castSpell(spellId);
+    }
+    if (cmd.spell2) {
+      const spellId = spellForHotkey(world.equippedSpells(), 'spell2');
+      if (spellId) world.castSpell(spellId);
+    }
   }
   if (cmd.save) {
     if (online) {

@@ -9,7 +9,8 @@
 
 ## One Sim, many characters
 `Sim.players: Map<CharacterId, EntityId>`; per-character state lives in
-keyed maps on Sim (quest logs, known spells, container-loot sets, dialogue
+keyed maps on Sim (quest logs, known spells, equipped spell hotkeys,
+container-loot sets, dialogue
 sessions, shop sessions, movement transients). `tick()` takes a per-character
 input map; player order is sorted charId, actor order ascending entity id
 (determinism). The world is NEVER cloned per client.
@@ -18,7 +19,7 @@ input map; player order is sorted charId, actor order ascending entity id
 | State | Scope |
 |---|---|
 | Quest journals, objectives, rewards | per-character |
-| Known spells, skills, perks, level/xp, inventory, equipment, gold | per-character |
+| Known/equipped spells, skills, perks, level/xp, inventory, equipment, gold | per-character |
 | Dialogue + shop sessions | per-character (parallel sessions allowed; one player talking never opens menus for others) |
 | Container loot | per-character (deterministic personal roll keyed container+char) |
 | Corpse loot: standard tier | shared corpse, first-looter |
@@ -71,5 +72,5 @@ extractCharacter policy). Server restart: world save restores world deltas
 and party/name records; characters rejoin individually.
 
 ## Saves
-World schema v3 (explicit parties), migrations v1->v2->v3 + tests.
-Character schema v1 (independent versioning + migration registry).
+World schema v4 (explicit spell hotkeys), migrations v1->v2->v3->v4 + tests.
+Character schema v2 (spell hotkeys), migration v1->v2 + tests.

@@ -9,7 +9,7 @@ import { Sim, IDLE_INPUT, type PlayerInput } from '../sim/sim';
 import { clampAimPitch } from '../sim/player/aim';
 import { SimWorld } from '../game/sim_world';
 import { isActiveAt } from '../sim/world/cells';
-import type { SimEvent } from '../sim/types';
+import { EQUIP_SLOTS, SPELL_EQUIP_SLOTS, type SimEvent } from '../sim/types';
 import { parseCharacterSave } from '../sim/save/save';
 import {
   PROTOCOL_VERSION,
@@ -251,6 +251,15 @@ export class ServerCore {
       case 'equip':
         if (msg.arg) sim.equipFor(charId, msg.arg);
         break;
+      case 'unequipItem':
+        if (msg.index !== undefined) sim.unequipFor(charId, EQUIP_SLOTS[msg.index]);
+        break;
+      case 'equipSpell':
+        if (msg.arg && msg.index !== undefined) sim.equipSpellFor(charId, SPELL_EQUIP_SLOTS[msg.index], msg.arg);
+        break;
+      case 'unequipSpell':
+        if (msg.index !== undefined) sim.unequipSpellFor(charId, SPELL_EQUIP_SLOTS[msg.index]);
+        break;
       case 'perk':
         if (msg.arg) sim.takePerkFor(charId, msg.arg);
         break;
@@ -431,8 +440,10 @@ export class ServerCore {
         },
         resources: view.playerResources(),
         inventory: view.playerInventory(),
+        equipment: view.playerEquipment(),
         skills: view.playerSkills(),
         knownSpells: view.knownSpells(),
+        equippedSpells: view.equippedSpells(),
         journal: view.journal(),
         perks: view.perks(),
         partyId: view.partyId(),

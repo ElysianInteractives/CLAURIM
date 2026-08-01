@@ -455,6 +455,43 @@ contracts.
   `docs/screenshots/2026-08-01/qa-phase-b-reticle-controls-1280x720.png` and
   `qa-phase-b-reticle-controls-1920x1080.png`.
 
+### QA Phase C inventory/loadout exit
+
+QA Phase C resolves INV-001/CMB-009 and locks D-035. It changes equipment
+presentation, spell selection, and persistence while retaining all existing
+item effects, spell content, combat timing, aim, collision, and damage rules.
+
+- The failing reproduction proved the sim had no spell-loadout or item-
+  unequip commands. Browser-host keys 1/2 were hard-coded to Flamebolt and
+  Mend Wounds, and the inventory rendered one list with only an asterisk for
+  equipped state.
+- Focused tests pin two authoritative unique spell slots, known/authored
+  validation, equipped-only casting, item unequip without removal, four-
+  section inventory rendering, host hotkey lookup, protocol commands and
+  snapshots, world v3->v4 migration, character v1->v2 migration, and save
+  round trips.
+- The full gate is green at 20 suites / 196 tests. Vite 8 transforms 56
+  modules and produces 677.21 kB JavaScript / 177.86 kB gzip; content
+  validation and the IP scan remain clean.
+- `npm run net:bench` keeps every profile connected with zero disconnects and
+  zero pending inputs. Maximum correction remains 0 m Local/Good, 0.147 m
+  Degraded, and 0.182 m Severe; p95 authority delay remains 34.33/111.46/
+  187.29/311.12 ms.
+- A real protocol-v5 WebSocket smoke connects two authenticated clients,
+  acknowledges input 30, moves 4.4 m, preserves mutual visibility, rotates
+  sessions, rejects replay, and preserves the resumed character. Snapshots
+  are 6,719 and 6,707 bytes.
+- Direct offline browser QA at 1280x720 shows all six equipment slots, both
+  spell slots, explicit known-spell assignment, and a carried-item list in a
+  780x504 px panel at `(250, 108)`. Unequipping the dagger moves it into the
+  carried list; re-equipping removes it from that list. Moving Mend Wounds to
+  slot 1 clears its previous slot and updates the HUD quickbar immediately.
+- A 1920x1080 CSS-layout check reports a 780x591.125 px panel at
+  `(570, 244.4375)`. Both layouts have four sections and no horizontal or
+  vertical document overflow. Browser warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-c-loadout-1280x720.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -478,6 +515,7 @@ contracts.
 | QA-DEP | Toolchain advisories and major-version compatibility | clean `npm ci`; `npm run audit:deps`; `npm run audit:prod`; `npm run gate`; `npm run standalone`; dev-server HTTP smoke | zero full/prod findings, valid lock tree, all tests, Vite production output, standalone output, transformed dev modules |
 | QA-MOV | Camera-relative movement, sprint exhaustion, and safe-ground recovery | `tests/player_movement_recovery.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`; offline browser at 1280 and 1920 | shared authority/prediction basis, exhaustion/restart/regen rules, recovery guards/cooldown, network correction bounds, feedback, layout/overflow, browser logs |
 | QA-AIM | Center-reticle projectile-spell trajectory | `tests/spell_reticle_aim.test.ts`, `tests/server_net.test.ts`, `tests/hud.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | bounded normalized ray, protocol validation, 3D release velocity, authority/replication, target selection, cast feedback, layout/overflow, browser logs |
+| QA-LOADOUT | Item equipment and spell hotkey loadout | `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | fixed item slots, separate carried list, unique known-spell assignment, equipped-only cast, persistence/migrations, protocol replication, quickbar, layout/overflow/logs |
 
 ## Browser visual-QA procedure
 

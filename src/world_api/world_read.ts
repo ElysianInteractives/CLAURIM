@@ -3,10 +3,43 @@
 import type {
   ContentId,
   EntityId,
+  EquipSlot,
   SimEvent,
   SkillId,
   SpaceId,
+  SpellEquipSlot,
 } from '../sim/types';
+
+export interface InventoryItemView {
+  itemId: ContentId;
+  name: string;
+  count: number;
+  equipped: boolean;
+  kind: string;
+  value: number;
+}
+
+export interface EquipmentSlotView {
+  slot: EquipSlot;
+  label: string;
+  itemId: ContentId | null;
+  name: string | null;
+  kind: string | null;
+}
+
+export interface KnownSpellView {
+  id: ContentId;
+  name: string;
+  cost: number;
+}
+
+export interface EquippedSpellView {
+  slot: SpellEquipSlot;
+  hotkey: '1' | '2';
+  spellId: ContentId | null;
+  name: string | null;
+  cost: number | null;
+}
 
 export interface ActorView {
   id: EntityId;
@@ -114,8 +147,10 @@ export interface WorldReadFacet {
     gold: number;
   };
   playerSkills(): { id: SkillId; level: number; xp: number; xpForNext: number }[];
-  playerInventory(): { itemId: ContentId; name: string; count: number; equipped: boolean; kind: string; value: number }[];
-  knownSpells(): { id: ContentId; name: string; cost: number }[];
+  playerInventory(): InventoryItemView[];
+  playerEquipment(): EquipmentSlotView[];
+  knownSpells(): KnownSpellView[];
+  equippedSpells(): EquippedSpellView[];
   /** Events from the most recent tick, already filtered to what this player
    * should see (own progression, local combat, world messages). */
   drainEvents(): SimEvent[];

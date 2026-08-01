@@ -8,7 +8,7 @@ import {
 } from '../src/net/browser_connection';
 import { ClientWorld, type ClientTransport } from '../src/net/client_world';
 import { AuthenticatedClientSession } from '../src/net/authenticated_session';
-import { parseServerMessage, type ServerMessage } from '../src/net/protocol';
+import { PROTOCOL_VERSION, parseServerMessage, type ServerMessage } from '../src/net/protocol';
 
 type SocketEvent = 'open' | 'message' | 'close' | 'error';
 
@@ -218,12 +218,12 @@ describe('authenticated browser session', () => {
 
     session.onMessage(JSON.stringify({
       t: 'authOk',
-      protocol: 4,
+      protocol: PROTOCOL_VERSION,
       sessionToken: 'a'.repeat(43),
       expiresInSeconds: 28_800,
       characters: [{ charId: 'pc_alva', name: 'Alva' }],
     }));
-    expect(JSON.parse(first[1])).toEqual({ t: 'hello', protocol: 4, charId: 'pc_alva' });
+    expect(JSON.parse(first[1])).toEqual({ t: 'hello', protocol: PROTOCOL_VERSION, charId: 'pc_alva' });
 
     session.endSession('network lost');
     const second: string[] = [];
@@ -258,7 +258,7 @@ describe('ClientWorld session boundaries', () => {
 
     world.beginSession({ send: (json) => sent.push(json) });
     expect(sent.map((json) => JSON.parse(json))).toEqual([
-      { t: 'hello', protocol: 4, charId: 'qa_alva' },
+      { t: 'hello', protocol: PROTOCOL_VERSION, charId: 'qa_alva' },
     ]);
 
     world.endSession('network lost');

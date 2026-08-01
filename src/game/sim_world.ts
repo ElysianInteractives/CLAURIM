@@ -18,6 +18,12 @@ import type {
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
 import { buyPrice, sellPrice } from '../sim/inventory/inventory';
+import {
+  equipmentView,
+  equippedSpellView,
+  inventoryView,
+  knownSpellView,
+} from './loadout_view';
 
 export class SimWorld implements IWorld {
   readonly charId: CharacterId;
@@ -195,26 +201,19 @@ export class SimWorld implements IWorld {
   }
 
   playerInventory() {
-    const p = this.actor();
-    const equipped = new Set(Object.values(p.equipment));
-    return p.inventory.map((s) => {
-      const item = this.sim.content.items[s.itemId];
-      return {
-        itemId: s.itemId,
-        name: item?.name ?? s.itemId,
-        count: s.count,
-        equipped: equipped.has(s.itemId),
-        kind: item?.kind ?? 'misc',
-        value: item?.value ?? 0,
-      };
-    });
+    return inventoryView(this.actor(), this.sim.content);
+  }
+
+  playerEquipment() {
+    return equipmentView(this.actor(), this.sim.content);
   }
 
   knownSpells() {
-    return (this.sim.knownSpellsBy.get(this.charId) ?? []).map((id) => {
-      const sp = this.sim.content.spells[id];
-      return { id, name: sp?.name ?? id, cost: sp?.magickaCost ?? 0 };
-    });
+    return knownSpellView(this.sim.knownSpellsBy.get(this.charId) ?? [], this.sim.content);
+  }
+
+  equippedSpells() {
+    return equippedSpellView(this.sim.spellLoadoutFor(this.charId), this.sim.content);
   }
 
   /** Filter tick events to this player's view: own progression/quests, plus
@@ -315,6 +314,18 @@ export class SimWorld implements IWorld {
 
   equipItem(itemId: ContentId): boolean {
     return this.sim.equipFor(this.charId, itemId);
+  }
+
+  unequipItem(slot: Parameters<IWorld['unequipItem']>[0]): boolean {
+    return this.sim.unequipFor(this.charId, slot);
+  }
+
+  equipSpell(slot: Parameters<IWorld['equipSpell']>[0], spellId: ContentId): boolean {
+    return this.sim.equipSpellFor(this.charId, slot, spellId);
+  }
+
+  unequipSpell(slot: Parameters<IWorld['unequipSpell']>[0]): boolean {
+    return this.sim.unequipSpellFor(this.charId, slot);
   }
 
   takePerk(perkId: ContentId): boolean {

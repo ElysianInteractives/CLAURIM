@@ -116,8 +116,9 @@ space transitions snap; remote actors exponentially smoothed (0.35/frame);
 combat is presentation-only prediction.
 
 ## D-016: Server-owned persistence behind StorageProvider - LOCKED
-Characters (schema v1) and world saves persist through StorageProvider;
-world schema v2 introduced the boundary and D-029 advances it to v3.
+Characters (schema v2) and world saves persist through StorageProvider;
+world schema v2 introduced the boundary, D-029 advanced it to v3, and D-035
+advances spell-loadout persistence to world v4 / character v2.
 FileStorage (atomic tmp+rename) serves the milestone and a database comes
 later. D-028 extends the original four-method character/world seam with two
 account-record methods. Browser localStorage is offline-mode only. Corruption
@@ -302,3 +303,15 @@ Clients submit direction intent only and never choose projectile positions,
 targets, hits, or damage. The HUD's read-only target selection uses the same
 3D ray. Self spells, NPC projectiles, and bows retain their prior behavior.
 Exact rules: `SPELL_RETICLE_AIM_CONTRACT.md`.
+
+## D-035: Authoritative item and spell loadout - LOCKED
+Actor equipment is presented through six fixed item slots, while every
+character owns two persistent spell slots bound to keys 1/2. A spell must be
+known, authored, uniquely assigned, and equipped before it can be cast;
+assigning an already-equipped spell moves it. Unequipping gear never removes
+the carried item. Protocol v5 replicates both slot families and accepts only
+validated equip/unequip intent. World schema v4 and character schema v2 add
+linear migrations that preserve the prior Flamebolt/Mend Wounds key behavior.
+The inventory UI separates equipped gear, spell loadout, known spells, and
+unequipped carried items, with a persistent read-only spell quickbar. Exact
+rules: `PLAYER_LOADOUT_CONTRACT.md`.

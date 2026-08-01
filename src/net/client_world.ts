@@ -7,7 +7,16 @@
 import { CONTENT } from '../sim/content';
 import { CollisionIndex, resolveMove } from '../sim/world/collision';
 import { groundHeight } from '../sim/world/spaces';
-import { DT, SNEAK_MULT, SPRINT_MULT, type SimEvent } from '../sim/types';
+import {
+  DT,
+  EQUIP_SLOTS,
+  SNEAK_MULT,
+  SPELL_EQUIP_SLOTS,
+  SPRINT_MULT,
+  type EquipSlot,
+  type SimEvent,
+  type SpellEquipSlot,
+} from '../sim/types';
 import { advanceSprint, localMovementToWorld, regenerateStamina } from '../sim/player/movement';
 import { clampAimPitch } from '../sim/player/aim';
 import {
@@ -316,6 +325,21 @@ export class ClientWorld implements IWorld {
     return this.ready() && this.sendMsg({ t: 'cmd', kind: 'equip', arg: itemId });
   }
 
+  unequipItem(slot: EquipSlot): boolean {
+    const index = EQUIP_SLOTS.indexOf(slot);
+    return index >= 0 && this.ready() && this.sendMsg({ t: 'cmd', kind: 'unequipItem', index });
+  }
+
+  equipSpell(slot: SpellEquipSlot, spellId: string): boolean {
+    const index = SPELL_EQUIP_SLOTS.indexOf(slot);
+    return index >= 0 && this.ready() && this.sendMsg({ t: 'cmd', kind: 'equipSpell', arg: spellId, index });
+  }
+
+  unequipSpell(slot: SpellEquipSlot): boolean {
+    const index = SPELL_EQUIP_SLOTS.indexOf(slot);
+    return index >= 0 && this.ready() && this.sendMsg({ t: 'cmd', kind: 'unequipSpell', index });
+  }
+
   takePerk(perkId: string): boolean {
     return this.ready() && this.sendMsg({ t: 'cmd', kind: 'perk', arg: perkId });
   }
@@ -529,8 +553,16 @@ export class ClientWorld implements IWorld {
     return this.snapshot?.self.inventory ?? [];
   }
 
+  playerEquipment() {
+    return this.snapshot?.self.equipment ?? [];
+  }
+
   knownSpells() {
     return this.snapshot?.self.knownSpells ?? [];
+  }
+
+  equippedSpells() {
+    return this.snapshot?.self.equippedSpells ?? [];
   }
 
   drainEvents(): SimEvent[] {

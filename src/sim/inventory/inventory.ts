@@ -81,11 +81,12 @@ export function equipItem(ctx: SimContext, actorId: EntityId, itemId: ContentId)
   return true;
 }
 
-export function unequipSlot(ctx: SimContext, actorId: EntityId, slot: keyof Actor['equipment']): void {
+export function unequipSlot(ctx: SimContext, actorId: EntityId, slot: keyof Actor['equipment']): boolean {
   const a = ctx.actors.get(actorId);
-  if (!a) return;
+  if (!a || a.equipment[slot] === undefined) return false;
   delete a.equipment[slot];
   ctx.recalcStats(actorId);
+  return true;
 }
 
 /** Use a consumable: applies its effects and removes one. */

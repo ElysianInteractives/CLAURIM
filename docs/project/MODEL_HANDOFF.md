@@ -94,6 +94,14 @@ and transformed dev-server requests pass. Production dependencies and all
 application source remain unchanged. Exact maintenance rules are in
 `TOOLCHAIN_SECURITY_CONTRACT.md`.
 
+QA Phase C verifies INV-001/CMB-009 through D-035: inventory now separates
+six fixed equipment slots from unequipped carried items, and known spells can
+be assigned uniquely to persistent 1/2 hotkeys. Both item and spell
+equip/unequip actions resolve authoritatively offline and online; the host no
+longer hard-codes combat spell IDs. Protocol v5, world save v4, and character
+save v2 carry the new state with tested migrations. Exact boundaries are in
+`PLAYER_LOADOUT_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -102,8 +110,8 @@ session added and TESTED:
 - Multiplayer sim core (D-013): many characters in one Sim; per-character
   journals/spells/sessions/container-loot; explicit durable parties and
   nearby chat (D-029); downed/revive/release;
-  world save schema v3 with tested v1->v2->v3 migrations; per-character
-  persistence records (schema v1).
+  world save schema v4 with tested v1->v2->v3->v4 migrations; per-character
+  persistence records (schema v2 with v1->v2 migration).
 - MMO combat (D-017/D-018): threat tables with hysteresis, group aggro,
   locked encounter scaling through the modifier system, data-driven
   abilities (telegraphed cones, ground pools, summons, support heals),
@@ -111,7 +119,7 @@ session added and TESTED:
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
 - Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
-  on :8787; protocol v4 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
+  on :8787; protocol v5 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with
@@ -127,6 +135,9 @@ session added and TESTED:
   v4 and consumed at the fixed-tick spell-release boundary; player projectile
   spells and the read-only target frame follow the normalized 3D center-
   reticle ray while collision, hits, and damage remain authoritative.
+- QA Phase C loadouts (D-035): six fixed item slots, separate carried items,
+  two persistent unique spell hotkeys, known-spell equip actions, and a
+  combat quickbar share one authoritative offline/online contract.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -148,14 +159,15 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 189 tests / 19 suites green (multiplayer sim, server/net,
+- `npm test`: 196 tests / 20 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
-  movement/sprint/recovery behavior, and reticle-directed spell aim).
-- Live ws smoke under protocol v4: server + 2 real WebSocket clients: ack 30, 4.4 m
+  movement/sprint/recovery behavior, reticle-directed spell aim, and player
+  equipment/spell loadouts).
+- Live ws smoke under protocol v5: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 6,063 / 6,051-byte snapshots.
+  replay rejection, preserved ownership, and current 6,719 / 6,707-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -165,7 +177,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 667.46 kB / 175.47 kB gzip.
+  build); Vite 8 production JavaScript is 677.21 kB / 177.86 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -183,7 +195,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-034), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-035), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

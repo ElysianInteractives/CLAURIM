@@ -5,6 +5,7 @@
 import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
 import { DEFAULT_AUDIO_SETTINGS, type AudioBus, type AudioSettings } from '../game/combat_audio';
 import { reticleDirection } from '../sim/player/aim';
+import { LOADOUT_CSS, renderLoadoutPanel, renderSpellQuickbar } from './loadout';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
@@ -113,6 +114,7 @@ const CSS = `
     #hud .control-grid { gap: 7px 15px; }
     #hud .control-row { min-height: 21px; }
   }
+  ${LOADOUT_CSS}
 `;
 
 type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social' | 'settings';
@@ -347,6 +349,7 @@ export class Hud {
       <div class="clockrow">${esc(spaceName)} - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
       ${this.connectionStatus ? `<div class="connection-status connection-status--${this.connectionStatus.tone}" role="status">${esc(this.connectionStatus.text)}</div>` : ''}
       ${renderResourceMeters(r)}
+      ${renderSpellQuickbar(this.world.equippedSpells())}
       <div class="crosshair${pulseClass}" aria-hidden="true"></div>
       ${target ? renderCombatTarget(target) : ''}
       ${this.combatPulse === 'hurt' ? '<div class="damage-vignette" aria-hidden="true"></div>' : ''}
@@ -397,15 +400,13 @@ export class Hud {
         break;
       }
       case 'inventory': {
-        const inv = this.world.playerInventory();
-        html += `<div class="panel"><h2>Inventory (${this.world.playerResources().gold} gold)</h2>`;
-        html += inv
-          .map(
-            (it) =>
-              `<div class="row" data-act="item" data-id="${it.itemId}"><span>${it.equipped ? '* ' : ''}${esc(it.name)} x${it.count}</span><span class="dim">${it.kind}</span></div>`,
-          )
-          .join('');
-        html += `<div class="hint">Click: equip weapon/armor, drink consumable - [Tab] close</div></div>`;
+        html += renderLoadoutPanel(
+          this.world.playerResources().gold,
+          this.world.playerEquipment(),
+          this.world.equippedSpells(),
+          this.world.knownSpells(),
+          this.world.playerInventory(),
+        );
         break;
       }
       case 'journal': {
@@ -470,6 +471,9 @@ export class Hud {
         else if (act === 'party-accept') this.world.partyAccept();
         else if (act === 'party-decline') this.world.partyDecline();
         else if (act === 'party-leave') this.world.partyLeave();
+        else if (act === 'unequip-item') this.world.unequipItem(el.dataset.slot as Parameters<IWorld['unequipItem']>[0]);
+        else if (act === 'equip-spell') this.world.equipSpell(el.dataset.slot as Parameters<IWorld['equipSpell']>[0], id);
+        else if (act === 'unequip-spell') this.world.unequipSpell(el.dataset.slot as Parameters<IWorld['unequipSpell']>[0]);
         else if (act === 'item') {
           const it = this.world.playerInventory().find((x) => x.itemId === id);
           if (!it) return;

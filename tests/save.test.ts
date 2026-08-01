@@ -1,11 +1,11 @@
-// Save architecture: round-trips, the FULL migration chain (v0 -> v1 -> v2 -> v3),
+// Save architecture: round-trips, the FULL migration chain (v0 -> v1 -> v2 -> v3 -> v4),
 // corruption rejection, and persistence of world deltas. The invariants these
 // protect predate multiplayer and must stay: byte-identical round-trips,
 // reject-never-half-load, and a working migration path for every old schema.
 
 import { describe, expect, it } from 'vitest';
 import { Sim, type PlayerInput } from '../src/sim/sim';
-import { parseSave, SaveError, SAVE_SCHEMA_VERSION } from '../src/sim/save/save';
+import { parseCharacterSave, parseSave, SaveError, SAVE_SCHEMA_VERSION } from '../src/sim/save/save';
 
 const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, sneak: false, block: false, jump: false };
 
@@ -28,13 +28,14 @@ function makeV1Save(sim: Sim): Record<string, unknown> {
   delete v1.primaryCharId;
   delete v1.questLogs;
   delete v1.knownSpells;
+  delete v1.equippedSpells;
   delete v1.containersLootedBy;
   delete v1.characterNames;
   delete v1.parties;
   return v1;
 }
 
-describe('save round-trip (v3)', () => {
+describe('save round-trip (v4)', () => {
   it('serialize -> load -> serialize is byte-identical', () => {
     const sim = new Sim(99);
     for (let t = 0; t < 120; t++) sim.tick(idle);
@@ -53,6 +54,7 @@ describe('save round-trip (v3)', () => {
     expect(loaded.questLogOf('p1').get('hollow_delve')?.stageId).toBe('entrance');
     expect(loaded.player().skills.oneHanded.level).toBeGreaterThan(1);
     expect(loaded.player().equipment.mainHand).toBe('worn_dagger');
+    expect(loaded.spellLoadoutFor('p1')).toEqual({ spell1: 'flamebolt', spell2: 'mend_wounds' });
   });
 
   it('multiplayer state survives: two characters, parties, per-char journals', () => {
@@ -90,6 +92,10 @@ describe('migrations', () => {
     expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
     expect(migrated.players).toEqual([{ charId: 'p1', entityId: sim.player().id }]);
     expect(migrated.parties).toEqual([]);
+    expect(migrated.equippedSpells).toEqual([{
+      charId: 'p1',
+      slots: { spell1: 'flamebolt', spell2: 'mend_wounds' },
+    }]);
     const loaded = Sim.load(JSON.stringify(v1));
     expect(loaded.player().name).toBe('Wanderer');
     expect(loaded.questLogOf('p1').get('hollow_delve')?.stageId).toBe('entrance');
@@ -102,6 +108,25 @@ describe('migrations', () => {
     raw.schemaVersion = 2;
     raw.parties = [{ partyId: 'fellowship', members: ['p1', 'p2'] }];
     expect(parseSave(JSON.stringify(raw)).parties).toEqual([]);
+  });
+
+  it('migrates a v3 world and v1 character to explicit spell loadouts', () => {
+    const sim = new Sim(13);
+    const world = sim.serialize() as unknown as Record<string, unknown>;
+    world.schemaVersion = 3;
+    delete world.equippedSpells;
+    expect(parseSave(JSON.stringify(world)).equippedSpells).toEqual([{
+      charId: 'p1',
+      slots: { spell1: 'flamebolt', spell2: 'mend_wounds' },
+    }]);
+
+    const character = sim.extractCharacter('p1') as unknown as Record<string, unknown>;
+    character.schemaVersion = 1;
+    delete character.equippedSpells;
+    expect(parseCharacterSave(JSON.stringify(character)).equippedSpells).toEqual({
+      spell1: 'flamebolt',
+      spell2: 'mend_wounds',
+    });
   });
 
   it('a v0 save (no bookkeeping at all) migrates through the whole chain', () => {

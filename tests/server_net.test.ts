@@ -108,6 +108,10 @@ describe('join and protocol hygiene', () => {
     expect(c.last('reject')?.reason).toContain('malformed');
     c.send({ t: 'cmd', kind: 'chat', arg: 'x'.repeat(201) });
     expect(c.last('reject')?.reason).toContain('malformed');
+    c.send({ t: 'cmd', kind: 'equipSpell', arg: 'flamebolt' });
+    expect(c.last('reject')?.reason).toContain('malformed');
+    c.send({ t: 'cmd', kind: 'unequipItem', index: 6 });
+    expect(c.last('reject')?.reason).toContain('malformed');
   });
 
   it('commands before joining are rejected', () => {
@@ -204,6 +208,34 @@ describe('server-authoritative movement (D-015)', () => {
     c.send({ t: 'cmd', kind: 'equip', arg: 'steel_sword' });
     ticks(core, 1);
     expect(actor.equipment.mainHand).not.toBe('steel_sword');
+  });
+
+  it('replicates and mutates item and spell loadouts through validated intent', () => {
+    const { core } = makeServer();
+    const client = new TestClient(core, 'conn1');
+    client.hello('alva');
+
+    client.send({ t: 'cmd', kind: 'equipSpell', arg: 'mend_wounds', index: 0 });
+    client.send({ t: 'cmd', kind: 'unequipItem', index: 0 });
+    ticks(core, SNAPSHOT_EVERY);
+
+    expect(core.sim.spellLoadoutFor('alva')).toEqual({ spell1: 'mend_wounds' });
+    expect(core.sim.playerActor('alva')!.equipment.mainHand).toBeUndefined();
+    const snapshot = client.last('snapshot')!;
+    expect(snapshot.self.equipment.find((slot) => slot.slot === 'mainHand')?.itemId).toBeNull();
+    expect(snapshot.self.equippedSpells).toEqual([
+      expect.objectContaining({ slot: 'spell1', spellId: 'mend_wounds' }),
+      expect.objectContaining({ slot: 'spell2', spellId: null }),
+    ]);
+
+    core.disconnect('conn1');
+    const reconnect = new TestClient(core, 'conn2', 'account_conn1');
+    reconnect.hello('alva');
+    ticks(core, SNAPSHOT_EVERY);
+    expect(reconnect.last('snapshot')!.self.equippedSpells).toEqual([
+      expect.objectContaining({ slot: 'spell1', spellId: 'mend_wounds' }),
+      expect.objectContaining({ slot: 'spell2', spellId: null }),
+    ]);
   });
 });
 

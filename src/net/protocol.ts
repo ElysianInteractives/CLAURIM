@@ -1,4 +1,4 @@
-// Wire protocol v4 (D-014/D-028/D-033/D-034). Explicit versioned JSON message schemas with
+// Wire protocol v5 (D-014/D-028/D-033/D-034/D-035). Explicit versioned JSON message schemas with
 // inbound validation on BOTH ends; nothing serializes runtime objects
 // directly. The server rejects any message that fails validation.
 // See docs/project/NETWORK_ARCHITECTURE.md.
@@ -7,6 +7,8 @@ import type { SimEvent } from '../sim/types';
 import type {
   ActorView,
   DialogueView,
+  EquipmentSlotView,
+  EquippedSpellView,
   GroundAoeView,
   JournalView,
   PartyInviteView,
@@ -16,7 +18,7 @@ import type {
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
 
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** One tick of movement intent. Position is NEVER sent by clients (D-015). */
 export interface WireInput {
@@ -37,6 +39,9 @@ export type CommandKind =
   | 'cast'
   | 'useItem'
   | 'equip'
+  | 'unequipItem'
+  | 'equipSpell'
+  | 'unequipSpell'
   | 'perk'
   | 'interact'
   | 'dialogueChoose'
@@ -111,8 +116,10 @@ export interface SelfState {
     gold: number;
   };
   inventory: { itemId: string; name: string; count: number; equipped: boolean; kind: string; value: number }[];
+  equipment: EquipmentSlotView[];
   skills: { id: string; level: number; xp: number; xpForNext: number }[];
   knownSpells: { id: string; name: string; cost: number }[];
+  equippedSpells: EquippedSpellView[];
   journal: JournalView[];
   perks: PerkView[];
   partyId: string | null;
@@ -176,6 +183,9 @@ const COMMAND_KINDS: ReadonlySet<string> = new Set([
   'cast',
   'useItem',
   'equip',
+  'unequipItem',
+  'equipSpell',
+  'unequipSpell',
   'perk',
   'interact',
   'dialogueChoose',
@@ -327,10 +337,20 @@ export function parseClientMessage(json: string): ClientMessage | null {
     case 'cmd': {
       if (typeof m.kind !== 'string' || !COMMAND_KINDS.has(m.kind)) return null;
       if (m.arg !== undefined && (typeof m.arg !== 'string' || [...m.arg].length > MAX_ARG_LEN)) return null;
-      if (m.index !== undefined && (!isFiniteNum(m.index) || m.index < 0 || m.index > 50)) return null;
+      if (m.index !== undefined && (!Number.isSafeInteger(m.index) || (m.index as number) < 0 || (m.index as number) > 50)) return null;
       if (m.targetId !== undefined && (!Number.isSafeInteger(m.targetId) || (m.targetId as number) <= 0)) return null;
       if (m.kind === 'partyInvite' && m.targetId === undefined) return null;
       if (m.kind !== 'partyInvite' && m.targetId !== undefined) return null;
+      if (m.kind === 'equipSpell' && (
+        typeof m.arg !== 'string' || m.arg.length === 0 ||
+        (m.index !== 0 && m.index !== 1)
+      )) return null;
+      if (m.kind === 'unequipSpell' && (
+        m.arg !== undefined || (m.index !== 0 && m.index !== 1)
+      )) return null;
+      if (m.kind === 'unequipItem' && (
+        m.arg !== undefined || typeof m.index !== 'number' || m.index < 0 || m.index > 5
+      )) return null;
       return {
         t: 'cmd',
         kind: m.kind as CommandKind,

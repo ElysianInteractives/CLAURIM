@@ -7,7 +7,7 @@ import {
 } from '../src/game/combat_audio';
 import { TransformHistory, interpolateYaw } from '../src/render/interpolation';
 import { renderAudioSettings, renderSettings } from '../src/ui/hud';
-import { equippedAttackKind } from '../src/game/host_actions';
+import { equippedAttackKind, spellForHotkey } from '../src/game/host_actions';
 import { capturesEditableTargetKey } from '../src/game/input';
 
 describe('host-side transform interpolation', () => {
@@ -83,9 +83,19 @@ describe('browser audio presentation contract', () => {
 
 describe('browser host equipment dispatch', () => {
   it('uses the authored weapon type for every equipped bow rather than one item id', () => {
-    expect(equippedAttackKind([{ itemId: 'hunting_bow', kind: 'weapon', equipped: true }])).toBe('ranged');
-    expect(equippedAttackKind([{ itemId: 'ironbound_bow', kind: 'weapon', equipped: true }])).toBe('ranged');
-    expect(equippedAttackKind([{ itemId: 'iron_sword', kind: 'weapon', equipped: true }])).toBe('melee');
+    expect(equippedAttackKind([{ itemId: 'hunting_bow', kind: 'weapon' }])).toBe('ranged');
+    expect(equippedAttackKind([{ itemId: 'ironbound_bow', kind: 'weapon' }])).toBe('ranged');
+    expect(equippedAttackKind([{ itemId: 'iron_sword', kind: 'weapon' }])).toBe('melee');
+  });
+
+  it('resolves spell hotkeys from the equipped loadout rather than fixed spell ids', () => {
+    const loadout = [
+      { slot: 'spell1' as const, spellId: 'mend_wounds' },
+      { slot: 'spell2' as const, spellId: 'frostspike' },
+    ];
+    expect(spellForHotkey(loadout, 'spell1')).toBe('mend_wounds');
+    expect(spellForHotkey(loadout, 'spell2')).toBe('frostspike');
+    expect(spellForHotkey([], 'spell1')).toBeNull();
   });
 });
 

@@ -22,11 +22,13 @@ import {
   type ContentId,
   type DamageChannel,
   type EntityId,
+  type EquipSlot,
   type PartyId,
   type Position,
   type QuestState,
   type SimEvent,
   type SkillId,
+  type SpellEquipSlot,
   type SpaceId,
   type Vec3,
 } from './types';
@@ -73,8 +75,15 @@ import {
   removeItem,
   rollLoot,
   sellToMerchant,
+  unequipSlot,
   useItem,
 } from './inventory/inventory';
+import {
+  assignSpell,
+  defaultSpellLoadout,
+  sanitizeSpellLoadout,
+  type SpellLoadout,
+} from './player/loadout';
 import { trainSkill, takePerk, canTakePerk } from './progression/skills';
 import { journalFor, onQuestEvent, startQuest, tickReachObjectives } from './quests/quest_runtime';
 import {
@@ -167,6 +176,7 @@ export class Sim {
   primaryCharId: CharacterId | null = null;
   readonly questLogs = new Map<CharacterId, Map<ContentId, QuestState>>();
   readonly knownSpellsBy = new Map<CharacterId, ContentId[]>();
+  readonly equippedSpellsBy = new Map<CharacterId, SpellLoadout>();
   readonly containersLootedByChar = new Map<CharacterId, Set<string>>();
   readonly parties = new Map<PartyId, CharacterId[]>();
   readonly characterNames = new Map<CharacterId, string>();
@@ -446,7 +456,13 @@ export class Sim {
       player.level = restore.level;
       player.characterXp = restore.characterXp;
       player.perkPoints = restore.perkPoints;
-      this.knownSpellsBy.set(charId, [...restore.knownSpells]);
+      const knownSpells = [...restore.knownSpells];
+      this.knownSpellsBy.set(charId, knownSpells);
+      this.equippedSpellsBy.set(charId, sanitizeSpellLoadout(
+        knownSpells,
+        restore.equippedSpells,
+        (spellId) => this.content.spells[spellId] !== undefined,
+      ));
       const log = new Map<ContentId, QuestState>();
       for (const q of restore.quests) log.set(q.questId, JSON.parse(JSON.stringify(q)));
       this.questLogs.set(charId, log);
@@ -462,7 +478,9 @@ export class Sim {
       addItem(this.ctx, id, 'bread', 2);
       addItem(this.ctx, id, 'healing_draught', 1);
       equipItem(this.ctx, id, 'worn_dagger');
-      this.knownSpellsBy.set(charId, ['flamebolt', 'mend_wounds']);
+      const knownSpells = ['flamebolt', 'mend_wounds'];
+      this.knownSpellsBy.set(charId, knownSpells);
+      this.equippedSpellsBy.set(charId, defaultSpellLoadout(knownSpells));
       player.health = player.stats.maxHealth;
       player.stamina = player.stats.maxStamina;
       player.magicka = player.stats.maxMagicka;
@@ -514,6 +532,7 @@ export class Sim {
       characterXp: a.characterXp,
       perkPoints: a.perkPoints,
       knownSpells: [...(this.knownSpellsBy.get(charId) ?? [])],
+      equippedSpells: { ...this.spellLoadoutFor(charId) },
       quests: JSON.parse(JSON.stringify([...this.questLogOf(charId).values()])),
       containersLooted: [...this.containersLootedOf(charId)],
     };
@@ -1063,7 +1082,9 @@ export class Sim {
   castFor(charId: CharacterId, spellId: ContentId): boolean {
     const p = this.playerActor(charId);
     if (!p) return false;
-    if (!(this.knownSpellsBy.get(charId) ?? []).includes(spellId)) {
+    const known = (this.knownSpellsBy.get(charId) ?? []).includes(spellId);
+    const equipped = Object.values(this.spellLoadoutFor(charId)).includes(spellId);
+    if (!known || !equipped) {
       this.events.push({ type: 'actionRejected', actorId: p.id, action: 'spell', reason: 'unknown' });
       return false;
     }
@@ -1080,6 +1101,34 @@ export class Sim {
     const p = this.playerActor(charId);
     if (!p || p.downed) return false;
     return equipItem(this.ctx, p.id, itemId);
+  }
+
+  unequipFor(charId: CharacterId, slot: EquipSlot): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed) return false;
+    return unequipSlot(this.ctx, p.id, slot);
+  }
+
+  spellLoadoutFor(charId: CharacterId): SpellLoadout {
+    return this.equippedSpellsBy.get(charId) ?? {};
+  }
+
+  equipSpellFor(charId: CharacterId, slot: SpellEquipSlot, spellId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    const known = this.knownSpellsBy.get(charId) ?? [];
+    if (!p || p.downed || !known.includes(spellId) || !this.content.spells[spellId]) return false;
+    this.equippedSpellsBy.set(charId, assignSpell(this.spellLoadoutFor(charId), slot, spellId));
+    return true;
+  }
+
+  unequipSpellFor(charId: CharacterId, slot: SpellEquipSlot): boolean {
+    const p = this.playerActor(charId);
+    const current = this.spellLoadoutFor(charId);
+    if (!p || p.downed || current[slot] === undefined) return false;
+    const next = { ...current };
+    delete next[slot];
+    this.equippedSpellsBy.set(charId, next);
+    return true;
   }
 
   takePerkFor(charId: CharacterId, perkId: ContentId): boolean {
@@ -1391,7 +1440,7 @@ export class Sim {
   }
 
   // -------------------------------------------------------------------------
-  // Save / load (world save, schema v3)
+  // Save / load (world save, schema v4)
   // -------------------------------------------------------------------------
 
   serialize(): SaveGame {
@@ -1446,6 +1495,7 @@ export class Sim {
         quests: JSON.parse(JSON.stringify([...log.values()])),
       })),
       knownSpells: [...this.knownSpellsBy].map(([charId, spells]) => ({ charId, spells: [...spells] })),
+      equippedSpells: [...this.equippedSpellsBy].map(([charId, slots]) => ({ charId, slots: { ...slots } })),
       containersLootedBy: [...this.containersLootedByChar].map(([charId, ids]) => ({ charId, ids: [...ids] })),
       characterNames: [...this.characterNames].map(([charId, name]) => ({ charId, name })),
       parties: [...this.parties].map(([partyId, members]) => ({ partyId, members: [...members] })),
@@ -1517,6 +1567,14 @@ export class Sim {
     }
     for (const entry of save.knownSpells) {
       sim.knownSpellsBy.set(entry.charId, [...entry.spells]);
+    }
+    for (const entry of save.equippedSpells) {
+      const known = sim.knownSpellsBy.get(entry.charId) ?? [];
+      sim.equippedSpellsBy.set(entry.charId, sanitizeSpellLoadout(
+        known,
+        entry.slots,
+        (spellId) => content.spells[spellId] !== undefined,
+      ));
     }
     for (const entry of save.containersLootedBy) {
       sim.containersLootedByChar.set(entry.charId, new Set(entry.ids));

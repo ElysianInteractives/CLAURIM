@@ -141,6 +141,11 @@ export const EQUIP_SLOTS: readonly EquipSlot[] = [
   'amulet',
 ];
 
+/** Two player-selected spell hotkeys. Stable names are persisted in saves. */
+export type SpellEquipSlot = 'spell1' | 'spell2';
+
+export const SPELL_EQUIP_SLOTS: readonly SpellEquipSlot[] = ['spell1', 'spell2'];
+
 export type AttackKind = 'melee' | 'ranged' | 'spell';
 export type AttackPhase = 'windup' | 'active' | 'recover';
 
