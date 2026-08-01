@@ -134,6 +134,26 @@ describe('server-authoritative movement (D-015)', () => {
     expect(snap.self.z).toBeCloseTo(after.z, 5);
   });
 
+  it('replicates movement resources and accepts safe-ground recovery as server intent', () => {
+    const { core } = makeServer();
+    const client = new TestClient(core, 'conn1');
+    client.hello('alva');
+    core.sim.movePlayerTo('alva', 'kaldwyn', 300, 300, 0);
+
+    client.send({ t: 'cmd', kind: 'recover' });
+    ticks(core, SNAPSHOT_EVERY);
+
+    const player = core.sim.playerActor('alva')!;
+    const snapshot = client.last('snapshot')!;
+    expect(Math.hypot(player.pos.x - 40, player.pos.z + 416)).toBeLessThan(4);
+    expect(snapshot.self.movement).toEqual({
+      moveSpeed: player.stats.moveSpeed,
+      staminaRegen: player.stats.staminaRegen,
+      sprinting: false,
+    });
+    expect(snapshot.events).toContainEqual({ type: 'playerRecovered', playerId: player.id });
+  });
+
   it('duplicate/replayed input sequences are ignored', () => {
     const { core } = makeServer();
     const c = new TestClient(core, 'conn1');

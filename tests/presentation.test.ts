@@ -6,7 +6,7 @@ import {
   soundscapeFor,
 } from '../src/game/combat_audio';
 import { TransformHistory, interpolateYaw } from '../src/render/interpolation';
-import { renderAudioSettings } from '../src/ui/hud';
+import { renderAudioSettings, renderSettings } from '../src/ui/hud';
 import { equippedAttackKind } from '../src/game/host_actions';
 import { capturesEditableTargetKey } from '../src/game/input';
 
@@ -69,6 +69,15 @@ describe('browser audio presentation contract', () => {
     expect(html).toContain('data-audio-state');
     expect(html).toContain('Audio unlocks after keyboard or pointer input');
     expect(renderAudioSettings(DEFAULT_AUDIO_SETTINGS, 'running')).toContain('Audio active.');
+  });
+
+  it('offers safe-ground recovery from the settings panel', () => {
+    const html = renderSettings(DEFAULT_AUDIO_SETTINGS, 'running');
+    expect(html).toContain('aria-label="Game settings"');
+    expect(html).toContain('aria-label="Player recovery"');
+    expect(html).toContain('data-act="recover"');
+    expect(html).toContain('Return to safe ground');
+    expect(html).toContain('Unavailable during combat');
   });
 });
 

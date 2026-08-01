@@ -282,3 +282,14 @@ module requests prove compatibility. Networked audit checks remain explicit
 rather than part of the deterministic gate. Major tool/Node-floor changes or
 audit exceptions require a new lock. Exact rules:
 `TOOLCHAIN_SECURITY_CONTRACT.md`.
+
+## D-033: Camera-relative player movement and bounded safe-ground recovery - LOCKED
+The authoritative sim and online predictor share one normalized camera-basis
+transform and one stamina-aware sprint rule. Stationary sprint intent cannot
+suppress regeneration; exhaustion returns movement to walk speed and requires
+10% stamina before restart. Protocol v3 replicates the derived movement state
+needed for deterministic prediction. A living player may request the current
+space's established safe point through `IWorld`, but the server rejects the
+request during combat, while incapacitated, or during the 30-second cooldown.
+Recovery neither restores resources nor applies death penalties. Exact rules:
+`PLAYER_MOVEMENT_RECOVERY_CONTRACT.md`.

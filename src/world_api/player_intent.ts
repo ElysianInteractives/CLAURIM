@@ -22,6 +22,8 @@ export interface PlayerIntentFacet {
   equipItem(itemId: ContentId): boolean;
   takePerk(perkId: ContentId): boolean;
   respawn(): void;
+  /** Request a cooldown-protected return to the space recovery point. */
+  recover(): boolean;
   saveGame(): string;
   /** Minimal social presence: a short chat line broadcast to nearby players. */
   chat(text: string): void;

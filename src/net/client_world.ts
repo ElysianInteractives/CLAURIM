@@ -7,7 +7,8 @@
 import { CONTENT } from '../sim/content';
 import { CollisionIndex, resolveMove } from '../sim/world/collision';
 import { groundHeight } from '../sim/world/spaces';
-import { BASE_WALK_SPEED, DT, SNEAK_MULT, SPRINT_MULT, type SimEvent } from '../sim/types';
+import { DT, SNEAK_MULT, SPRINT_MULT, type SimEvent } from '../sim/types';
+import { advanceSprint, localMovementToWorld, regenerateStamina } from '../sim/player/movement';
 import {
   PROTOCOL_VERSION,
   parseServerMessage,
@@ -38,6 +39,14 @@ interface PendingInput {
   sentAtMs: number;
 }
 
+interface PredictedMovement {
+  x: number;
+  y: number;
+  z: number;
+  stamina: number;
+  sprinting: boolean;
+}
+
 export interface ClientNetworkDiagnostics {
   ready: boolean;
   snapshots: number;
@@ -66,7 +75,7 @@ export class ClientWorld implements IWorld {
   private eventBuffer: SimEvent[] = [];
   private pending: PendingInput[] = [];
   private seq = 0;
-  private predicted = { x: 0, y: 0, z: 0 };
+  private predicted: PredictedMovement = { x: 0, y: 0, z: 0, stamina: 0, sprinting: false };
   private predictedSpace = '';
   /** Smoothed display positions for remote actors. */
   private display = new Map<number, { x: number; y: number; z: number; yaw: number }>();
@@ -168,15 +177,21 @@ export class ClientWorld implements IWorld {
         // Reconciliation (D-015): drop acknowledged inputs, then re-run the
         // remaining pending inputs from the server's authoritative position.
         this.pending = this.pending.filter((p) => p.seq > msg.ackSeq);
-        const serverPos = { x: msg.self.x, y: msg.self.y, z: msg.self.z };
+        const serverMovement: PredictedMovement = {
+          x: msg.self.x,
+          y: msg.self.y,
+          z: msg.self.z,
+          stamina: msg.self.resources.stamina,
+          sprinting: msg.self.movement.sprinting,
+        };
         if (first || msg.self.spaceId !== this.predictedSpace) {
           // Space transitions and late joins snap (never lerp across doors).
-          this.predicted = serverPos;
+          this.predicted = serverMovement;
           this.predictedSpace = msg.self.spaceId;
           this.pending = [];
           this.lastCorrectionMeters = 0;
         } else {
-          let replay = { ...serverPos };
+          let replay = { ...serverMovement };
           for (const p of this.pending) {
             replay = this.stepMovement(replay, msg.self.spaceId, p.input, msg.self);
           }
@@ -191,6 +206,8 @@ export class ClientWorld implements IWorld {
             this.predicted.z += (replay.z - this.predicted.z) * 0.4;
             this.predicted.y = replay.y;
           }
+          this.predicted.stamina = replay.stamina;
+          this.predicted.sprinting = replay.sprinting;
         }
         this.awaitingBaseline = false;
         break;
@@ -208,25 +225,47 @@ export class ClientWorld implements IWorld {
   /** Deterministic client-side movement: the same resolveMove + terrain the
    * server uses, driven by intent only. */
   private stepMovement(
-    from: { x: number; y: number; z: number },
+    from: PredictedMovement,
     spaceId: string,
     input: WireInput,
     self: SelfState,
-  ): { x: number; y: number; z: number } {
-    let speed = BASE_WALK_SPEED;
-    if (input.sprint && !input.sneak) speed *= SPRINT_MULT;
+  ): PredictedMovement {
+    const direction = localMovementToWorld(input.moveX, input.moveZ, input.yaw);
+    const sprint = advanceSprint(
+      input.sprint,
+      input.sneak,
+      direction.moving,
+      from.sprinting,
+      from.stamina,
+      self.resources.maxStamina,
+    );
+    let speed = self.movement.moveSpeed;
+    if (sprint.applied) speed *= SPRINT_MULT;
     if (input.sneak) speed *= SNEAK_MULT;
-    if (input.block) speed *= 0.55;
-    void self;
-    const len = Math.hypot(input.moveX, input.moveZ);
-    if (len < 0.01) {
-      return { ...from, y: groundHeight(CONTENT, spaceId, from.x, from.z, this.seed()) };
-    }
-    const nx = input.moveX / Math.max(1, len);
-    const nz = input.moveZ / Math.max(1, len);
-    const wx = nx * Math.cos(input.yaw) + nz * Math.sin(input.yaw);
-    const wz = -nx * Math.sin(input.yaw) + nz * Math.cos(input.yaw);
-    return resolveMove(CONTENT, this.colliders, spaceId, from, wx * speed * DT, wz * speed * DT, this.seed());
+    if (input.block && from.stamina > 0) speed *= 0.55;
+    const position = direction.moving
+      ? resolveMove(
+        CONTENT,
+        this.colliders,
+        spaceId,
+        from,
+        direction.x * speed * DT,
+        direction.z * speed * DT,
+        this.seed(),
+      )
+      : { ...from, y: groundHeight(CONTENT, spaceId, from.x, from.z, this.seed()) };
+    return {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      stamina: regenerateStamina(
+        sprint.stamina,
+        self.resources.maxStamina,
+        self.movement.staminaRegen,
+        sprint.active,
+      ),
+      sprinting: sprint.active,
+    };
   }
 
   // --- intent -------------------------------------------------------------
@@ -241,7 +280,7 @@ export class ClientWorld implements IWorld {
       this.pending = this.pending.filter((entry) => entry !== pending);
       return;
     }
-    // Predict own movement locally (position only; resources are server truth).
+    // Predict local movement state; snapshots remain the displayed resource truth.
     if (!this.snapshot.self.downed) {
       this.predicted = this.stepMovement(this.predicted, this.predictedSpace, wire, this.snapshot.self);
     }
@@ -278,6 +317,10 @@ export class ClientWorld implements IWorld {
 
   respawn(): void {
     if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'respawn' });
+  }
+
+  recover(): boolean {
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'recover' });
   }
 
   saveGame(): string {

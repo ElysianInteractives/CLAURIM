@@ -218,12 +218,12 @@ describe('authenticated browser session', () => {
 
     session.onMessage(JSON.stringify({
       t: 'authOk',
-      protocol: 2,
+      protocol: 3,
       sessionToken: 'a'.repeat(43),
       expiresInSeconds: 28_800,
       characters: [{ charId: 'pc_alva', name: 'Alva' }],
     }));
-    expect(JSON.parse(first[1])).toEqual({ t: 'hello', protocol: 2, charId: 'pc_alva' });
+    expect(JSON.parse(first[1])).toEqual({ t: 'hello', protocol: 3, charId: 'pc_alva' });
 
     session.endSession('network lost');
     const second: string[] = [];
@@ -258,7 +258,7 @@ describe('ClientWorld session boundaries', () => {
 
     world.beginSession({ send: (json) => sent.push(json) });
     expect(sent.map((json) => JSON.parse(json))).toEqual([
-      { t: 'hello', protocol: 2, charId: 'qa_alva' },
+      { t: 'hello', protocol: 3, charId: 'qa_alva' },
     ]);
 
     world.endSession('network lost');

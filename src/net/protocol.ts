@@ -1,4 +1,4 @@
-// Wire protocol v2 (D-014/D-028). Explicit versioned JSON message schemas with
+// Wire protocol v3 (D-014/D-028/D-033). Explicit versioned JSON message schemas with
 // inbound validation on BOTH ends; nothing serializes runtime objects
 // directly. The server rejects any message that fails validation.
 // See docs/project/NETWORK_ARCHITECTURE.md.
@@ -16,7 +16,7 @@ import type {
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** One tick of movement intent. Position is NEVER sent by clients (D-015). */
 export interface WireInput {
@@ -44,6 +44,7 @@ export type CommandKind =
   | 'shopSell'
   | 'shopClose'
   | 'respawn'
+  | 'recover'
   | 'chat'
   | 'partyInvite'
   | 'partyAccept'
@@ -88,6 +89,12 @@ export interface SelfState {
   spaceKind: 'exterior' | 'interior';
   downed: boolean;
   downedTicks: number;
+  /** Authoritative movement state required for deterministic prediction. */
+  movement: {
+    moveSpeed: number;
+    staminaRegen: number;
+    sprinting: boolean;
+  };
   resources: {
     health: number;
     maxHealth: number;
@@ -175,6 +182,7 @@ const COMMAND_KINDS: ReadonlySet<string> = new Set([
   'shopSell',
   'shopClose',
   'respawn',
+  'recover',
   'chat',
   'partyInvite',
   'partyAccept',

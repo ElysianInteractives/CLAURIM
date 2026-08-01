@@ -236,6 +236,8 @@ export class SimWorld implements IWorld {
         return e.actorId === selfId;
       case 'spaceEntered':
       case 'talkedTo':
+      case 'playerRecovered':
+      case 'recoveryRejected':
         return e.playerId === selfId;
       case 'interacted':
         return e.actorId === selfId;
@@ -320,6 +322,10 @@ export class SimWorld implements IWorld {
 
   respawn(): void {
     this.sim.releasePlayer(this.charId);
+  }
+
+  recover(): boolean {
+    return this.sim.recoverPlayer(this.charId) === 'recovered';
   }
 
   saveGame(): string {

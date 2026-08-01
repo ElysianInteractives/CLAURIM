@@ -310,6 +310,13 @@ export type SimEvent =
   | { type: 'playerDowned'; playerId: EntityId }
   | { type: 'playerRevived'; playerId: EntityId; by: EntityId }
   | { type: 'playerReleased'; playerId: EntityId }
+  | { type: 'playerRecovered'; playerId: EntityId }
+  | {
+      type: 'recoveryRejected';
+      playerId: EntityId;
+      reason: 'incapacitated' | 'combat' | 'cooldown';
+      secondsRemaining: number;
+    }
   | { type: 'encounterWipe'; bossId: EntityId }
   | { type: 'bossPhase'; bossId: EntityId; phase: number }
   | { type: 'telegraph'; sourceId: EntityId; abilityId: ContentId; ticks: number; interruptible: boolean }

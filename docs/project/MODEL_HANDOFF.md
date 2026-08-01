@@ -111,13 +111,18 @@ session added and TESTED:
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
 - Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
-  on :8787; protocol v2 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
+  on :8787; protocol v3 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with
   sequenced-input prediction + reconciliation and remote smoothing; browser
   host runs offline (default) or online (`?ws=ws://localhost:8787`) through an
   explicit account sign-in/create gate.
+- QA Phase A player movement/recovery (D-033): offline authority and online
+  prediction share one camera-relative movement basis and sprint-exhaustion
+  policy; the protocol v3 self snapshot carries the derived movement state;
+  Settings exposes a combat-guarded, 30-second-cooldown return to the current
+  space's safe recovery point without applying a death penalty.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -139,10 +144,11 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 173 tests / 17 suites green (multiplayer sim, server/net,
+- `npm test`: 184 tests / 18 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
-  the generic content catalog, and host presentation/audio rules).
+  the generic content catalog, host presentation/audio rules, and shared
+  movement/sprint/recovery behavior).
 - Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 3,852 / 3,840-byte snapshots.
@@ -155,7 +161,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 664.31 kB / 174.60 kB gzip.
+  build); Vite 8 production JavaScript is 666.86 kB / 175.27 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -173,7 +179,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-032), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-033), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

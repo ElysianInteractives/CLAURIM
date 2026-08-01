@@ -390,6 +390,36 @@ dependencies or application source.
   substituted `R:` test drive. The identical clean source passes from a real
   short path; D-032 records that qualification requirement.
 
+### QA Phase A player-movement/recovery exit
+
+QA Phase A resolves MOV-001, MOV-002, and WRL-005 and locks D-033. It does not
+change combat balance, death penalties, the durable save schema, or authored
+safe-point placement.
+
+- The exact short-path gate is green at 18 suites / 184 tests. Vite 8
+  transforms 52 modules and produces 666.86 kB JavaScript / 175.27 kB gzip;
+  content validation and the IP scan remain clean.
+- `tests/player_movement_recovery.test.ts` contributes nine focused checks for
+  the shared camera-relative basis, authoritative and predicted left/right
+  movement, final sprint exhaustion and restart threshold, stationary
+  regeneration, resource-preserving recovery, cooldown, and hostile guards.
+  `tests/server_net.test.ts` also covers the protocol-v3 movement snapshot and
+  recovery command path.
+- `npm run net:bench` connects every standard profile with zero disconnects
+  and zero pending inputs. Maximum correction is 0 m Local/Good, 0.147 m
+  Degraded, and 0.182 m Severe; p95 authority delay is 34.33/111.46/187.29/
+  311.12 ms, with 19.95-21.56 m of remote and authority motion.
+- Direct 1280x720 browser QA confirms a fully visible 640x457.75 px settings
+  panel at `(320, 131.125)`, success feedback after returning to safe ground,
+  and visible cooldown rejection after an immediate retry. At 1920x1080 the
+  panel is 666x457.75 px at `(627, 311.125)`. Neither viewport has document
+  overflow.
+- Evidence is stored in `docs/screenshots/2026-07-31/qa-phase-a-settings-1280x720.png`,
+  `qa-phase-a-post-recovery-1280x720.png`, and
+  `qa-phase-a-settings-1920x1080.png`. No application warning or error was
+  observed; the automation browser emitted six generic Chromium `UnknownError`
+  diagnostics while synthetic key input was used.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -411,6 +441,7 @@ dependencies or application source.
 | QA-CNT | Proven-schema content and progression depth | `tests/content_catalog.test.ts`, `tests/navigation.test.ts`, `tests/quest_playthrough.test.ts`, `npm run world:tour`, `npm run ai:bench`; offline browser at 1280 and 1920 | Catalog links/envelopes, perk graph/hook, veteran shape/solo envelope, merchant purchase, all-space traversal, current location, layout and logs |
 | QA-AV | Host interpolation and browser audio/control boundary | `tests/presentation.test.ts`, `tests/combat_audio.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | Transform blend/snap/yaw, catalog bow dispatch, mixer/settings/soundscape rules, persistence, focused Escape, layout/overflow, browser logs |
 | QA-DEP | Toolchain advisories and major-version compatibility | clean `npm ci`; `npm run audit:deps`; `npm run audit:prod`; `npm run gate`; `npm run standalone`; dev-server HTTP smoke | zero full/prod findings, valid lock tree, all tests, Vite production output, standalone output, transformed dev modules |
+| QA-MOV | Camera-relative movement, sprint exhaustion, and safe-ground recovery | `tests/player_movement_recovery.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`; offline browser at 1280 and 1920 | shared authority/prediction basis, exhaustion/restart/regen rules, recovery guards/cooldown, network correction bounds, feedback, layout/overflow, browser logs |
 
 ## Browser visual-QA procedure
 

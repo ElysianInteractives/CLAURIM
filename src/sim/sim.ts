@@ -15,7 +15,6 @@ import {
   RELEASE_HEALTH_FRAC,
   REVIVE_HEALTH_FRAC,
   SPRINT_MULT,
-  SPRINT_STAMINA_PER_SEC,
   SNEAK_MULT,
   THREAT_PER_HEAL,
   type Actor,
@@ -41,6 +40,12 @@ import {
 } from './world/collision';
 import { groundHeight } from './world/spaces';
 import { isActiveAt } from './world/cells';
+import { advanceSprint, localMovementToWorld } from './player/movement';
+import {
+  PLAYER_RECOVERY_COOLDOWN_TICKS,
+  recoveryRejection,
+  type PlayerRecoveryRejection,
+} from './player/recovery';
 import { createActor, recalcActorStats } from './actors/actor';
 import { makeBrain, tickBrain } from './ai/brain';
 import {
@@ -136,6 +141,7 @@ interface PlayerTransient {
   vy: number;
   airborne: boolean;
   lastYaw: number;
+  recoveryAvailableAtTick: number;
 }
 
 export class Sim {
@@ -418,7 +424,12 @@ export class Sim {
     this.players.set(charId, id);
     this.characterNames.set(charId, player.name);
     if (!this.primaryCharId) this.primaryCharId = charId;
-    this.transientBy.set(charId, { vy: 0, airborne: false, lastYaw: restore?.yaw ?? PLAYER_START.yaw });
+    this.transientBy.set(charId, {
+      vy: 0,
+      airborne: false,
+      lastYaw: restore?.yaw ?? PLAYER_START.yaw,
+      recoveryAvailableAtTick: 0,
+    });
     player.yaw = restore?.yaw ?? PLAYER_START.yaw;
 
     if (restore) {
@@ -717,7 +728,12 @@ export class Sim {
     // the host gets a chance to drain it; all tick-generated events remain
     // current-tick only as before.
     this.events = this.events.filter(
-      (event) => event.type === 'actionRejected' || event.type === 'chat' || event.type === 'partyStatus',
+      (event) =>
+        event.type === 'actionRejected' ||
+        event.type === 'chat' ||
+        event.type === 'partyStatus' ||
+        event.type === 'playerRecovered' ||
+        event.type === 'recoveryRejected',
     );
     this.tickCount++;
 
@@ -767,27 +783,36 @@ export class Sim {
     // frames remain committed, and block can never overlap an attack.
     if (input.block && p.attack?.phase === 'recover') p.attack = null;
     p.blocking = input.block && p.stamina > 0 && p.attack === null;
-    p.sprinting = input.sprint && p.stamina > 0 && !input.sneak;
+    const direction = localMovementToWorld(input.moveX, input.moveZ, p.yaw);
+    const sprint = advanceSprint(
+      input.sprint,
+      input.sneak,
+      direction.moving,
+      p.sprinting,
+      p.stamina,
+      p.stats.maxStamina,
+    );
+    p.sprinting = sprint.active;
+    p.stamina = sprint.stamina;
 
     let speed = p.stats.moveSpeed;
-    if (p.sprinting) speed *= SPRINT_MULT;
+    if (sprint.applied) speed *= SPRINT_MULT;
     if (p.sneaking) speed *= SNEAK_MULT;
     if (p.blocking) speed *= 0.55;
 
-    const len = Math.hypot(input.moveX, input.moveZ);
-    if (len > 0.01) {
-      const nx = input.moveX / Math.max(1, len);
-      const nz = input.moveZ / Math.max(1, len);
-      const wx = nx * Math.cos(p.yaw) + nz * Math.sin(p.yaw);
-      const wz = -nx * Math.sin(p.yaw) + nz * Math.cos(p.yaw);
-      const moved = resolveMove(this.content, this.colliders, p.pos.spaceId, p.pos, wx * speed * DT, wz * speed * DT, this.seed);
+    if (direction.moving) {
+      const moved = resolveMove(
+        this.content,
+        this.colliders,
+        p.pos.spaceId,
+        p.pos,
+        direction.x * speed * DT,
+        direction.z * speed * DT,
+        this.seed,
+      );
       p.pos.x = moved.x;
       p.pos.z = moved.z;
       if (!tr.airborne) p.pos.y = moved.y;
-      if (p.sprinting) {
-        p.stamina = Math.max(0, p.stamina - SPRINT_STAMINA_PER_SEC * DT);
-        if (p.stamina === 0) p.sprinting = false;
-      }
       if (p.sneaking && this.tickCount % 30 === 0) trainSkill(this.ctx, p.id, 'sneak', 1);
     }
 
@@ -954,6 +979,32 @@ export class Sim {
     const respawn = this.respawnPosition(p.pos.spaceId);
     this.movePlayerTo(charId, respawn.spaceId, respawn.x, respawn.z, respawn.yaw);
     this.events.push({ type: 'playerReleased', playerId: p.id });
+  }
+
+  /** Player-requested escape from invalid or inescapable terrain. This uses
+   * the established space recovery point without applying death penalties. */
+  recoverPlayer(charId: CharacterId): 'recovered' | PlayerRecoveryRejection {
+    const player = this.playerActor(charId);
+    const transient = this.transientBy.get(charId);
+    if (!player || !transient) return 'incapacitated';
+    const rejected = recoveryRejection(this.ctx, player, transient.recoveryAvailableAtTick);
+    if (rejected) {
+      this.events.push({
+        type: 'recoveryRejected',
+        playerId: player.id,
+        reason: rejected,
+        secondsRemaining: rejected === 'cooldown'
+          ? Math.ceil((transient.recoveryAvailableAtTick - this.tickCount) * DT)
+          : 0,
+      });
+      return rejected;
+    }
+
+    const recovery = this.respawnPosition(player.pos.spaceId);
+    this.movePlayerTo(charId, recovery.spaceId, recovery.x, recovery.z, recovery.yaw);
+    transient.recoveryAvailableAtTick = this.tickCount + PLAYER_RECOVERY_COOLDOWN_TICKS;
+    this.events.push({ type: 'playerRecovered', playerId: player.id });
+    return 'recovered';
   }
 
   /** Recovery point: interiors release at their exit door; exteriors at the
@@ -1452,7 +1503,7 @@ export class Sim {
     }
     for (const p of save.players) {
       sim.players.set(p.charId, p.entityId);
-      sim.transientBy.set(p.charId, { vy: 0, airborne: false, lastYaw: 0 });
+      sim.transientBy.set(p.charId, { vy: 0, airborne: false, lastYaw: 0, recoveryAvailableAtTick: 0 });
     }
     for (const entry of save.questLogs) {
       const log = new Map<ContentId, QuestState>();

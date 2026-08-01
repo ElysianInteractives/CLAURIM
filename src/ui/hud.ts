@@ -261,6 +261,12 @@ export class Hud {
         case 'playerReleased':
           this.notify('Companion released to the recovery point');
           break;
+        case 'playerRecovered':
+          if (e.playerId === selfId) this.notify('Returned to safe ground');
+          break;
+        case 'recoveryRejected':
+          if (e.playerId === selfId) this.notify(recoveryRejectionText(e.reason, e.secondsRemaining));
+          break;
         case 'partyStatus':
           this.notify(e.text);
           break;
@@ -435,7 +441,7 @@ export class Hud {
         );
         break;
       case 'settings':
-        html += renderAudioSettings(this.audio?.settings() ?? DEFAULT_AUDIO_SETTINGS, this.audio?.state() ?? 'locked');
+        html += renderSettings(this.audio?.settings() ?? DEFAULT_AUDIO_SETTINGS, this.audio?.state() ?? 'locked');
         break;
       case 'none':
         break;
@@ -453,6 +459,12 @@ export class Hud {
         else if (act === 'sell') this.world.shopSell(id);
         else if (act === 'perk') this.world.takePerk(id);
         else if (act === 'respawn') this.world.respawn();
+        else if (act === 'recover') {
+          this.world.recover();
+          // Leave the interaction-stable settings surface so authoritative
+          // success/rejection feedback renders immediately on the HUD.
+          this.panel = 'none';
+        }
         else if (act === 'party-invite') this.world.partyInvite(Number(el.dataset.target));
         else if (act === 'party-accept') this.world.partyAccept();
         else if (act === 'party-decline') this.world.partyDecline();
@@ -622,13 +634,21 @@ export function renderAudioSettings(
   settings: AudioSettings,
   state: AudioContextState | 'locked',
 ): string {
+  return `<section class="panel" aria-label="Audio settings">${renderAudioControls(settings, state)}` +
+    `<div class="hint"><kbd>Esc</kbd> close · settings persist in this browser</div></section>`;
+}
+
+function renderAudioControls(
+  settings: AudioSettings,
+  state: AudioContextState | 'locked',
+): string {
   const controls: Array<{ bus: 'master' | AudioBus; label: string }> = [
     { bus: 'master', label: 'Master' },
     { bus: 'effects', label: 'Effects' },
     { bus: 'ambience', label: 'Ambience' },
     { bus: 'music', label: 'Music' },
   ];
-  let html = `<section class="panel" aria-label="Audio settings"><h2>Audio</h2>`;
+  let html = '<h2>Audio</h2>';
   for (const { bus, label } of controls) {
     const percent = Math.round(settings[bus] * 100);
     html += `<label class="audio-control"><span>${label}</span>` +
@@ -637,8 +657,19 @@ export function renderAudioSettings(
   }
   html += `<label class="audio-mute"><input data-audio-mute type="checkbox"${settings.muted ? ' checked' : ''} /> Mute all audio</label>`;
   html += `<div class="audio-state" data-audio-state role="status">${esc(audioStateText(state))}</div>`;
-  html += `<div class="hint"><kbd>Esc</kbd> close · settings persist in this browser</div></section>`;
   return html;
+}
+
+export function renderSettings(
+  settings: AudioSettings,
+  state: AudioContextState | 'locked',
+): string {
+  return `<section class="panel" aria-label="Game settings"><div aria-label="Audio settings">${renderAudioControls(settings, state)}</div>` +
+    `<section aria-label="Player recovery"><h2>Recovery</h2>` +
+    `<p class="text">If terrain or geometry traps your character, return to this space's safe recovery point. ` +
+    `Unavailable during combat and limited to once every 30 seconds.</p>` +
+    `<button type="button" class="row" data-act="recover"><span>Return to safe ground</span></button>` +
+    `<div class="hint"><kbd>Esc</kbd> close · settings persist in this browser</div></section></section>`;
 }
 
 function audioStateText(state: AudioContextState | 'locked'): string {
@@ -647,6 +678,15 @@ function audioStateText(state: AudioContextState | 'locked'): string {
     : state === 'running'
       ? 'Audio active.'
       : `Audio ${state}. Interact with the game to resume.`;
+}
+
+function recoveryRejectionText(
+  reason: 'incapacitated' | 'combat' | 'cooldown',
+  secondsRemaining: number,
+): string {
+  if (reason === 'combat') return 'Cannot recover while enemies are nearby';
+  if (reason === 'cooldown') return `Recovery available in ${Math.max(1, secondsRemaining)}s`;
+  return 'Cannot recover while incapacitated';
 }
 
 export function renderSocialPanel(

@@ -273,6 +273,9 @@ export class ServerCore {
       case 'respawn':
         sim.releasePlayer(charId);
         break;
+      case 'recover':
+        sim.recoverPlayer(charId);
+        break;
       case 'chat':
         if (msg.arg && sim.tickCount - client.lastChatTick >= 15) {
           if (sim.chatFrom(charId, msg.arg)) client.lastChatTick = sim.tickCount;
@@ -356,6 +359,8 @@ export class ServerCore {
         return e.actorId === selfId;
       case 'spaceEntered':
       case 'talkedTo':
+      case 'playerRecovered':
+      case 'recoveryRejected':
         return e.playerId === selfId;
       case 'interacted':
         return e.actorId === selfId;
@@ -416,6 +421,11 @@ export class ServerCore {
         spaceKind: exterior ? 'exterior' : 'interior',
         downed: self.downed,
         downedTicks: self.downedTicks,
+        movement: {
+          moveSpeed: self.stats.moveSpeed,
+          staminaRegen: self.stats.staminaRegen,
+          sprinting: self.sprinting,
+        },
         resources: view.playerResources(),
         inventory: view.playerInventory(),
         skills: view.playerSkills(),

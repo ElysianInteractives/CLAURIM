@@ -19,7 +19,7 @@ amendment; "a later model prefers a different shape" is not a defect.
 
 Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Multiplayer state model: one Sim, many characters, per-char keyed state (D-013).
-- Server-authoritative WebSocket protocol v2 + authenticated pre-hello boundary
+- Server-authoritative WebSocket protocol v3 + authenticated pre-hello boundary
   + interest-scoped 10 Hz snapshots (D-014/D-028).
 - Client prediction/reconciliation via sequenced intent (D-015).
 - StorageProvider persistence: server-owned characters + world (D-016).
@@ -45,6 +45,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   persistent control boundary (D-031).
 - Node support floor, Vite 8/Vitest 4 development toolchain, committed-lock
   reproducibility, and zero-advisory acceptance boundary (D-032).
+- Shared camera-relative player movement, sprint exhaustion/restart, and
+  combat-guarded safe-ground recovery (D-033).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,
