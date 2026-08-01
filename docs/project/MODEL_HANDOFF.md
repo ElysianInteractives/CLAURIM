@@ -109,6 +109,13 @@ yaw/pitch direction. Whole-boom retraction and close-wall local-body hiding
 preserve geometry clearance. Exact boundaries are in
 `THIRD_PERSON_CAMERA_CONTRACT.md`.
 
+QA Phase E verifies WRL-006/WRL-007 through D-037: authored site pads now
+override road deformation, grounded foundations and complete well geometry
+remove visible terrain seams, and exterior doors resolve from validated
+parent-prop local transforms with inherited yaw. Development-only named QA
+starts make remote presentation checks repeatable without changing saves.
+Exact boundaries are in `WORLD_STRUCTURE_PLACEMENT_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -149,6 +156,9 @@ session added and TESTED:
   the player model from the center reticle, retains exact aim direction, uses
   shared world obstruction, and hides the local body only under extreme
   compression.
+- QA Phase E structure placement (D-037): final site-pad ordering, below-grade
+  foundations, complete well geometry, and validated prop-relative exterior
+  entrances share the existing terrain/traversal authority.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -170,12 +180,13 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 199 tests / 21 suites green (multiplayer sim, server/net,
+- `npm test`: 203 tests / 22 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
   movement/sprint/recovery behavior, reticle-directed spell aim, player
-  equipment/spell loadouts, and shoulder-camera composition/collision).
+  equipment/spell loadouts, shoulder-camera composition/collision, and
+  multi-seed structure-pad/door-anchor placement).
 - Live ws smoke under protocol v5: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,719 / 6,707-byte snapshots.
@@ -188,7 +199,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 677.70 kB / 178.05 kB gzip.
+  build); Vite 8 production JavaScript is 679.50 kB / 178.65 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -206,7 +217,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-036), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-037), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

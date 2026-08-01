@@ -2,7 +2,7 @@
 // spawners, containers. Exterior coordinates are meters in the Kaldwyn Reach
 // heightfield; interior coordinates are local, floor at y = 0.
 
-import type { ContainerDef, DoorDef, PropDef, SpaceDef, SpawnerDef } from './schema';
+import type { ContainerDef, DoorAnchorDef, DoorDef, PropDef, SpaceDef, SpawnerDef } from './schema';
 
 export const SPACES: Record<string, SpaceDef> = {
   kaldwyn: { id: 'kaldwyn', name: 'Kaldwyn Reach', kind: 'exterior' },
@@ -88,18 +88,33 @@ export const PROPS: PropDef[] = [
   { id: 'inn_table_b', spaceId: 'fenharrow_inn', kind: 'table', x: 5, z: 9, sx: 2, sy: 1, sz: 1.5, solid: true },
 ];
 
+function anchoredDoor(
+  anchor: DoorAnchorDef,
+  door: Omit<DoorDef, 'anchor' | 'x' | 'z' | 'yaw'>,
+): DoorDef {
+  const parent = PROPS.find((prop) => prop.id === anchor.propId);
+  if (!parent) throw new Error(`door ${door.id}: missing anchor prop ${anchor.propId}`);
+  if (parent.spaceId !== door.spaceId) throw new Error(`door ${door.id}: anchor prop must share its space`);
+  const yaw = parent.yaw ?? 0;
+  return {
+    ...door,
+    x: parent.x + anchor.localX * Math.cos(yaw) + anchor.localZ * Math.sin(yaw),
+    z: parent.z - anchor.localX * Math.sin(yaw) + anchor.localZ * Math.cos(yaw),
+    yaw: yaw + anchor.yawOffset,
+    anchor,
+  };
+}
+
 export const DOORS: DoorDef[] = [
-  {
+  anchoredDoor({ propId: 'mine_arch', localX: 0, localZ: -2, yawOffset: 0 }, {
     id: 'door_mine_in',
     spaceId: 'kaldwyn',
-    x: 118,
-    z: 338,
     name: 'Duskhollow Mine',
     targetSpaceId: 'duskhollow_mine',
     targetX: 0,
     targetZ: 2,
     targetYaw: 0,
-  },
+  }),
   {
     id: 'door_mine_out',
     spaceId: 'duskhollow_mine',
@@ -111,17 +126,15 @@ export const DOORS: DoorDef[] = [
     targetZ: 334,
     targetYaw: Math.PI,
   },
-  {
+  anchoredDoor({ propId: 'siltroot_arch', localX: 0, localZ: 3, yawOffset: 0 }, {
     id: 'door_siltroot_in',
     spaceId: 'kaldwyn',
-    x: -30,
-    z: 75,
     name: 'Siltroot Burrow',
     targetSpaceId: 'siltroot_burrow',
     targetX: 0,
     targetZ: 2,
     targetYaw: 0,
-  },
+  }),
   {
     id: 'door_siltroot_out',
     spaceId: 'siltroot_burrow',
@@ -133,17 +146,15 @@ export const DOORS: DoorDef[] = [
     targetZ: 75,
     targetYaw: Math.PI,
   },
-  {
+  anchoredDoor({ propId: 'inn_shell', localX: 0, localZ: -5.5, yawOffset: 0 }, {
     id: 'door_inn_in',
     spaceId: 'kaldwyn',
-    x: 33,
-    z: 146.5,
     name: 'The Fenharrow Hearth',
     targetSpaceId: 'fenharrow_inn',
     targetX: 0,
     targetZ: 1.5,
     targetYaw: 0,
-  },
+  }),
   {
     id: 'door_inn_out',
     spaceId: 'fenharrow_inn',

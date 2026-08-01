@@ -90,15 +90,14 @@ export function terrainHeight(x: number, z: number, seed: number): number {
   const riverMask = 1 - smoothstep(0, 55, rDist);
   h -= riverMask * (h - 1.2) * 0.9;
 
-  // Settlement plateau: flatten toward a fixed height.
+  // Site masks are calculated before the road, then applied after it. Authored
+  // pads are the final large-scale operation so the road cannot re-carve a
+  // supposedly level structure footprint (D-037).
   const sDist = Math.sqrt(dist2(x, z, SETTLEMENT_CENTER.x, SETTLEMENT_CENTER.z));
   const sMask = 1 - smoothstep(SETTLEMENT_RADIUS * 0.6, SETTLEMENT_RADIUS, sDist);
-  h = h * (1 - sMask) + SETTLEMENT_PLATEAU_H * sMask;
 
-  // Ruin plateau (start area) on a low hill.
   const rDist2 = Math.sqrt(dist2(x, z, RUIN_CENTER.x, RUIN_CENTER.z));
   const rMask = 1 - smoothstep(RUIN_RADIUS * 0.5, RUIN_RADIUS, rDist2);
-  h = h * (1 - rMask) + RUIN_PLATEAU_H * rMask;
 
   // Mine apron: the authored door and its return target must share a stable,
   // walkable landing instead of straddling procedural slope noise.
@@ -114,6 +113,10 @@ export function terrainHeight(x: number, z: number, seed: number): number {
     h = h * (1 - roadMask * 0.85) + target * roadMask * 0.85;
   }
 
+  // Authored site pads override road deformation throughout their core and
+  // feather back into the surrounding heightfield at their established edge.
+  h = h * (1 - sMask) + SETTLEMENT_PLATEAU_H * sMask;
+  h = h * (1 - rMask) + RUIN_PLATEAU_H * rMask;
   h = h * (1 - mineMask) + MINE_ENTRANCE_PLATEAU_H * mineMask;
 
   // Fine detail everywhere except roadbed/plateaus.

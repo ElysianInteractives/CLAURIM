@@ -35,8 +35,10 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     const roofH = p.sy * 0.45;
     const roof = new THREE.Mesh(coneRoof(p.sx * 1.15, roofH, p.sz * 1.15), roofMat);
     roof.position.y = p.sy * 0.65 + roofH / 2;
-    const base = new THREE.Mesh(new THREE.BoxGeometry(p.sx * 1.05, 0.5, p.sz * 1.05), stone);
-    base.position.y = 0.25;
+    // Sink the foundation below the shared pad as well as rising above it;
+    // this avoids a daylight seam even at terrain triangle boundaries.
+    const base = new THREE.Mesh(new THREE.BoxGeometry(p.sx * 1.05, 0.9, p.sz * 1.05), stone);
+    base.position.y = 0.1;
     g.add(base, walls, roof);
   } else if (p.kind.startsWith('ruin')) {
     if (p.kind === 'ruin_tower') {
@@ -96,15 +98,26 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     pillar.position.y = p.sy / 2;
     g.add(pillar);
   } else if (p.kind === 'well') {
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.6, 0.8, 8, 1, true), stone);
-    rim.position.y = 0.4;
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.6, 1, 8, 1, true), stone);
+    rim.position.y = 0.35;
+    const rimCap = new THREE.Mesh(new THREE.RingGeometry(p.sx * 0.42, p.sx * 0.68, 8), stone);
+    rimCap.name = 'well-rim-cap';
+    rimCap.rotation.x = -Math.PI / 2;
+    rimCap.position.y = 0.85;
+    const shaft = new THREE.Mesh(
+      new THREE.CircleGeometry(p.sx * 0.42, 8),
+      new THREE.MeshBasicMaterial({ color: 0x080a0c, side: THREE.DoubleSide }),
+    );
+    shaft.name = 'well-shaft';
+    shaft.rotation.x = -Math.PI / 2;
+    shaft.position.y = 0.82;
     const roofPole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.2, 0.2), woodDark);
     roofPole.position.set(p.sx * 0.5, 1.1, 0);
     const roofPole2 = roofPole.clone();
     roofPole2.position.x = -p.sx * 0.5;
     const wellRoof = new THREE.Mesh(coneRoof(p.sx * 1.4, 0.8, p.sx * 1.4), roofMat);
     wellRoof.position.y = 2.6;
-    g.add(rim, roofPole, roofPole2, wellRoof);
+    g.add(rim, rimCap, shaft, roofPole, roofPole2, wellRoof);
   } else if (p.kind === 'cart') {
     const bed = new THREE.Mesh(new THREE.BoxGeometry(p.sx, 0.5, p.sz), wood);
     bed.position.y = 0.8;
@@ -149,6 +162,7 @@ export function buildDoorMarker(d: DoorDef, spaceKind: 'exterior' | 'interior', 
   const g = new THREE.Group();
   const y = groundY(spaceKind, d.x, d.z, seed);
   g.position.set(d.x, y, d.z);
+  g.rotation.y = d.yaw ?? 0;
   const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 0.3), woodDark);
   frame.position.y = 1.3;
   const panel = new THREE.Mesh(

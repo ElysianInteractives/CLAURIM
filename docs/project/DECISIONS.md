@@ -324,3 +324,13 @@ compresses both distance and shoulder offset with clearance, and extreme
 compression temporarily hides only the local body. First person, combat
 authority, movement, projectiles, and protocol v5 remain unchanged. Exact
 rules: `THIRD_PERSON_CAMERA_CONTRACT.md`.
+
+## D-037: Final authored terrain pads and prop-relative door anchors - LOCKED
+Road shaping occurs before settlement, ruin, and mine site pads so roads
+cannot re-carve structure footprints. Buildings extend their visual
+foundation below shared terrain, and the Fenharrow well has a complete rim
+and shaft. Exterior entrances are authored from a parent prop's local X/Z and
+yaw; resolved world transforms remain compatible with existing consumers,
+and validation rejects parent, space, position, or rotation drift. Named
+offline QA starts exist only in development builds. Exact rules:
+`WORLD_STRUCTURE_PLACEMENT_CONTRACT.md`.

@@ -514,6 +514,32 @@ collision authority, network protocol, and save formats remain unchanged.
   `docs/screenshots/2026-08-01/qa-phase-d-camera-1280x720.png` and
   `qa-phase-d-camera-1920x1080.png`.
 
+### QA Phase E structure placement exit
+
+QA Phase E resolves WRL-006/WRL-007 and locks D-037. Terrain operation order,
+exterior structure presentation, door authoring, and development QA entry
+points change; traversal authority, interaction outcomes, protocol v5, and
+save formats remain unchanged.
+
+- The failing reproduction measured the road re-carving the inn footprint by
+  up to 2.04 m, house B by 1.38 m, and the well by 0.61 m across three seeds.
+  The inn door also had no parent-relative position or render yaw.
+- Focused tests pin flat 3x3 footprint samples for all six Fenharrow
+  structures, resolved prop-relative entrance transforms, inherited render
+  yaw, complete well rim/shaft geometry, and development-only named QA starts.
+- `npm run world:tour` passes all 23 routes and 43 placements. The full gate
+  is green at 22 suites / 203 tests. Vite 8 transforms 58 modules and produces
+  679.50 kB JavaScript / 178.65 kB gzip; content and IP checks remain clean.
+- Direct offline browser QA uses `?qa=fenharrow` and
+  `?qa=fenharrow-door`. At 1280x720 the well is complete and the visible
+  foundations meet one continuous pad; at 1280x720 and 1920x1080 the Hearth
+  entrance is flush with the shell. The larger canvas/document exactly match
+  the viewport, with no overflow or warning/error logs.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-e-fenharrow-1280x720.png`,
+  `qa-phase-e-inn-door-1280x720.png`, and
+  `qa-phase-e-inn-door-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -539,6 +565,7 @@ collision authority, network protocol, and save formats remain unchanged.
 | QA-AIM | Center-reticle projectile-spell trajectory | `tests/spell_reticle_aim.test.ts`, `tests/server_net.test.ts`, `tests/hud.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | bounded normalized ray, protocol validation, 3D release velocity, authority/replication, target selection, cast feedback, layout/overflow, browser logs |
 | QA-LOADOUT | Item equipment and spell hotkey loadout | `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | fixed item slots, separate carried list, unique known-spell assignment, equipped-only cast, persistence/migrations, protocol replication, quickbar, layout/overflow/logs |
 | QA-CAM | Third-person reticle visibility and camera obstruction | `tests/camera_reticle.test.ts`, `tests/spell_reticle_aim.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | shoulder separation, exact aim-ray parity, whole-boom collision compression, close-wall body hiding, centered clear reticle, layout/overflow/logs |
+| QA-STRUCT | Terrain pads, foundations, prop completeness, and anchored entrances | `tests/world_structure_placement.test.ts`, `tests/world_traversal.test.ts`, `tests/navigation.test.ts`, `npm run world:tour`, `npm run gate`; development-only offline `?qa=fenharrow` and `?qa=fenharrow-door` at 1280 and 1920 | multi-seed footprint flatness, shared terrain, complete grounded meshes, resolved anchor/yaw, door endpoint reachability, layout/overflow/logs |
 
 ## Browser visual-QA procedure
 
@@ -546,6 +573,9 @@ For every visual or interaction change:
 
 1. Record commit, browser, viewport, offline/online mode, and URL.
 2. Start at Falkmoor Ruin with a fresh save or named QA character.
+   Development builds may instead use a documented named `?qa=` point when
+   the changed presentation is far from Falkmoor; production and online modes
+   ignore these points.
 3. Capture boot, HUD, relevant panel, relevant action, and result states.
 4. Repeat at 1280x720 and one larger desktop viewport.
 5. Check legibility, clipping, focus recovery, pointer lock, camera occlusion,

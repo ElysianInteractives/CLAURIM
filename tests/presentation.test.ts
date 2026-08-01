@@ -9,6 +9,7 @@ import { TransformHistory, interpolateYaw } from '../src/render/interpolation';
 import { renderAudioSettings, renderSettings } from '../src/ui/hud';
 import { equippedAttackKind, spellForHotkey } from '../src/game/host_actions';
 import { capturesEditableTargetKey } from '../src/game/input';
+import { qaStartFromSearch } from '../src/game/qa_start';
 
 describe('host-side transform interpolation', () => {
   it('blends position and takes the shortest yaw arc between observed ticks', () => {
@@ -103,5 +104,13 @@ describe('presentation input capture', () => {
   it('keeps Escape available while an audio control has focus', () => {
     expect(capturesEditableTargetKey('Escape')).toBe(true);
     expect(capturesEditableTargetKey('KeyW')).toBe(false);
+  });
+});
+
+describe('development browser QA start points', () => {
+  it('resolves only known explicit points when development support is enabled', () => {
+    expect(qaStartFromSearch('?qa=fenharrow', true)).toMatchObject({ spaceId: 'kaldwyn', x: 42, z: 158 });
+    expect(qaStartFromSearch('?qa=unknown', true)).toBeNull();
+    expect(qaStartFromSearch('?qa=fenharrow', false)).toBeNull();
   });
 });

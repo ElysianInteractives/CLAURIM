@@ -21,6 +21,7 @@ import { Hud } from './ui/hud';
 import { Input } from './game/input';
 import { CombatAudio, parseAudioSettings } from './game/combat_audio';
 import { equippedAttackKind, spellForHotkey } from './game/host_actions';
+import { qaStartFromSearch } from './game/qa_start';
 import { AuthGate } from './ui/auth_gate';
 import { DT } from './sim/types';
 import type { IWorld } from './world_api';
@@ -53,6 +54,8 @@ if (online) {
   } else {
     sim = new Sim(WORLD_SEED);
   }
+  const qaStart = qaStartFromSearch(location.search, import.meta.env.DEV);
+  if (qaStart) sim.movePlayerTo('p1', qaStart.spaceId, qaStart.x, qaStart.z, qaStart.yaw);
   world = new SimWorld(sim);
 }
 

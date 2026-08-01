@@ -214,6 +214,13 @@ export interface PropDef {
   solid: boolean;
 }
 
+export interface DoorAnchorDef {
+  propId: string;
+  localX: number;
+  localZ: number;
+  yawOffset: number;
+}
+
 export interface DoorDef {
   id: string;
   spaceId: SpaceId;
@@ -224,6 +231,10 @@ export interface DoorDef {
   targetX: number;
   targetZ: number;
   targetYaw: number;
+  /** Optional authoring source for a resolved world transform. Runtime code
+   * consumes x/z/yaw, while validation prevents the anchor from drifting. */
+  anchor?: DoorAnchorDef;
+  yaw?: number;
 }
 
 export interface SpawnerDef {
@@ -492,9 +503,11 @@ export function validateContent(c: ContentRegistry): string[] {
   }
 
   const propIds = new Set<string>();
+  const propsById = new Map<string, PropDef>();
   for (const p of c.props) {
     if (propIds.has(p.id)) err(`duplicate prop id ${p.id}`);
     propIds.add(p.id);
+    propsById.set(p.id, p);
     if (!c.spaces[p.spaceId]) err(`prop ${p.id}: unknown space ${p.spaceId}`);
   }
 
@@ -502,6 +515,24 @@ export function validateContent(c: ContentRegistry): string[] {
     uniq('door', d.id);
     if (!c.spaces[d.spaceId]) err(`door ${d.id}: unknown space`);
     if (!c.spaces[d.targetSpaceId]) err(`door ${d.id}: unknown target space`);
+    if (d.anchor) {
+      const parent = propsById.get(d.anchor.propId);
+      if (!parent) {
+        err(`door ${d.id}: unknown anchor prop ${d.anchor.propId}`);
+      } else {
+        if (parent.spaceId !== d.spaceId) err(`door ${d.id}: anchor prop must share its space`);
+        const yaw = parent.yaw ?? 0;
+        const expectedX = parent.x + d.anchor.localX * Math.cos(yaw) + d.anchor.localZ * Math.sin(yaw);
+        const expectedZ = parent.z - d.anchor.localX * Math.sin(yaw) + d.anchor.localZ * Math.cos(yaw);
+        const expectedYaw = yaw + d.anchor.yawOffset;
+        if (Math.abs(d.x - expectedX) > 1e-6 || Math.abs(d.z - expectedZ) > 1e-6) {
+          err(`door ${d.id}: resolved position drifted from anchor`);
+        }
+        if (d.yaw === undefined || Math.abs(d.yaw - expectedYaw) > 1e-6) {
+          err(`door ${d.id}: resolved yaw drifted from anchor`);
+        }
+      }
+    }
   }
 
   const encounterSpaces = new Map<string, SpaceId>();
