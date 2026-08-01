@@ -41,7 +41,7 @@ class TestClient {
     return null;
   }
 
-  input(seq: number, part: Partial<{ moveX: number; moveZ: number; yaw: number; sprint: boolean }> = {}): void {
+  input(seq: number, part: Partial<{ moveX: number; moveZ: number; yaw: number; pitch: number; sprint: boolean }> = {}): void {
     this.send({
       t: 'input',
       inputs: [
@@ -50,6 +50,7 @@ class TestClient {
           moveX: 0,
           moveZ: 0,
           yaw: 0,
+          pitch: 0,
           sprint: false,
           sneak: false,
           block: false,
@@ -97,7 +98,7 @@ describe('join and protocol hygiene', () => {
     expect(c.last('reject')?.reason).toContain('protocol');
     c.send('this is not json {{{');
     expect(c.last('reject')?.reason).toContain('malformed');
-    c.send({ t: 'input', inputs: [{ seq: 1, moveX: 99, moveZ: 0, yaw: 0, sprint: false, sneak: false, block: false, jump: false }] });
+    c.send({ t: 'input', inputs: [{ seq: 1, moveX: 99, moveZ: 0, yaw: 0, pitch: 0, sprint: false, sneak: false, block: false, jump: false }] });
     expect(c.last('reject')?.reason).toContain('malformed'); // moveX out of range
     c.send({ t: 'cmd', kind: 'grant_admin' });
     expect(c.last('reject')?.reason).toContain('malformed');
@@ -376,6 +377,25 @@ describe('persistence + reconnect (D-016)', () => {
     expect(c2.last('welcome')?.charId).toBe('alva');
     ticks(core, SNAPSHOT_EVERY);
     expect(c2.last('snapshot')).toBeTruthy();
+  });
+});
+
+describe('QA Phase B authoritative reticle aim', () => {
+  it('applies validated pitch to spell release and replicates the current aim', () => {
+    const { core } = makeServer();
+    const client = new TestClient(core, 'conn1');
+    client.hello('alva', 'Alva');
+    client.input(1, { yaw: Math.PI / 2, pitch: 0.45 });
+    client.send({ t: 'cmd', kind: 'cast', arg: 'flamebolt' });
+
+    ticks(core, 12);
+
+    const projectile = core.sim.projectiles[0];
+    expect(projectile).toBeTruthy();
+    expect(projectile.vel.x).toBeGreaterThan(0);
+    expect(projectile.vel.y).toBeGreaterThan(0);
+    expect(projectile.vel.z).toBeCloseTo(0);
+    expect(client.last('snapshot')?.self.aimPitch).toBeCloseTo(0.45);
   });
 });
 

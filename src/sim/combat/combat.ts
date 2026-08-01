@@ -34,6 +34,7 @@ import {
 import type { SimContext } from '../sim_context';
 import { rollLoot } from '../inventory/inventory';
 import { executeAbility } from '../ai/abilities';
+import { reticleDirection } from '../player/aim';
 
 let nextProjectileId = 1;
 
@@ -323,13 +324,19 @@ function spawnProjectile(
   channel: DamageChannel,
   spellId?: string,
 ): void {
-  const dir = facing(attacker);
+  const dir = kind === 'spell' && attacker.kind === 'player'
+    ? reticleDirection(attacker.yaw, attacker.aimPitch)
+    : { ...facing(attacker), y: 0 };
   const speed = kind === 'arrow' ? ARROW_SPEED : SPELL_PROJECTILE_SPEED;
   ctx.projectiles.push({
     id: nextProjectileId++,
     spaceId: attacker.pos.spaceId,
-    pos: { x: attacker.pos.x + dir.x * 0.7, y: attacker.pos.y + 1.4, z: attacker.pos.z + dir.z * 0.7 },
-    vel: { x: dir.x * speed, y: 0, z: dir.z * speed },
+    pos: {
+      x: attacker.pos.x + dir.x * 0.7,
+      y: attacker.pos.y + 1.4 + dir.y * 0.7,
+      z: attacker.pos.z + dir.z * 0.7,
+    },
+    vel: { x: dir.x * speed, y: dir.y * speed, z: dir.z * speed },
     channel,
     damage,
     sourceId: attacker.id,

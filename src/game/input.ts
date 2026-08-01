@@ -1,9 +1,11 @@
 // Keyboard/mouse input -> per-tick PlayerInput + one-shot commands.
 // Keybinds: WASD move, mouse look (pointer lock), Shift sprint, C sneak,
-// Space jump, RMB block, LMB attack (weapon-appropriate), 1/2 spells,
+// Space jump, RMB block, LMB attack (weapon-appropriate), 1/2 aimed spells,
 // E interact, Tab inventory, J journal, P perks, O party, Enter chat,
 // H controls, V camera toggle,
 // F5/F9 save/load.
+
+import { clampAimPitch } from '../sim/player/aim';
 
 export interface FrameCommands {
   melee: boolean;
@@ -87,7 +89,14 @@ export class Input {
     addEventListener('keyup', (e) => this.keys.delete(e.code));
     canvas.addEventListener('mousedown', (e) => {
       if (document.pointerLockElement !== canvas) {
-        canvas.requestPointerLock();
+        // Embedded/automation browsers may deny pointer lock. That should
+        // leave mouse-look inactive without surfacing an unhandled rejection.
+        try {
+          void canvas.requestPointerLock().catch(() => undefined);
+        } catch {
+          // Older engines may throw synchronously instead of returning a
+          // rejected promise; the next real user click can retry safely.
+        }
         return;
       }
       if (e.button === 0) {
@@ -103,7 +112,7 @@ export class Input {
     addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== canvas) return;
       this.yaw -= e.movementX * 0.0026;
-      this.pitch = Math.max(-1.35, Math.min(1.1, this.pitch - e.movementY * 0.0026));
+      this.pitch = clampAimPitch(this.pitch - e.movementY * 0.0026);
     });
     addEventListener('wheel', (e) => {
       this.wheelDelta += e.deltaY;

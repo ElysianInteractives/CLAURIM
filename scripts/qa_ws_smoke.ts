@@ -124,6 +124,7 @@ function movementInput(seq: number): WireInput {
     moveX: 0,
     moveZ: 1,
     yaw: 0,
+    pitch: 0,
     sprint: false,
     sneak: false,
     block: false,

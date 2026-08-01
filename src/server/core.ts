@@ -6,6 +6,7 @@
 // the transport never touches the sim directly.
 
 import { Sim, IDLE_INPUT, type PlayerInput } from '../sim/sim';
+import { clampAimPitch } from '../sim/player/aim';
 import { SimWorld } from '../game/sim_world';
 import { isActiveAt } from '../sim/world/cells';
 import type { SimEvent } from '../sim/types';
@@ -146,6 +147,7 @@ export class ServerCore {
               moveX: clamp(input.moveX, -1, 1),
               moveZ: clamp(input.moveZ, -1, 1),
               yaw: input.yaw % (Math.PI * 2),
+              pitch: clampAimPitch(input.pitch),
               sprint: input.sprint,
               sneak: input.sneak,
               block: input.block,
@@ -417,6 +419,7 @@ export class ServerCore {
         y: self.pos.y,
         z: self.pos.z,
         yaw: self.yaw,
+        aimPitch: self.aimPitch,
         spaceId: self.pos.spaceId,
         spaceKind: exterior ? 'exterior' : 'interior',
         downed: self.downed,

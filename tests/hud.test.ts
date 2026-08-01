@@ -21,6 +21,7 @@ function actor(overrides: Partial<ActorView> = {}): ActorView {
     y: 0,
     z: 0,
     yaw: 0,
+    aimPitch: 0,
     dead: false,
     downed: false,
     health: 100,
@@ -139,6 +140,14 @@ describe('HUD combat readability', () => {
     const behind = actor({ id: 5, name: 'Behind', z: -2, hostileToPlayer: true, isPlayer: false });
 
     expect(selectCombatTarget(player, [nearEdge, friendly, behind, centered])?.id).toBe(centered.id);
+  });
+
+  it('selects against the vertical reticle ray instead of a flat facing cone', () => {
+    const player = actor({ aimPitch: 0.45 });
+    const raised = actor({ id: 2, y: 5.03, z: 10, hostileToPlayer: true, isPlayer: false });
+    const ground = actor({ id: 3, y: 0, z: 10, hostileToPlayer: true, isPlayer: false });
+
+    expect(selectCombatTarget(player, [ground, raised])?.id).toBe(raised.id);
   });
 
   it('renders an authoritative named and numeric target health meter', () => {

@@ -10,13 +10,14 @@ import { deriveStats } from '../src/sim/effects/modifiers';
 import { defaultBaseStats } from '../src/sim/actors/actor';
 import { activeCellKeys, CELL_SIZE } from '../src/sim/world/cells';
 
-const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, sprint: false, sneak: false, block: false, jump: false };
+const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, sneak: false, block: false, jump: false };
 
 function scriptedInput(t: number): PlayerInput {
   return {
     moveX: t % 60 < 30 ? 1 : 0,
     moveZ: t % 90 < 45 ? 1 : -0.5,
     yaw: (t * 0.01) % (Math.PI * 2),
+    pitch: Math.sin(t * 0.013) * 0.4,
     sprint: t % 120 < 40,
     sneak: t % 200 > 150,
     block: false,

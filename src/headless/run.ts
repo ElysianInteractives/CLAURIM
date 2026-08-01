@@ -14,7 +14,7 @@ const args = Object.fromEntries(
 const ticks = Number(args.ticks ?? 3000);
 const seed = Number(args.seed ?? 42);
 
-const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, sprint: false, sneak: false, block: false, jump: false };
+const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, sneak: false, block: false, jump: false };
 
 const t0 = Date.now();
 const sim = new Sim(seed);

@@ -4,6 +4,7 @@
 
 import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
 import { DEFAULT_AUDIO_SETTINGS, type AudioBus, type AudioSettings } from '../game/combat_audio';
+import { reticleDirection } from '../sim/player/aim';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
@@ -555,18 +556,18 @@ export function selectCombatTarget(
   actors: readonly ActorView[],
   maxDistance = 20,
 ): ActorView | null {
-  const forwardX = Math.sin(player.yaw);
-  const forwardZ = Math.cos(player.yaw);
+  const forward = reticleDirection(player.yaw, player.aimPitch);
   const minDot = Math.cos((22 * Math.PI) / 180);
   let best: ActorView | null = null;
   let bestScore = -Infinity;
   for (const actor of actors) {
     if (!actor.hostileToPlayer || actor.dead || actor.downed || actor.id === player.id) continue;
     const dx = actor.x - player.x;
+    const dy = actor.y + 1.2 - (player.y + 1.4);
     const dz = actor.z - player.z;
-    const distance = Math.hypot(dx, dz);
-    if (distance < 0.01 || distance > maxDistance || Math.abs(actor.y - player.y) > 4) continue;
-    const dot = (dx / distance) * forwardX + (dz / distance) * forwardZ;
+    const distance = Math.hypot(dx, dy, dz);
+    if (distance < 0.01 || distance > maxDistance) continue;
+    const dot = (dx / distance) * forward.x + (dy / distance) * forward.y + (dz / distance) * forward.z;
     if (dot < minDot) continue;
     const score = dot * 10 - distance / maxDistance;
     if (score > bestScore) {
@@ -734,7 +735,7 @@ export function renderControlsHelp(expanded: boolean): string {
       <section class="control-group"><h3>Combat</h3>
         <div class="control-row"><kbd>LMB</kbd><span>Attack</span></div>
         <div class="control-row"><kbd>RMB</kbd><span>Block</span></div>
-        <div class="control-row"><kbd>1 / 2</kbd><span>Cast spells</span></div>
+        <div class="control-row"><kbd>1 / 2</kbd><span>Aim / cast spells</span></div>
       </section>
       <section class="control-group"><h3>World</h3>
         <div class="control-row"><kbd>E</kbd><span>Interact</span></div>

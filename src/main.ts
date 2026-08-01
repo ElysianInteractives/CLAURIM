@@ -220,6 +220,7 @@ function frame(now: number): void {
       moveX: axes.x,
       moveZ: axes.z,
       yaw: input.yaw,
+      pitch: input.pitch,
       sprint: !menuOpen && input.sprint(),
       sneak: !menuOpen && input.sneak(),
       block: !menuOpen && input.blockHeld,

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { Sim, type PlayerInput } from '../src/sim/sim';
 import { beginDialogue, chooseOption, visibleChoices } from '../src/sim/dialogue/dialogue_runtime';
 
-const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, sprint: false, sneak: false, block: false, jump: false };
+const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, sneak: false, block: false, jump: false };
 
 /** Drive the quest to completion, save/reload at each stage boundary. */
 function runQuest(reloadEachStage: boolean): Sim {

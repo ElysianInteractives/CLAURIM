@@ -94,7 +94,7 @@ and transformed dev-server requests pass. Production dependencies and all
 application source remain unchanged. Exact maintenance rules are in
 `TOOLCHAIN_SECURITY_CONTRACT.md`.
 
-## State as of 2026-07-31 (Fable MMO-pivot session)
+## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
 session added and TESTED:
@@ -111,7 +111,7 @@ session added and TESTED:
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
 - Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
-  on :8787; protocol v3 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
+  on :8787; protocol v4 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with
@@ -123,6 +123,10 @@ session added and TESTED:
   policy; the protocol v3 self snapshot carries the derived movement state;
   Settings exposes a combat-guarded, 30-second-cooldown return to the current
   space's safe recovery point without applying a death penalty.
+- QA Phase B reticle spell aim (D-034): bounded pitch is required by protocol
+  v4 and consumed at the fixed-tick spell-release boundary; player projectile
+  spells and the read-only target frame follow the normalized 3D center-
+  reticle ray while collision, hits, and damage remain authoritative.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -144,14 +148,14 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 184 tests / 18 suites green (multiplayer sim, server/net,
+- `npm test`: 189 tests / 19 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
-  movement/sprint/recovery behavior).
-- Live ws smoke: server + 2 real WebSocket clients: ack 30, 4.4 m
+  movement/sprint/recovery behavior, and reticle-directed spell aim).
+- Live ws smoke under protocol v4: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 3,852 / 3,840-byte snapshots.
+  replay rejection, preserved ownership, and current 6,063 / 6,051-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -161,7 +165,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 666.86 kB / 175.27 kB gzip.
+  build); Vite 8 production JavaScript is 667.46 kB / 175.47 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -179,7 +183,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-033), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-034), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

@@ -32,7 +32,7 @@ the one shared Sim - never clone the world per client.
 | `src/render/` | Three.js renderer. Observes IWorld + content data; never mutates the world. |
 | `src/ui/` | DOM HUD + menus. Observes IWorld, submits intent. |
 | `src/headless/` | Headless host (`npm run headless`) + `mp_bench.ts` (bot-party difficulty measurement, `npm run mp:bench`). |
-| `src/net/` | Wire protocol v3 (`protocol.ts`, validated both ways, NO runtime sim imports) + `client_world.ts` (online IWorld: snapshots, prediction, reconciliation). |
+| `src/net/` | Wire protocol v4 (`protocol.ts`, validated both ways, NO runtime sim imports) + `client_world.ts` (online IWorld: snapshots, prediction, reconciliation). |
 | `src/server/` | `core.ts` (transport-agnostic authoritative server), `ws_host.ts` (`npm run server`, :8787), `storage.ts` (StorageProvider + FileStorage; server owns online persistence). |
 | `tests/` | Vitest: architecture guards, determinism, save/migrations, quest e2e, navigation, combat. |
 | `scripts/` | `validate_content.ts` (content gate), `make_standalone.mjs` (single-file build). |

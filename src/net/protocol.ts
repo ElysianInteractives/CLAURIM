@@ -1,4 +1,4 @@
-// Wire protocol v3 (D-014/D-028/D-033). Explicit versioned JSON message schemas with
+// Wire protocol v4 (D-014/D-028/D-033/D-034). Explicit versioned JSON message schemas with
 // inbound validation on BOTH ends; nothing serializes runtime objects
 // directly. The server rejects any message that fails validation.
 // See docs/project/NETWORK_ARCHITECTURE.md.
@@ -16,7 +16,7 @@ import type {
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** One tick of movement intent. Position is NEVER sent by clients (D-015). */
 export interface WireInput {
@@ -24,6 +24,7 @@ export interface WireInput {
   moveX: number;
   moveZ: number;
   yaw: number;
+  pitch: number;
   sprint: boolean;
   sneak: boolean;
   block: boolean;
@@ -85,6 +86,7 @@ export interface SelfState {
   y: number;
   z: number;
   yaw: number;
+  aimPitch: number;
   spaceId: string;
   spaceKind: 'exterior' | 'interior';
   downed: boolean;
@@ -289,6 +291,9 @@ function validInput(raw: unknown): raw is WireInput {
     isFiniteNum(m.moveZ) &&
     Math.abs(m.moveZ as number) <= 1.001 &&
     isFiniteNum(m.yaw) &&
+    isFiniteNum(m.pitch) &&
+    (m.pitch as number) >= -1.35 &&
+    (m.pitch as number) <= 1.1 &&
     isBool(m.sprint) &&
     isBool(m.sneak) &&
     isBool(m.block) &&

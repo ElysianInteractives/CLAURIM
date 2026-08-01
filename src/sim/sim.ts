@@ -41,6 +41,7 @@ import {
 import { groundHeight } from './world/spaces';
 import { isActiveAt } from './world/cells';
 import { advanceSprint, localMovementToWorld } from './player/movement';
+import { clampAimPitch } from './player/aim';
 import {
   PLAYER_RECOVERY_COOLDOWN_TICKS,
   recoveryRejection,
@@ -121,6 +122,8 @@ export interface PlayerInput {
   moveX: number;
   moveZ: number;
   yaw: number;
+  /** Vertical center-reticle angle in radians. */
+  pitch: number;
   sprint: boolean;
   sneak: boolean;
   block: boolean;
@@ -131,6 +134,7 @@ export const IDLE_INPUT: PlayerInput = {
   moveX: 0,
   moveZ: 0,
   yaw: 0,
+  pitch: 0,
   sprint: false,
   sneak: false,
   block: false,
@@ -777,6 +781,7 @@ export class Sim {
       return;
     }
     p.yaw = input.yaw;
+    p.aimPitch = clampAimPitch(input.pitch);
     tr.lastYaw = input.yaw;
     p.sneaking = input.sneak;
     // Defensive cancel is intentionally limited to recovery. Windup/active

@@ -420,6 +420,41 @@ safe-point placement.
   observed; the automation browser emitted six generic Chromium `UnknownError`
   diagnostics while synthetic key input was used.
 
+### QA Phase B reticle-spell-aim exit
+
+QA Phase B resolves CMB-008 and locks D-034. It changes player projectile-
+spell direction only; melee, bows, NPC projectiles, self spells, damage,
+obstruction, save state, inventory, and spell loadouts retain their existing
+contracts.
+
+- The failing reproduction first proved Flamebolt velocity remained at
+  `y=0` for a positive reticle pitch and that the wire accepted pitch-less
+  input. The final focused set pins normalized/clamped rays, exact 3D release
+  velocity, required protocol-v4 input, authoritative server application,
+  replicated aim state, and pitch-aware target-frame selection.
+- The exact short-path gate is green at 19 suites / 189 tests. Vite 8
+  transforms 53 modules and produces 667.46 kB JavaScript / 175.47 kB gzip;
+  content validation and the IP scan remain clean.
+- `npm run net:bench` connects every standard profile with zero disconnects
+  and zero pending inputs. Maximum correction remains 0 m Local/Good,
+  0.147 m Degraded, and 0.182 m Severe; p95 authority delay remains
+  34.33/111.46/187.29/311.12 ms with 19.95-21.56 m of remote/authority
+  motion.
+- A real protocol-v4 WebSocket smoke connects two authenticated clients,
+  acknowledges input 30, moves 4.4 m authoritatively, preserves mutual
+  visibility, rotates sessions, rejects replay, and preserves the resumed
+  character. Snapshots are 6,063 and 6,051 bytes.
+- Direct offline browser QA at 1280x720 and 1920x1080 shows the centered
+  reticle, the updated `Aim / cast spells` help, and authoritative cast cost
+  reflected in magicka. The 1920x1080 canvas and document are exactly the
+  viewport dimensions with no overflow; a clean rerun has no warning/error
+  logs. The embedded automation surface denies pointer lock, so exact mouse-
+  pitch trajectory is proven by deterministic sim/server tests rather than a
+  synthetic mouse gesture.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-b-reticle-controls-1280x720.png` and
+  `qa-phase-b-reticle-controls-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -442,6 +477,7 @@ safe-point placement.
 | QA-AV | Host interpolation and browser audio/control boundary | `tests/presentation.test.ts`, `tests/combat_audio.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | Transform blend/snap/yaw, catalog bow dispatch, mixer/settings/soundscape rules, persistence, focused Escape, layout/overflow, browser logs |
 | QA-DEP | Toolchain advisories and major-version compatibility | clean `npm ci`; `npm run audit:deps`; `npm run audit:prod`; `npm run gate`; `npm run standalone`; dev-server HTTP smoke | zero full/prod findings, valid lock tree, all tests, Vite production output, standalone output, transformed dev modules |
 | QA-MOV | Camera-relative movement, sprint exhaustion, and safe-ground recovery | `tests/player_movement_recovery.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`; offline browser at 1280 and 1920 | shared authority/prediction basis, exhaustion/restart/regen rules, recovery guards/cooldown, network correction bounds, feedback, layout/overflow, browser logs |
+| QA-AIM | Center-reticle projectile-spell trajectory | `tests/spell_reticle_aim.test.ts`, `tests/server_net.test.ts`, `tests/hud.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | bounded normalized ray, protocol validation, 3D release velocity, authority/replication, target selection, cast feedback, layout/overflow, browser logs |
 
 ## Browser visual-QA procedure
 

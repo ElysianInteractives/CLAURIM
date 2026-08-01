@@ -32,9 +32,11 @@ press `Enter` to send nearby chat.
 npm run dev        # http://localhost:5173 (no query string)
 ```
 Click the canvas to capture the mouse. WASD move, Shift sprint, C sneak,
-Space jump, LMB attack, RMB block, 1 Flamebolt, 2 Mend Wounds, E interact,
-Tab inventory, J journal, P perks, O party, Enter nearby chat, H controls,
-V first/third person, F5 save, F9 load, Esc game settings/close. Game Settings
+Space jump, LMB attack, RMB block, 1 Flamebolt, 2 Mend Wounds, E interact.
+Projectile spells follow the center reticle horizontally and vertically. Use
+Tab for inventory, J for journal, P for perks, O for party, Enter for nearby
+chat, H for controls, V for first/third person, F5 save, F9 load, and Esc for
+game settings/close. Game Settings
 also provides a combat-guarded Return to Safe Ground action for terrain traps.
 
 Start at Falkmoor Ruin. The road north leads to Fenharrow; talk to Maera in

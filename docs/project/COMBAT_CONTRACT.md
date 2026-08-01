@@ -22,6 +22,9 @@ At 30 Hz:
 - A rejected authoritative action emits `actionRejected` with a stable reason:
   busy, stamina, weapon, ammo, magicka, unknown, or incapacitated. The event is
   private to that player online and survives the command-to-tick boundary.
+- Player projectile spells release along the latest bounded center-reticle
+  yaw/pitch ray at windup completion. Self spells require no trajectory; bows
+  and NPC projectiles retain horizontal facing in this locked package.
 
 ## Hit and mitigation rules
 
@@ -36,6 +39,8 @@ At 30 Hz:
   obstruction wins, independent of actor iteration order. World obstruction
   includes terrain, implicit interior-room walls, and authored solid-prop
   height/AABBs.
+- Projectile velocity and spawn offset use all three reticle-ray axes; clients
+  never submit a target, hit, position, or damage outcome.
 
 ## Authoritative feedback
 
@@ -63,6 +68,9 @@ sources, and production mixing remain KL-5; see
   buffering/cancellation, rejection reasons, melee height and friendly-fire
   rules, directional blocking, wall/prop projectile collision, and telegraph
   view data.
+- `tests/spell_reticle_aim.test.ts`, `tests/server_net.test.ts`, and
+  `tests/hud.test.ts` pin normalized/bounded pitch intent, authoritative 3D
+  spell release, online replication, and reticle-aligned target selection.
 - `npx vitest run tests/multiplayer_sim.test.ts` pins interrupts, downing,
   reviving, release, wipe reset, threat, phases, and personal loot.
 - `npm run combat:bench -- seconds=30` compares sustained weapon/spell output

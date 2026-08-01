@@ -94,6 +94,7 @@ export class SimWorld implements IWorld {
       y: a.pos.y,
       z: a.pos.z,
       yaw: a.yaw,
+      aimPitch: a.aimPitch,
       dead: a.dead,
       downed: a.downed,
       health: a.health,

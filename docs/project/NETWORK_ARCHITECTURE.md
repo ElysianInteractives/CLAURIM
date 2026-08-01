@@ -12,11 +12,12 @@ tests), so a different transport is an adapter, not a rewrite.
 ## Authority (updated meaning of "simulation-authoritative")
 The SERVER sim resolves damage, healing, death/downed, loot, quest credit,
 XP/skills, inventory, trade, enemy targeting/spawns, ownership, positions,
-and persistent world changes. Clients submit INTENT only: per-tick movement
-inputs and discrete commands. Clients never send positions. The client
+and persistent world changes. Clients submit INTENT only: per-tick movement/
+bounded reticle-aim inputs and discrete commands. Clients never send positions,
+projectile destinations, targets, hits, or damage. The client
 predicts its own movement and presentation; nothing else.
 
-## Protocol (v2, `src/net/protocol.ts`)
+## Protocol (v4, `src/net/protocol.ts`)
 Versioned JSON messages, validated on receipt. Before authentication, clients
 may send only register / login / resume; the server returns authOk / authError.
 After authentication: hello / input / cmd / ping and welcome / reject /
@@ -28,7 +29,7 @@ objects cross the wire; every payload is built from explicit view types.
 - Input: one WireInput per tick per client (batched messages allowed, max 10).
 - Snapshots: every 3 ticks = 10 Hz (`SNAPSHOT_EVERY`). Observed: 25 snapshots
   per client per 2.5 s with 2 clients.
-- Snapshot size at slice scale: ~8-14 kB JSON (full self + interest actors);
+- Snapshot size at slice scale: ~6-14 kB JSON (full self + interest actors);
   fine for the milestone. Delta compression is a bounded later optimization
   (OPUS/Fable backlog) - the snapshot is already interest-scoped.
 
@@ -47,7 +48,10 @@ running the SAME deterministic `resolveMove` + terrain code the server runs.
 Snapshots carry `ackSeq` for the highest input consumed by an authoritative
 tick plus authoritative position; the client drops
 acknowledged inputs, replays the unacknowledged tail from the server
-position, then blends (snap beyond 3 m, 40% exponential correction under).
+position and replicated movement state, then blends (snap beyond 3 m, 40%
+exponential correction under). Protocol v4 also replicates bounded aim pitch;
+the local client presents its latest submitted pitch while authority consumes
+the same sequenced intent for spell release.
 Space transitions always snap; never lerp through a door. Remote actors use
 exponential smoothing (0.35/frame) toward the latest snapshot. Combat is not
 predicted beyond animation state.

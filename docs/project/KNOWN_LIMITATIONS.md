@@ -27,8 +27,10 @@
   (`QA_BASELINE.md`), but there is no automated pixel-diff or frame-pacing
   harness. Visual and interaction changes still require human review and
   captured evidence on the supported viewport matrix.
-- KL-8 Melee now enforces a 1.5 m vertical envelope, but attacks still have no
-  pitch/vertical aiming model. Revisit with flying or fully vertical combat.
+- KL-8 Player projectile spells now follow bounded center-reticle pitch, but
+  melee remains a 1.5 m vertical-envelope arc and bows/NPC projectiles remain
+  horizontal-facing. Revisit those actions with a locked ranged/flying or
+  fully vertical combat package.
 - KL-9 The A* open list is an array scan (fine at slice scale; heap swap is a
   bounded perf ticket).
 - KL-10 localStorage single save slot in the OFFLINE browser host (online

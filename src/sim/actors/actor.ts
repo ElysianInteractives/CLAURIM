@@ -53,6 +53,7 @@ export function createActor(
     name,
     pos,
     yaw: 0,
+    aimPitch: 0,
     vel: { x: 0, y: 0, z: 0 },
     health: base.maxHealth,
     stamina: base.maxStamina,

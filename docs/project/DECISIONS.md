@@ -293,3 +293,12 @@ space's established safe point through `IWorld`, but the server rejects the
 request during combat, while incapacitated, or during the 30-second cooldown.
 Recovery neither restores resources nor applies death penalties. Exact rules:
 `PLAYER_MOVEMENT_RECOVERY_CONTRACT.md`.
+
+## D-034: Authoritative center-reticle spell trajectory - LOCKED
+Player projectile spells release along the most recent normalized yaw/pitch
+reticle ray at the authoritative windup boundary. Pitch is bounded at input,
+wire, and sim boundaries; protocol v4 requires it on every sequenced input.
+Clients submit direction intent only and never choose projectile positions,
+targets, hits, or damage. The HUD's read-only target selection uses the same
+3D ray. Self spells, NPC projectiles, and bows retain their prior behavior.
+Exact rules: `SPELL_RETICLE_AIM_CONTRACT.md`.

@@ -9,6 +9,7 @@ import { CollisionIndex, resolveMove } from '../sim/world/collision';
 import { groundHeight } from '../sim/world/spaces';
 import { DT, SNEAK_MULT, SPRINT_MULT, type SimEvent } from '../sim/types';
 import { advanceSprint, localMovementToWorld, regenerateStamina } from '../sim/player/movement';
+import { clampAimPitch } from '../sim/player/aim';
 import {
   PROTOCOL_VERSION,
   parseServerMessage,
@@ -76,6 +77,7 @@ export class ClientWorld implements IWorld {
   private pending: PendingInput[] = [];
   private seq = 0;
   private predicted: PredictedMovement = { x: 0, y: 0, z: 0, stamina: 0, sprinting: false };
+  private predictedAimPitch = 0;
   private predictedSpace = '';
   /** Smoothed display positions for remote actors. */
   private display = new Map<number, { x: number; y: number; z: number; yaw: number }>();
@@ -112,6 +114,7 @@ export class ClientWorld implements IWorld {
     this.pending = [];
     this.eventBuffer = [];
     this.seq = 0;
+    this.predictedAimPitch = 0;
     this.display.clear();
     this.rejectedReason = null;
     this.closed = false;
@@ -177,6 +180,7 @@ export class ClientWorld implements IWorld {
         // Reconciliation (D-015): drop acknowledged inputs, then re-run the
         // remaining pending inputs from the server's authoritative position.
         this.pending = this.pending.filter((p) => p.seq > msg.ackSeq);
+        this.predictedAimPitch = this.pending[this.pending.length - 1]?.input.pitch ?? msg.self.aimPitch;
         const serverMovement: PredictedMovement = {
           x: msg.self.x,
           y: msg.self.y,
@@ -272,7 +276,8 @@ export class ClientWorld implements IWorld {
 
   step(input: Parameters<IWorld['step']>[0]): void {
     if (!this.ready() || !this.snapshot) return;
-    const wire: WireInput = { seq: ++this.seq, ...input };
+    this.predictedAimPitch = clampAimPitch(input.pitch);
+    const wire: WireInput = { seq: ++this.seq, ...input, pitch: this.predictedAimPitch };
     const pending = { seq: wire.seq, input: wire, sentAtMs: this.now() };
     this.pending.push(pending);
     if (this.pending.length > 120) this.pending.splice(0, this.pending.length - 120);
@@ -415,7 +420,13 @@ export class ClientWorld implements IWorld {
       seen.add(a.id);
       if (a.id === selfId) {
         // Local player renders at the PREDICTED position.
-        out.push({ ...a, x: this.predicted.x, y: this.predicted.y, z: this.predicted.z });
+        out.push({
+          ...a,
+          x: this.predicted.x,
+          y: this.predicted.y,
+          z: this.predicted.z,
+          aimPitch: this.predictedAimPitch,
+        });
         continue;
       }
       // Remote smoothing: move the display position toward the latest server
@@ -461,6 +472,7 @@ export class ClientWorld implements IWorld {
       y: this.predicted.y,
       z: this.predicted.z,
       yaw: s?.yaw ?? 0,
+      aimPitch: this.predictedAimPitch,
       dead: false,
       downed: s?.downed ?? false,
       health: s?.resources.health ?? 1,

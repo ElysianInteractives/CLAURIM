@@ -16,6 +16,7 @@ const idle: PlayerInput = {
   moveX: 0,
   moveZ: 0,
   yaw: 0,
+  pitch: 0,
   sprint: false,
   sneak: false,
   block: false,

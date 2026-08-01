@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { Sim, type PlayerInput } from '../src/sim/sim';
 import { parseSave, SaveError, SAVE_SCHEMA_VERSION } from '../src/sim/save/save';
 
-const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, sprint: false, sneak: false, block: false, jump: false };
+const idle: PlayerInput = { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, sneak: false, block: false, jump: false };
 
 /** Build a faithful v1-era (single-player) save payload from a live sim. */
 function makeV1Save(sim: Sim): Record<string, unknown> {

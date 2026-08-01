@@ -228,6 +228,8 @@ export interface Actor {
   pos: Position;
   /** Facing yaw, radians. 0 = +z. */
   yaw: number;
+  /** Player reticle elevation. Runtime intent only; not durable save state. */
+  aimPitch: number;
   vel: Vec3;
   /** Current resources. */
   health: number;

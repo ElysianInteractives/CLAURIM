@@ -17,6 +17,8 @@ export interface ActorView {
   y: number;
   z: number;
   yaw: number;
+  /** Vertical center-reticle angle in radians. */
+  aimPitch: number;
   dead: boolean;
   downed: boolean;
   health: number;

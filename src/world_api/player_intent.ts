@@ -9,6 +9,7 @@ export interface PlayerIntentFacet {
     moveX: number;
     moveZ: number;
     yaw: number;
+    pitch: number;
     sprint: boolean;
     sneak: boolean;
     block: boolean;

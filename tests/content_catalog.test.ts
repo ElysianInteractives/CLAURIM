@@ -166,6 +166,7 @@ describe('Plan 8 proven-schema exemplars', () => {
         moveX: 0,
         moveZ: distance > 2 ? 1 : 0,
         yaw,
+        pitch: 0,
         sprint: distance > 8,
         sneak: false,
         block,
