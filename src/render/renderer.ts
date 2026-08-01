@@ -11,6 +11,7 @@ import { PALETTE } from './palette';
 import { TerrainStreamer, disposeGroup } from './terrain_mesh';
 import { buildContainerMesh, buildDoorMarker, buildInteriorShell, buildProp } from './structures';
 import { buildCharacter, poseCharacter } from './characters';
+import { thirdPersonCameraPose, unobstructedBoomScale } from './camera';
 import { TransformHistory } from './interpolation';
 
 type TelegraphView = NonNullable<ActorView['telegraph']>;
@@ -331,41 +332,52 @@ export class Renderer {
 
   private updateCamera(player: ActorView): void {
     const eye = 1.62;
+    const eyePosition = { x: player.x, y: player.y + eye, z: player.z };
+    const playerMesh = this.actorMeshes.get(player.id);
     if (this.firstPerson) {
-      this.camera.position.set(player.x, player.y + eye, player.z);
+      if (playerMesh) playerMesh.visible = false;
+      this.camera.position.set(eyePosition.x, eyePosition.y, eyePosition.z);
       this.camera.rotation.set(this.cameraPitch, this.cameraYaw + Math.PI, 0, 'YXZ');
       return;
     }
     // Camera collision (D-023/D-025): use the same oriented props,
     // interior boundaries, and terrain obstruction as the authoritative sim.
-    let d = this.cameraDistance;
-    const dirX = -Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch);
-    const dirZ = -Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch);
-    const dirY = -Math.sin(this.cameraPitch);
-    const eyeY = player.y + eye;
-    const desired = {
-      x: player.x + dirX * this.cameraDistance,
-      y: eyeY + dirY * this.cameraDistance,
-      z: player.z + dirZ * this.cameraDistance,
-    };
+    // D-036 offsets the whole boom over the right shoulder while retaining
+    // the exact D-034 center-reticle direction.
+    const desiredPose = thirdPersonCameraPose(
+      eyePosition,
+      this.cameraYaw,
+      this.cameraPitch,
+      this.cameraDistance,
+    );
     const obstruction = worldObstructionT(
       CONTENT,
       this.collision,
       this.world.currentSpace(),
-      { x: player.x, y: eyeY, z: player.z },
-      desired,
+      eyePosition,
+      desiredPose.position,
       this.world.seed(),
       0.22,
     );
-    if (obstruction !== null) {
-      d = Math.max(0.15, obstruction * this.cameraDistance - 0.2);
-    }
-    const cx = player.x + dirX * d;
-    const cz = player.z + dirZ * d;
-    let cy = eyeY + dirY * d;
+    const desiredLength = Math.hypot(
+      desiredPose.position.x - eyePosition.x,
+      desiredPose.position.y - eyePosition.y,
+      desiredPose.position.z - eyePosition.z,
+    );
+    const pose = thirdPersonCameraPose(
+      eyePosition,
+      this.cameraYaw,
+      this.cameraPitch,
+      this.cameraDistance,
+      unobstructedBoomScale(obstruction, desiredLength),
+    );
+    const cx = pose.position.x;
+    const cz = pose.position.z;
+    let cy = pose.position.y;
     const groundAtCam = this.world.groundHeight(cx, cz);
     if (cy < groundAtCam + 0.4) cy = groundAtCam + 0.4;
+    if (playerMesh) playerMesh.visible = pose.bodyVisible;
     this.camera.position.set(cx, cy, cz);
-    this.camera.lookAt(player.x, player.y + eye, player.z);
+    this.camera.rotation.set(this.cameraPitch, this.cameraYaw + Math.PI, 0, 'YXZ');
   }
 }

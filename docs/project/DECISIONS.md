@@ -315,3 +315,12 @@ linear migrations that preserve the prior Flamebolt/Mend Wounds key behavior.
 The inventory UI separates equipped gear, spell loadout, known spells, and
 unequipped carried items, with a persistent read-only spell quickbar. Exact
 rules: `PLAYER_LOADOUT_CONTRACT.md`.
+
+## D-036: Collision-aware shoulder camera with reticle parity - LOCKED
+Third person places the camera `0.9 m` over the player's right shoulder and
+keeps camera forward exactly equal to the normalized D-034 yaw/pitch ray. The
+full diagonal eye-to-camera boom uses shared world obstruction; collision
+compresses both distance and shoulder offset with clearance, and extreme
+compression temporarily hides only the local body. First person, combat
+authority, movement, projectiles, and protocol v5 remain unchanged. Exact
+rules: `THIRD_PERSON_CAMERA_CONTRACT.md`.

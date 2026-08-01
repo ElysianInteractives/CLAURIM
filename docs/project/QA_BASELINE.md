@@ -492,6 +492,28 @@ item effects, spell content, combat timing, aim, collision, and damage rules.
 - Evidence is stored in
   `docs/screenshots/2026-08-01/qa-phase-c-loadout-1280x720.png`.
 
+### QA Phase D third-person camera exit
+
+QA Phase D resolves CAM-001 and locks D-036. It changes only host camera
+composition and local-body visibility; movement, aim intent, spell release,
+collision authority, network protocol, and save formats remain unchanged.
+
+- The failing reproduction proved that the third-person camera's direct
+  `lookAt` on the player eye guaranteed model/reticle overlap.
+- Focused tests pin a `0.9 m` shoulder separation, exact normalized ray parity
+  at arbitrary yaw/pitch, whole-boom obstruction compression, retained
+  clearance, and close-wall local-body hiding.
+- The full gate is green at 21 suites / 199 tests. Vite 8 transforms 57
+  modules and produces 677.70 kB JavaScript / 178.05 kB gzip; content
+  validation and the IP scan remain clean.
+- Direct offline browser QA at 1280x720 and 1920x1080 shows the player left of
+  the centered reticle with an unobstructed forward view. At 1920x1080 the
+  canvas and document exactly match the viewport and have no overflow.
+  Browser warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-d-camera-1280x720.png` and
+  `qa-phase-d-camera-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -516,6 +538,7 @@ item effects, spell content, combat timing, aim, collision, and damage rules.
 | QA-MOV | Camera-relative movement, sprint exhaustion, and safe-ground recovery | `tests/player_movement_recovery.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`; offline browser at 1280 and 1920 | shared authority/prediction basis, exhaustion/restart/regen rules, recovery guards/cooldown, network correction bounds, feedback, layout/overflow, browser logs |
 | QA-AIM | Center-reticle projectile-spell trajectory | `tests/spell_reticle_aim.test.ts`, `tests/server_net.test.ts`, `tests/hud.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | bounded normalized ray, protocol validation, 3D release velocity, authority/replication, target selection, cast feedback, layout/overflow, browser logs |
 | QA-LOADOUT | Item equipment and spell hotkey loadout | `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | fixed item slots, separate carried list, unique known-spell assignment, equipped-only cast, persistence/migrations, protocol replication, quickbar, layout/overflow/logs |
+| QA-CAM | Third-person reticle visibility and camera obstruction | `tests/camera_reticle.test.ts`, `tests/spell_reticle_aim.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | shoulder separation, exact aim-ray parity, whole-boom collision compression, close-wall body hiding, centered clear reticle, layout/overflow/logs |
 
 ## Browser visual-QA procedure
 

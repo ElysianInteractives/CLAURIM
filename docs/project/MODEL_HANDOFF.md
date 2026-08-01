@@ -102,6 +102,13 @@ longer hard-codes combat spell IDs. Protocol v5, world save v4, and character
 save v2 carry the new state with tested migrations. Exact boundaries are in
 `PLAYER_LOADOUT_CONTRACT.md`.
 
+QA Phase D verifies CAM-001 through D-036: third person now uses a
+collision-aware right-shoulder boom, leaving the player visibly left of the
+center reticle while camera forward remains the exact authoritative D-034
+yaw/pitch direction. Whole-boom retraction and close-wall local-body hiding
+preserve geometry clearance. Exact boundaries are in
+`THIRD_PERSON_CAMERA_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -138,6 +145,10 @@ session added and TESTED:
 - QA Phase C loadouts (D-035): six fixed item slots, separate carried items,
   two persistent unique spell hotkeys, known-spell equip actions, and a
   combat quickbar share one authoritative offline/online contract.
+- QA Phase D camera composition (D-036): a `0.9 m` right-shoulder boom clears
+  the player model from the center reticle, retains exact aim direction, uses
+  shared world obstruction, and hides the local body only under extreme
+  compression.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -159,12 +170,12 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 196 tests / 20 suites green (multiplayer sim, server/net,
+- `npm test`: 199 tests / 21 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
-  movement/sprint/recovery behavior, reticle-directed spell aim, and player
-  equipment/spell loadouts).
+  movement/sprint/recovery behavior, reticle-directed spell aim, player
+  equipment/spell loadouts, and shoulder-camera composition/collision).
 - Live ws smoke under protocol v5: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,719 / 6,707-byte snapshots.
@@ -177,7 +188,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 677.21 kB / 177.86 kB gzip.
+  build); Vite 8 production JavaScript is 677.70 kB / 178.05 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -195,7 +206,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-035), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-036), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 
