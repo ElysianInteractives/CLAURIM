@@ -63,3 +63,7 @@
   line, session-local landmark guidance. It has no discovery fog, quest
   markers, cross-space routing, path distance, fast travel, or persisted
   waypoint state.
+- KL-20 D-042 provides primer-gated initiation, four disciplines, six spells,
+  and two working defensive/utility effects. It does not yet provide area
+  spells, summons, runes, channeling, trainers, research/crafting, school perk
+  trees, discovery placement, or final magic economy/balance.

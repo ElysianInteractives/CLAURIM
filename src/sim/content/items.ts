@@ -249,6 +249,32 @@ export const ITEMS: Record<string, ItemDef> = {
     value: 14,
   },
 
+  // --- spell primers ------------------------------------------------------
+  primer_flamebolt: {
+    id: 'primer_flamebolt', name: 'Ember Script: Flamebolt', kind: 'tome',
+    teachesSpell: 'flamebolt', weight: 1, value: 55,
+  },
+  primer_frostspike: {
+    id: 'primer_frostspike', name: 'Rime Script: Frostspike', kind: 'tome',
+    teachesSpell: 'frostspike', weight: 1, value: 65,
+  },
+  primer_stormneedle: {
+    id: 'primer_stormneedle', name: 'Storm Script: Stormneedle', kind: 'tome',
+    teachesSpell: 'stormneedle', weight: 1, value: 75,
+  },
+  primer_mend_wounds: {
+    id: 'primer_mend_wounds', name: "Mender's Primer: Mend Wounds", kind: 'tome',
+    teachesSpell: 'mend_wounds', weight: 1, value: 60,
+  },
+  primer_stoneward: {
+    id: 'primer_stoneward', name: "Stonebinder's Primer: Stoneward", kind: 'tome',
+    teachesSpell: 'stoneward', weight: 1, value: 80,
+  },
+  primer_veilstep: {
+    id: 'primer_veilstep', name: "Veilwright's Primer: Veilstep", kind: 'tome',
+    teachesSpell: 'veilstep', weight: 1, value: 85,
+  },
+
   // --- ingredients (alchemy exemplars) -------------------------------------
   frost_moss: {
     id: 'frost_moss',

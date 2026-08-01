@@ -200,6 +200,8 @@ describe('combat', () => {
 
   it('projectiles fly, hit, and apply spell effects', () => {
     const { sim, wolfId } = closeCombatSim();
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
     const wolf = sim.actors.get(wolfId)!;
     // Move wolf out to 10m so the bolt must travel; disable its brain so it
     // stays put.

@@ -5,7 +5,8 @@
    and the generic content guard; Plan 9 delivers host interpolation and the
    bounded browser audio architecture/control exemplar; Plan 10 closes the
    development-tool advisories and locks clean-install compatibility.
-3. M2 Systems depth: crafting, weather, followers, crime, radiant templates,
+3. M2 Systems depth: magic initiation/disciplines landed in QA Phase J;
+   crafting, weather, followers, crime, radiant templates,
    remaining menus (D-040 map/navigation landed in QA Phase H), final audio
    asset/spatial pipeline, GLB pipeline.
 4. M3 Province: multi-region streaming, main arc, faction line, dragons,

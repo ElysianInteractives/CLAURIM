@@ -7,6 +7,7 @@ import {
   type EquipSlot,
 } from '../sim/types';
 import type { SpellLoadout } from '../sim/player/loadout';
+import { MAGIC_SCHOOL_NAMES } from '../sim/content/magic';
 import type {
   EquipmentSlotView,
   EquippedSpellView,
@@ -65,8 +66,14 @@ export function equipmentView(actor: Actor, content: ContentRegistry): Equipment
 export function knownSpellView(known: readonly ContentId[], content: ContentRegistry): KnownSpellView[] {
   return known.map((id) => {
     const spell = content.spells[id];
-    return { id, name: spell?.name ?? id, cost: spell?.magickaCost ?? 0 };
-  });
+    return {
+      id,
+      name: spell?.name ?? id,
+      cost: spell?.magickaCost ?? 0,
+      school: spell?.school ?? 'ruinweaving',
+      schoolName: spell ? MAGIC_SCHOOL_NAMES[spell.school] : 'Unknown discipline',
+    };
+  }).sort((a, b) => a.schoolName.localeCompare(b.schoolName) || a.name.localeCompare(b.name));
 }
 
 export function equippedSpellView(loadout: SpellLoadout, content: ContentRegistry): EquippedSpellView[] {

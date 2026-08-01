@@ -17,16 +17,18 @@ bounded reticle-aim inputs and discrete commands. Clients never send positions,
 projectile destinations, targets, hits, or damage. The client
 predicts its own movement and presentation; nothing else.
 
-## Protocol (v6, `src/net/protocol.ts`)
+## Protocol (v7, `src/net/protocol.ts`)
 Versioned JSON messages, validated on receipt. Before authentication, clients
 may send only register / login / resume; the server returns authOk / authError.
 After authentication: hello / input / cmd / ping and welcome / reject /
 snapshot / pong / bye. Protocol-version mismatch rejects at hello. No runtime
 objects cross the wire; every payload is built from explicit view types.
 Protocol v5 added authoritative fixed equipment-slot and two-slot spell-
-loadout views plus validated equip/unequip commands. Protocol v6 adds the
+loadout views plus validated equip/unequip commands. Protocol v6 added the
 compact equipped-item map to every replicated `ActorView` so remote
-presentation follows authoritative loadouts; clients still submit intent only.
+presentation follows authoritative loadouts. Protocol v7 adds school metadata
+to known-spell views and character-private spell-learning events; clients
+still submit intent only.
 
 ## Rates (measured 2026-07-31, in-sandbox smoke run)
 - Sim tick: 30 Hz (unchanged, D-003).

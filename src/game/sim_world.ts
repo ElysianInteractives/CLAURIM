@@ -233,6 +233,8 @@ export class SimWorld implements IWorld {
       case 'itemAdded':
       case 'itemRemoved':
         return e.actorId === selfId;
+      case 'spellLearned':
+        return e.charId === this.charId;
       case 'actionRejected':
         return e.actorId === selfId;
       case 'spaceEntered':

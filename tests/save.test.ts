@@ -46,6 +46,10 @@ describe('save round-trip (v4)', () => {
 
   it('player state survives: inventory, equipment, skills, quests, gold', () => {
     const sim = new Sim(7);
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.learnSpellFor('p1', 'mend_wounds');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell2', 'mend_wounds');
     sim.playerStartQuest('hollow_delve');
     sim.player().gold = 999;
     sim.context().trainSkill(sim.player().id, 'oneHanded', 500);
@@ -85,6 +89,8 @@ describe('save round-trip (v4)', () => {
 describe('migrations', () => {
   it('a v1 single-player save migrates through multiplayer into the explicit-party shape', () => {
     const sim = new Sim(3);
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.learnSpellFor('p1', 'mend_wounds');
     sim.playerStartQuest('hollow_delve');
     sim.containersLootedOf('p1').add('ruin_chest');
     const v1 = makeV1Save(sim);
@@ -112,6 +118,8 @@ describe('migrations', () => {
 
   it('migrates a v3 world and v1 character to explicit spell loadouts', () => {
     const sim = new Sim(13);
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.learnSpellFor('p1', 'mend_wounds');
     const world = sim.serialize() as unknown as Record<string, unknown>;
     world.schemaVersion = 3;
     delete world.equippedSpells;

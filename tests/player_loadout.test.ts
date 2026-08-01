@@ -4,13 +4,16 @@ import { SimWorld } from '../src/game/sim_world';
 import { renderLoadoutPanel } from '../src/ui/loadout';
 
 describe('authoritative player loadout', () => {
-  it('starts with two equipped spells and moves a known spell between unique hotkey slots', () => {
+  it('starts uninitiated, then moves learned spells between unique hotkey slots', () => {
     const sim = new Sim(81);
 
-    expect(sim.spellLoadoutFor('p1')).toEqual({
-      spell1: 'flamebolt',
-      spell2: 'mend_wounds',
-    });
+    expect(sim.knownSpellsBy.get('p1')).toEqual([]);
+    expect(sim.spellLoadoutFor('p1')).toEqual({});
+    expect(sim.castFor('p1', 'flamebolt')).toBe(false);
+    expect(sim.learnSpellFor('p1', 'flamebolt')).toBe(true);
+    expect(sim.learnSpellFor('p1', 'mend_wounds')).toBe(true);
+    expect(sim.equipSpellFor('p1', 'spell1', 'flamebolt')).toBe(true);
+    expect(sim.equipSpellFor('p1', 'spell2', 'mend_wounds')).toBe(true);
 
     expect(sim.equipSpellFor('p1', 'spell1', 'mend_wounds')).toBe(true);
     expect(sim.spellLoadoutFor('p1')).toEqual({ spell1: 'mend_wounds' });
@@ -39,7 +42,10 @@ describe('authoritative player loadout', () => {
   });
 
   it('renders equipment, spell hotkeys, known spells, and carried items as separate sections', () => {
-    const world = new SimWorld(new Sim(83));
+    const sim = new Sim(83);
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
+    const world = new SimWorld(sim);
     const html = renderLoadoutPanel(
       world.playerResources().gold,
       world.playerEquipment(),

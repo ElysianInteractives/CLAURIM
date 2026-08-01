@@ -107,6 +107,8 @@ export type SkillId =
   | 'sneak'
   | 'destruction'
   | 'restoration'
+  | 'alteration'
+  | 'illusion'
   | 'smithing'
   | 'alchemy'
   | 'speech';
@@ -119,6 +121,8 @@ export const SKILL_IDS: readonly SkillId[] = [
   'sneak',
   'destruction',
   'restoration',
+  'alteration',
+  'illusion',
   'smithing',
   'alchemy',
   'speech',
@@ -307,6 +311,7 @@ export type SimEvent =
   | { type: 'heal'; targetId: EntityId; amount: number }
   | { type: 'itemAdded'; actorId: EntityId; itemId: ContentId; count: number }
   | { type: 'itemRemoved'; actorId: EntityId; itemId: ContentId; count: number }
+  | { type: 'spellLearned'; charId: CharacterId; spellId: ContentId }
   | { type: 'skillUp'; playerId: EntityId; skill: SkillId; level: number }
   | { type: 'levelUp'; playerId: EntityId; level: number }
   | { type: 'questStarted'; charId: CharacterId; questId: ContentId }

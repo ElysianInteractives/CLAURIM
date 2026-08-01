@@ -223,6 +223,19 @@ describe('server-authoritative movement (D-015)', () => {
     const alvaId = core.sim.playerActor('alva')!.id;
     expect(observer.last('snapshot')!.actors.find((actor) => actor.id === alvaId)?.equipment.mainHand).toBe('worn_dagger');
 
+    core.sim.context().addItem(alvaId, 'primer_mend_wounds', 1);
+    client.send({ t: 'cmd', kind: 'useItem', arg: 'primer_mend_wounds' });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(client.last('snapshot')!.self.knownSpells).toContainEqual(expect.objectContaining({
+      id: 'mend_wounds', school: 'mending', schoolName: 'Mending',
+    }));
+    expect(client.received.some((message) => message.t === 'snapshot' && message.events.some((event) =>
+      event.type === 'spellLearned' && event.charId === 'alva' && event.spellId === 'mend_wounds',
+    ))).toBe(true);
+    expect(observer.received.some((message) => message.t === 'snapshot' && message.events.some((event) =>
+      event.type === 'spellLearned',
+    ))).toBe(false);
+
     client.send({ t: 'cmd', kind: 'equipSpell', arg: 'mend_wounds', index: 0 });
     client.send({ t: 'cmd', kind: 'unequipItem', index: 0 });
     ticks(core, SNAPSHOT_EVERY);
@@ -426,6 +439,8 @@ describe('QA Phase B authoritative reticle aim', () => {
     const { core } = makeServer();
     const client = new TestClient(core, 'conn1');
     client.hello('alva', 'Alva');
+    core.sim.learnSpellFor('alva', 'flamebolt');
+    core.sim.equipSpellFor('alva', 'spell1', 'flamebolt');
     client.input(1, { yaw: Math.PI / 2, pitch: 0.45 });
     client.send({ t: 'cmd', kind: 'cast', arg: 'flamebolt' });
 

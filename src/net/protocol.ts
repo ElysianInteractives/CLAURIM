@@ -1,4 +1,4 @@
-// Wire protocol v6 (D-014/D-028/D-033/D-034/D-035/D-039). Explicit versioned JSON message schemas with
+// Wire protocol v7 (D-014/D-028/D-033/D-034/D-035/D-039/D-042). Explicit versioned JSON message schemas with
 // inbound validation on BOTH ends; nothing serializes runtime objects
 // directly. The server rejects any message that fails validation.
 // See docs/project/NETWORK_ARCHITECTURE.md.
@@ -11,6 +11,7 @@ import type {
   EquippedSpellView,
   GroundAoeView,
   JournalView,
+  KnownSpellView,
   PartyInviteView,
   PartyMemberView,
   ProjectileView,
@@ -18,7 +19,7 @@ import type {
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
 
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 /** One tick of movement intent. Position is NEVER sent by clients (D-015). */
 export interface WireInput {
@@ -118,7 +119,7 @@ export interface SelfState {
   inventory: { itemId: string; name: string; count: number; equipped: boolean; kind: string; value: number }[];
   equipment: EquipmentSlotView[];
   skills: { id: string; level: number; xp: number; xpForNext: number }[];
-  knownSpells: { id: string; name: string; cost: number }[];
+  knownSpells: KnownSpellView[];
   equippedSpells: EquippedSpellView[];
   journal: JournalView[];
   perks: PerkView[];

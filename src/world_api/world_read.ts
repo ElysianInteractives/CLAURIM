@@ -9,6 +9,7 @@ import type {
   SpaceId,
   SpellEquipSlot,
 } from '../sim/types';
+import type { MagicSchoolId } from '../sim/content/schema';
 
 export interface InventoryItemView {
   itemId: ContentId;
@@ -31,6 +32,8 @@ export interface KnownSpellView {
   id: ContentId;
   name: string;
   cost: number;
+  school: MagicSchoolId;
+  schoolName: string;
 }
 
 export interface EquippedSpellView {

@@ -661,6 +661,37 @@ save formats remain unchanged.
   `qa-phase-i-first-person-1280x720.png`, and
   `qa-phase-i-rig-1920x1080.png`.
 
+### QA Phase J magic-progression exit
+
+QA Phase J resolves MAG-001 and locks D-042. Fresh-character magic,
+authoritative primer use, discipline metadata/progression, two new self
+effects, protocol views/events, and loadout presentation change. Existing
+known spells and explicit hotkey assignments remain save-compatible.
+
+- Fresh characters have no known or equipped spells and reject arbitrary
+  casts. Six merchant-stocked primers each consume exactly once to teach a
+  spell; duplicates neither consume nor duplicate knowledge, and learning
+  never auto-equips.
+- Six spells cover original Ruinweaving, Mending, Stonebinding, and Veilcraft
+  disciplines. Stoneward increases armor/physical resistance and trains
+  alteration; Veilstep improves concealment and trains illusion. Older actor
+  records gain both new skill keys at level 1 without losing existing values.
+- Protocol v7 carries discipline labels and character-private learning
+  events. The full local/good/degraded/severe network matrix remains within
+  its locked bounds; the live two-client WebSocket smoke reports ack 30,
+  4.4 m movement, mutual visibility, session/replay safety, and 6,743/6,730
+  byte snapshots.
+- `npm run gate` is green at 27 suites / 222 tests. Vite 8 transforms 59
+  modules and produces 703.00 kB JavaScript / 185.59 kB gzip. Combat, AI,
+  multiplayer, traversal, content validation, and originality gates pass.
+- Direct `?qa=magic` browser QA starts with empty hotkeys and six visible
+  Study actions, learns all spells into four grouped headings, manually
+  assigns Stoneward/Veilstep, and casts Stoneward from key 1. Both supported
+  desktop viewports pass and browser warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-j-disciplines-1280x720.png` and
+  `qa-phase-j-disciplines-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -691,6 +722,7 @@ save formats remain unchanged.
 | QA-GEAR | Authoritative equipped-item and combat-pose presentation | `tests/equipment_presentation.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`, `npm run mp:bench`, `npm run world:tour`, `npm run qa:ws`, `npm run gate`; development-only offline `?qa=gear` in third/first person at 1280 and 1920 | local/remote equipped ids, six world gear families, synchronized first-person hands, weapon-specific phases, clear reticle/horizon, layout/overflow/logs |
 | QA-MAP | Current-space map and destination guidance | `tests/world_map.test.ts`, `npm run world:tour`, `npm run gate`; development-only `?qa=falkmoor` and `?qa=mine` at 1280 plus exterior at 1920 | road/five destinations, exact rooms/exit, player yaw marker, semantic selection, relative bearing/distance, clipping/overflow/logs |
 | QA-RIG | Articulated character detail and full-body posing | `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/presentation.test.ts`, `npm run ai:bench`, `npm run gate`; development-only `?qa=inn-shift-change`, `?qa=gear`, and `?qa=rig` at 1280/1920 | stable joints/mesh detail, leg/knee/torso gait, secondary combat joints, quadruped gait/tail, hand-following gear, first-person framing/logs |
+| QA-MAGIC | Magic initiation, disciplines, and persistent loadout | `tests/magic_progression.test.ts`, `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `npm run combat:bench`, `npm run net:bench`, `npm run qa:ws`, `npm run gate`; development-only `?qa=magic` at 1280/1920 | empty fresh state, atomic primer study/duplicate safety, four schools, ward/veil effects and skill XP, legacy save normalization, private protocol state, manual equip/cast, responsive layout/logs |
 
 ## Browser visual-QA procedure
 

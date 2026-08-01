@@ -41,6 +41,10 @@ function runScenario(scenario: Scenario, seconds: number, seed: number) {
   }
   if (scenario.itemId) sim.equipFor('p1', scenario.itemId);
   if (scenario.kind === 'ranged') sim.context().addItem(player.id, 'arrow', seconds * 10);
+  if (scenario.kind === 'spell') {
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
+  }
 
   let totalDamage = 0;
   let hits = 0;

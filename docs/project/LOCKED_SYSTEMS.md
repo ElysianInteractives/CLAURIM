@@ -19,7 +19,7 @@ amendment; "a later model prefers a different shape" is not a defect.
 
 Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Multiplayer state model: one Sim, many characters, per-char keyed state (D-013).
-- Server-authoritative WebSocket protocol v6 + authenticated pre-hello boundary
+- Server-authoritative WebSocket protocol v7 + authenticated pre-hello boundary
   + interest-scoped 10 Hz snapshots (D-014/D-028).
 - Client prediction/reconciliation via sequenced intent (D-015).
 - StorageProvider persistence: server-owned characters + world (D-016).
@@ -59,10 +59,13 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Stable articulated low-poly humanoid/quadruped rig hierarchy, hand-based
   equipment attachments, and renderer-only full-body procedural posing
   (D-041).
+- Primer-gated spell learning, four original magic disciplines, safe legacy
+  skill normalization, and explicit post-learning spell-slot assignment
+  (D-042).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,
 dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
 account recovery/MFA/operations, matchmaking, dungeon
-instancing (current dungeon is shared-world), guilds/trading, expanded
-spellbooks/hotbars, loadout presets, and drag-and-drop inventory.
+instancing (current dungeon is shared-world), guilds/trading, expanded spell
+kinds/hotbars, trainers/research, loadout presets, and drag-and-drop inventory.

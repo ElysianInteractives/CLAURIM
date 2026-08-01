@@ -23,9 +23,9 @@ PARTIAL / NONE.
 ## Systems and RPG
 | Family | Dep | State | Exemplar | Remaining | Fable | Opus | Review | Accept |
 |---|---|---|---|---|---|---|---|---|
-| Skills | progression | DONE (10) | use-based xp all 10 | tune curves | none | curve tuning from playtest data | yes | skill tests |
+| Skills | progression | DONE (12) | use-based xp all 12 | tune curves | none | curve tuning from playtest data | yes | skill tests |
 | Perk trees | perks | SYSTEM | 15 perks across six trees | ~140 perks | only perks needing NEW hooks | template perks | yes | validation tests |
-| Spells | spells runtime | SYSTEM | 3 (projectile/self/heal) | ~60 | new spell KINDS (AoE, summon, ward, rune) | variants of existing kinds | no | combat tests |
+| Spells | spells runtime + D-042 | SYSTEM | 6 across four original disciplines; primer learning, projectile/self/heal/ward/concealment | ~57 | new spell KINDS (AoE, summon, rune, channel) | variants of existing kinds | no | magic/combat tests |
 | Shouts/powers | multi-stage powers | NONE | - | ~20 | the power system (cooldown category, staged unlock) | records after | yes | e2e test |
 | Weapons | items | SYSTEM | 8 | ~76 | new weapon CLASSES (2H, crossbow timing) | tier fills | no | validation |
 | Armor | items | SYSTEM | 12 | ~52 | armor-class perks interplay | tier fills | no | validation |
@@ -53,7 +53,7 @@ PARTIAL / NONE.
 ## Presentation and platform
 | Family | State | Notes |
 |---|---|---|
-| UI surfaces | PARTIAL | HUD/dialogue/shop/loadout inventory with known-spell equip/journal/perks, current-space map/navigation, and audio settings exist; missing: full spellbook, broader settings, main menu |
+| UI surfaces | PARTIAL | HUD/dialogue/shop/loadout inventory with primer Study actions, discipline-grouped known spells, spell equip, journal/perks, current-space map/navigation, and audio settings exist; missing: full spellbook, broader settings, main menu |
 | Audio | SYSTEM | D-031 browser mixer, persistent controls, combat cues, and procedural interior/day/night beds exist; final assets, spatial sources, and production mix remain KL-5 |
 | Asset pipeline | NONE->PLANNED | palette/code-native style now has articulated humanoid/quadruped exemplars (D-011/D-041); GLB pipeline remains the replacement path behind stable rig nodes |
 | Accessibility | PARTIAL | semantic resource/audio controls exist; keybind remap, subtitles, colorblind palette, and broader settings remain |

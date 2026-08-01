@@ -202,6 +202,8 @@ describe('Plan 2 melee and blocking geometry', () => {
 describe('Plan 2 projectile/world collision', () => {
   it('stops a spell on a solid mine pillar before it can damage an actor behind it', () => {
     const sim = new Sim(42);
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
     const player = sim.player();
     const target = [...sim.actors.values()].find((actor) => actor.templateId === 'marsh_rat')!;
     player.pos = { spaceId: 'duskhollow_mine', x: -6, y: 0, z: 32 };
@@ -219,6 +221,8 @@ describe('Plan 2 projectile/world collision', () => {
 
   it('stops a spell at an implicit interior wall between disconnected room areas', () => {
     const sim = new Sim(42);
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
     const player = sim.player();
     player.pos = { spaceId: 'duskhollow_mine', x: 4, y: 0, z: 8 };
     player.yaw = 0;

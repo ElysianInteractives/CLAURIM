@@ -65,6 +65,6 @@ boundaries.
 
 ## Deliberately separate locks
 
-Spell learning, more than two hotkeys, drag-and-drop, item comparison,
+Spell learning is governed by D-042. More than two hotkeys, drag-and-drop, item comparison,
 stack splitting, loadout presets, cooldown categories, and a full spellbook
 or crafting surface are not part of D-035.

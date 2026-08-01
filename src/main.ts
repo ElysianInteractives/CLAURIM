@@ -62,6 +62,7 @@ if (online) {
     if (player) {
       for (const itemId of qaStart.items ?? []) sim.context().addItem(player.id, itemId, 1);
       for (const itemId of qaStart.equip ?? []) sim.playerEquip(itemId);
+      for (const spellId of qaStart.spells ?? []) sim.learnSpellFor('p1', spellId);
     }
   }
   world = new SimWorld(sim);

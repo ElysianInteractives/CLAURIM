@@ -254,6 +254,9 @@ export class Hud {
         case 'itemAdded':
           this.notify(`+ ${e.count} ${e.itemId}`);
           break;
+        case 'spellLearned':
+          this.notify(`Spell learned: ${titleFromId(e.spellId)}`);
+          break;
         case 'death':
           this.notify('Slain: ' + e.templateId);
           break;
@@ -511,7 +514,7 @@ export class Hud {
           const it = this.world.playerInventory().find((x) => x.itemId === id);
           if (!it) return;
           if (it.kind === 'weapon' || it.kind === 'armor') this.world.equipItem(id);
-          else if (it.kind === 'consumable') this.world.useItem(id);
+          else if (it.kind === 'consumable' || it.kind === 'tome') this.world.useItem(id);
         }
       };
     });
@@ -573,6 +576,10 @@ export class Hud {
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function titleFromId(id: string): string {
+  return id.split('_').map((part) => part ? part[0].toUpperCase() + part.slice(1) : '').join(' ');
 }
 
 function actionRejectionText(

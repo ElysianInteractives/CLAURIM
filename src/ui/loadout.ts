@@ -23,6 +23,8 @@ export const LOADOUT_CSS = `
   #hud .known-spell { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px;
     padding: 7px 8px; margin: 2px 0; border-radius: 3px; }
   #hud .known-spell:nth-child(even) { background: rgba(255,255,255,.025); }
+  #hud .spell-school { margin-top: 10px; color: #9fb4d7; font-size: 11px; font-weight: normal;
+    letter-spacing: .09em; text-transform: uppercase; }
   #hud .spell-actions { display: flex; gap: 5px; }
   #hud .loadout-action { min-width: 58px; padding: 5px 8px; color: #eee4c9; background: rgba(90,76,50,.45);
     border: 1px solid rgba(205,189,141,.38); border-radius: 3px; font: 11px/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace; cursor: pointer; }
@@ -70,8 +72,13 @@ export function renderLoadoutPanel(
   html += `</div></section>`;
 
   html += `<section class="loadout-section" aria-labelledby="known-spells-heading"><h3 id="known-spells-heading">Known spells</h3>`;
-  if (knownSpells.length === 0) html += `<div class="row static dim">No spells known.</div>`;
+  if (knownSpells.length === 0) html += `<div class="row static dim">No spells known. Study a spell primer to begin.</div>`;
+  let activeSchool = '';
   for (const spell of knownSpells) {
+    if (spell.school !== activeSchool) {
+      activeSchool = spell.school;
+      html += `<h4 class="spell-school">${escapeHtml(spell.schoolName)}</h4>`;
+    }
     const slot1 = spellLoadout.some((entry) => entry.slot === 'spell1' && entry.spellId === spell.id);
     const slot2 = spellLoadout.some((entry) => entry.slot === 'spell2' && entry.spellId === spell.id);
     html += `<div class="known-spell"><span><strong>${escapeHtml(spell.name)}</strong> <span class="dim">${spell.cost} magicka</span></span>` +
@@ -83,7 +90,7 @@ export function renderLoadoutPanel(
   html += `<section class="loadout-section carried-list" aria-labelledby="carried-heading"><h3 id="carried-heading">Carried items</h3>`;
   if (carried.length === 0) html += `<div class="row static dim">No unequipped items carried.</div>`;
   for (const item of carried) {
-    const action = item.kind === 'consumable' ? 'Use' : item.kind === 'weapon' || item.kind === 'armor' ? 'Equip' : item.kind;
+    const action = item.kind === 'consumable' ? 'Use' : item.kind === 'tome' ? 'Study' : item.kind === 'weapon' || item.kind === 'armor' ? 'Equip' : item.kind;
     html += `<button type="button" class="row" data-act="item" data-id="${escapeHtml(item.itemId)}"><span>${escapeHtml(item.name)} ×${item.count}</span><span class="dim">${escapeHtml(action)}</span></button>`;
   }
   html += `<div class="hint"><kbd>Tab</kbd> close · equip gear or spells from their lists</div></section></section>`;

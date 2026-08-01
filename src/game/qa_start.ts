@@ -11,6 +11,7 @@ export interface QaStartPoint {
   hour?: number;
   items?: readonly ContentId[];
   equip?: readonly ContentId[];
+  spells?: readonly ContentId[];
 }
 
 export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
@@ -21,6 +22,13 @@ export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
     equip: ['iron_sword', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],
   },
   rig: { spaceId: 'kaldwyn', x: 0, z: 38, yaw: 0 },
+  magic: {
+    spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI,
+    items: [
+      'primer_flamebolt', 'primer_frostspike', 'primer_stormneedle',
+      'primer_mend_wounds', 'primer_stoneward', 'primer_veilstep',
+    ],
+  },
   fenharrow: { spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI },
   'fenharrow-door': { spaceId: 'kaldwyn', x: 33, z: 142.5, yaw: 0 },
   inn: { spaceId: 'fenharrow_inn', x: 0, z: 2, yaw: 0 },

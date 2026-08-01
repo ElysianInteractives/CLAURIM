@@ -49,7 +49,7 @@ import {
   recoveryRejection,
   type PlayerRecoveryRejection,
 } from './player/recovery';
-import { createActor, recalcActorStats } from './actors/actor';
+import { createActor, normalizeActorSkills, recalcActorStats } from './actors/actor';
 import { makeBrain, tickBrain } from './ai/brain';
 import {
   encounterKeyForActor,
@@ -451,7 +451,7 @@ export class Sim {
       player.equipment = { ...restore.equipment } as Actor['equipment'];
       player.gold = restore.gold;
       player.effects = restore.effects.map((e) => ({ ...e }));
-      player.skills = JSON.parse(JSON.stringify(restore.skills));
+      player.skills = normalizeActorSkills(restore.skills);
       player.perks = [...restore.perks];
       player.level = restore.level;
       player.characterXp = restore.characterXp;
@@ -478,7 +478,7 @@ export class Sim {
       addItem(this.ctx, id, 'bread', 2);
       addItem(this.ctx, id, 'healing_draught', 1);
       equipItem(this.ctx, id, 'worn_dagger');
-      const knownSpells = ['flamebolt', 'mend_wounds'];
+      const knownSpells: ContentId[] = [];
       this.knownSpellsBy.set(charId, knownSpells);
       this.equippedSpellsBy.set(charId, defaultSpellLoadout(knownSpells));
       player.health = player.stats.maxHealth;
@@ -755,6 +755,7 @@ export class Sim {
         event.type === 'actionRejected' ||
         event.type === 'chat' ||
         event.type === 'partyStatus' ||
+        event.type === 'spellLearned' ||
         event.type === 'playerRecovered' ||
         event.type === 'recoveryRejected',
     );
@@ -1094,7 +1095,23 @@ export class Sim {
   useItemFor(charId: CharacterId, itemId: ContentId): boolean {
     const p = this.playerActor(charId);
     if (!p || p.downed) return false;
+    const item = this.content.items[itemId];
+    if (item?.kind === 'tome' && item.teachesSpell) {
+      if ((this.knownSpellsBy.get(charId) ?? []).includes(item.teachesSpell)) return false;
+      if (!this.content.spells[item.teachesSpell] || !removeItem(this.ctx, p.id, itemId, 1)) return false;
+      return this.learnSpellFor(charId, item.teachesSpell);
+    }
     return useItem(this.ctx, p.id, itemId);
+  }
+
+  /** Authoritative learning seam used by primers and development-only QA starts. */
+  learnSpellFor(charId: CharacterId, spellId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    const known = this.knownSpellsBy.get(charId);
+    if (!p || p.downed || !known || known.includes(spellId) || !this.content.spells[spellId]) return false;
+    known.push(spellId);
+    this.events.push({ type: 'spellLearned', charId, spellId });
+    return true;
   }
 
   equipFor(charId: CharacterId, itemId: ContentId): boolean {
@@ -1544,7 +1561,7 @@ export class Sim {
         if (as.dead) actor.brain.state = 'dead';
       }
       if (as.kind === 'player') {
-        if (as.skills) actor.skills = as.skills as Actor['skills'];
+        actor.skills = normalizeActorSkills(as.skills as Partial<Actor['skills']> | undefined);
         actor.perks = as.perks ?? [];
         actor.level = as.level ?? 1;
         actor.characterXp = as.characterXp ?? 0;

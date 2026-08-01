@@ -366,6 +366,8 @@ export class ServerCore {
       case 'itemAdded':
       case 'itemRemoved':
         return e.actorId === selfId;
+      case 'spellLearned':
+        return e.charId === charId;
       case 'actionRejected':
         return e.actorId === selfId;
       case 'spaceEntered':

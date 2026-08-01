@@ -19,6 +19,8 @@ describe('QA Phase B reticle-directed spellcasting reproduction', () => {
   it('releases a player spell along the reticle pitch instead of flat model facing', () => {
     const sim = new Sim(20260801, CONTENT, { skipSpawn: true, noDefaultPlayer: true });
     sim.addPlayer('p1', 'Wanderer');
+    sim.learnSpellFor('p1', 'flamebolt');
+    sim.equipSpellFor('p1', 'spell1', 'flamebolt');
     sim.movePlayerTo('p1', 'fenharrow_inn', 0, 6, 0);
     expect(sim.castFor('p1', 'flamebolt')).toBe(true);
 

@@ -145,6 +145,14 @@ phase-aware secondary joints. This remains renderer-only; collision, movement,
 combat outcomes, protocol, and saves are unchanged. Exact boundaries are in
 `CHARACTER_PRESENTATION_CONTRACT.md`.
 
+QA Phase J verifies MAG-001 through D-042: new characters begin without
+magic, authoritative primers teach persistent spells without auto-equipping,
+and the known-spell list groups six spells into Claurim's Ruinweaving,
+Mending, Stonebinding, and Veilcraft disciplines. Stoneward and Veilstep add
+tested defensive/utility effects and alteration/illusion progression; older
+saves keep known/equipped spells and receive safe new-skill defaults. Exact
+boundaries are in `MAGIC_PROGRESSION_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -162,7 +170,7 @@ session added and TESTED:
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
 - Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
-  on :8787; protocol v6 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
+  on :8787; protocol v7 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with
@@ -201,6 +209,10 @@ session added and TESTED:
 - QA Phase I character presentation (D-041): stable humanoid and quadruped
   joints, tapered/faceted detail, hand-based gear, full gait, and secondary
   combat posing replace the old rigid-block silhouettes.
+- QA Phase J magic progression (D-042): fresh characters start uninitiated;
+  six primers teach six persistent, manually equipped spells across four
+  original disciplines, with legacy-save compatibility and private protocol
+  feedback.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -216,13 +228,12 @@ session added and TESTED:
 - Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
   check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
   all dialogue rewritten with voices + plural-adventurer framing.
-- Proven-schema content depth (D-030): content v0.2 contains 29 items, 15
-  perks, 13 actor templates, and 4 spaces; the catalog, merchant, progression,
-  encounter, interior, and location-label additions require no new runtime
-  schema, combat formula, stat key, or save shape.
+- Proven-schema content depth (D-030/D-042): content v0.3 contains 35 items,
+  6 spells, 15 perks, 13 actor templates, and 4 spaces; primer/school records
+  extend the validated catalog while existing save envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 218 tests / 26 suites green (multiplayer sim, server/net,
+- `npm test`: 222 tests / 27 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -232,10 +243,11 @@ session added and TESTED:
   schedules, safe blocked fallback, locomotion dead zones, authoritative
   equipped-item views, gear attachments, weapon-specific poses, authored
   map/floor-plan coverage, destination bearing/distance, articulated rig
-  structure, full-body gait, and secondary combat/creature posing).
-- Live ws smoke under protocol v6: server + 2 real WebSocket clients: ack 30, 4.4 m
+  structure, full-body gait, secondary combat/creature posing, primer-gated
+  spell learning, discipline grouping, effects, and legacy skill defaults).
+- Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 6,780 / 6,767-byte snapshots.
+  replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -245,7 +257,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 699.03 kB / 184.56 kB gzip.
+  build); Vite 8 production JavaScript is 703.00 kB / 185.59 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -263,7 +275,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-038), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-042), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

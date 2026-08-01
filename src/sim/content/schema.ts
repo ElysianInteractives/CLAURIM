@@ -16,7 +16,7 @@ import type { StatModifier } from '../effects/modifiers';
 // Items
 // ---------------------------------------------------------------------------
 
-export type ItemKind = 'weapon' | 'armor' | 'consumable' | 'ingredient' | 'misc' | 'quest';
+export type ItemKind = 'weapon' | 'armor' | 'consumable' | 'tome' | 'ingredient' | 'misc' | 'quest';
 export type WeaponType = 'sword' | 'axe' | 'dagger' | 'bow';
 
 export interface ItemDef {
@@ -34,6 +34,8 @@ export interface ItemDef {
   armor?: number;
   /** consumable: effects applied on use */
   useEffects?: ContentId[];
+  /** tome: permanently teaches one authored spell when studied */
+  teachesSpell?: ContentId;
   /** equipment: passive modifiers while equipped */
   equipMods?: StatModifier[];
   stackable?: boolean;
@@ -61,9 +63,19 @@ export interface EffectDef {
 
 export type SpellKind = 'projectile' | 'self';
 
+export type MagicSchoolId = 'ruinweaving' | 'mending' | 'stonebinding' | 'veilcraft';
+
+export const MAGIC_SCHOOL_IDS: readonly MagicSchoolId[] = [
+  'ruinweaving',
+  'mending',
+  'stonebinding',
+  'veilcraft',
+];
+
 export interface SpellDef {
   id: ContentId;
   name: string;
+  school: MagicSchoolId;
   kind: SpellKind;
   magickaCost: number;
   /** projectile */
@@ -409,6 +421,9 @@ export function validateContent(c: ContentRegistry): string[] {
     for (const e of item.useEffects ?? []) {
       if (!c.effects[e]) err(`item ${id}: unknown useEffect ${e}`);
     }
+    if (item.kind === 'tome' && !item.teachesSpell) err(`item ${id}: tome needs teachesSpell`);
+    if (item.teachesSpell && !c.spells[item.teachesSpell]) err(`item ${id}: unknown teachesSpell ${item.teachesSpell}`);
+    if (item.kind !== 'tome' && item.teachesSpell) err(`item ${id}: only tomes may teach spells`);
   }
 
   for (const [id, ef] of Object.entries(c.effects)) {
@@ -421,6 +436,7 @@ export function validateContent(c: ContentRegistry): string[] {
   for (const [id, sp] of Object.entries(c.spells)) {
     uniq('spell', id);
     if (sp.id !== id) err(`spell ${id}: id mismatch`);
+    if (!MAGIC_SCHOOL_IDS.includes(sp.school)) err(`spell ${id}: unknown school ${sp.school}`);
     if (sp.magickaCost < 0) err(`spell ${id}: negative cost`);
     if (sp.kind === 'projectile' && (sp.damage === undefined || !sp.channel))
       err(`spell ${id}: projectile needs damage + channel`);

@@ -38,6 +38,21 @@ function emptySkills(): Record<SkillId, { level: number; xp: number }> {
   return skills;
 }
 
+/** Fill skill keys added after an older save was written without discarding progress. */
+export function normalizeActorSkills(
+  saved: Partial<Record<SkillId, { level: number; xp: number }>> | undefined,
+): Actor['skills'] {
+  const skills = emptySkills();
+  if (!saved) return skills;
+  for (const id of SKILL_IDS) {
+    const state = saved[id];
+    if (state && Number.isFinite(state.level) && Number.isFinite(state.xp)) {
+      skills[id] = { level: Math.max(1, state.level), xp: Math.max(0, state.xp) };
+    }
+  }
+  return skills;
+}
+
 export function createActor(
   id: EntityId,
   kind: ActorKind,

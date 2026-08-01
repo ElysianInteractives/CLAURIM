@@ -376,3 +376,13 @@ leg pivots plus head and tail motion. Actor collision, sim movement, combat,
 protocol v6, and saves remain unchanged. A future GLB pipeline may replace
 geometry behind these stable nodes. Exact rules:
 `CHARACTER_PRESENTATION_CONTRACT.md`.
+
+## D-042: Primer-gated magic and original disciplines - LOCKED
+Fresh characters begin with no known or equipped magic. Authoritative tome
+items teach one validated spell, are consumed exactly once, never auto-equip,
+and preserve existing D-035 manual slot assignment. Six spells span Claurim's
+Ruinweaving, Mending, Stonebinding, and Veilcraft disciplines; the latter two
+append normalized alteration/illusion progression and working ward/concealment
+effects. Existing saves retain magic and receive safe defaults for new skill
+keys. Protocol v7 carries school metadata and private learning feedback. Exact
+rules: `MAGIC_PROGRESSION_CONTRACT.md`.

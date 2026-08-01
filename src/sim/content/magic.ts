@@ -4,6 +4,13 @@
 
 import type { EffectDef, PerkDef, SpellDef } from './schema';
 
+export const MAGIC_SCHOOL_NAMES = {
+  ruinweaving: 'Ruinweaving',
+  mending: 'Mending',
+  stonebinding: 'Stonebinding',
+  veilcraft: 'Veilcraft',
+} as const;
+
 export const EFFECTS: Record<string, EffectDef> = {
   restore_health: {
     id: 'restore_health',
@@ -57,12 +64,32 @@ export const EFFECTS: Record<string, EffectDef> = {
     mods: [],
     hot: { perSecond: 4 },
   },
+  stoneward: {
+    id: 'stoneward',
+    name: 'Stoneward',
+    duration: 18,
+    stackRule: 'refresh',
+    maxStacks: 1,
+    mods: [
+      { stat: 'armor', op: 'add', value: 18, source: 'effect:stoneward' },
+      { stat: 'resistPhysical', op: 'add', value: 0.2, source: 'effect:stoneward' },
+    ],
+  },
+  veiled: {
+    id: 'veiled',
+    name: 'Veiled',
+    duration: 14,
+    stackRule: 'refresh',
+    maxStacks: 1,
+    mods: [{ stat: 'stealth', op: 'mul', value: 1.65, source: 'effect:veiled' }],
+  },
 };
 
 export const SPELLS: Record<string, SpellDef> = {
   flamebolt: {
     id: 'flamebolt',
     name: 'Flamebolt',
+    school: 'ruinweaving',
     kind: 'projectile',
     magickaCost: 14,
     damage: 10,
@@ -73,6 +100,7 @@ export const SPELLS: Record<string, SpellDef> = {
   frostspike: {
     id: 'frostspike',
     name: 'Frostspike',
+    school: 'ruinweaving',
     kind: 'projectile',
     magickaCost: 16,
     damage: 8,
@@ -80,14 +108,43 @@ export const SPELLS: Record<string, SpellDef> = {
     applyEffects: ['chilled'],
     skill: 'destruction',
   },
+  stormneedle: {
+    id: 'stormneedle',
+    name: 'Stormneedle',
+    school: 'ruinweaving',
+    kind: 'projectile',
+    magickaCost: 18,
+    damage: 15,
+    channel: 'shock',
+    skill: 'destruction',
+  },
   mend_wounds: {
     id: 'mend_wounds',
     name: 'Mend Wounds',
+    school: 'mending',
     kind: 'self',
     magickaCost: 12,
     heal: 18,
     applyEffects: ['regeneration'],
     skill: 'restoration',
+  },
+  stoneward: {
+    id: 'stoneward',
+    name: 'Stoneward',
+    school: 'stonebinding',
+    kind: 'self',
+    magickaCost: 20,
+    applyEffects: ['stoneward'],
+    skill: 'alteration',
+  },
+  veilstep: {
+    id: 'veilstep',
+    name: 'Veilstep',
+    school: 'veilcraft',
+    kind: 'self',
+    magickaCost: 22,
+    applyEffects: ['veiled'],
+    skill: 'illusion',
   },
 };
 
