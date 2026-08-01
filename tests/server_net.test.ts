@@ -214,6 +214,14 @@ describe('server-authoritative movement (D-015)', () => {
     const { core } = makeServer();
     const client = new TestClient(core, 'conn1');
     client.hello('alva');
+    ticks(core, SNAPSHOT_EVERY);
+    const initial = client.last('snapshot')!;
+    expect(initial.actors.find((actor) => actor.id === initial.self.entityId)?.equipment.mainHand).toBe('worn_dagger');
+    const observer = new TestClient(core, 'conn2');
+    observer.hello('brona');
+    ticks(core, SNAPSHOT_EVERY);
+    const alvaId = core.sim.playerActor('alva')!.id;
+    expect(observer.last('snapshot')!.actors.find((actor) => actor.id === alvaId)?.equipment.mainHand).toBe('worn_dagger');
 
     client.send({ t: 'cmd', kind: 'equipSpell', arg: 'mend_wounds', index: 0 });
     client.send({ t: 'cmd', kind: 'unequipItem', index: 0 });
@@ -223,6 +231,7 @@ describe('server-authoritative movement (D-015)', () => {
     expect(core.sim.playerActor('alva')!.equipment.mainHand).toBeUndefined();
     const snapshot = client.last('snapshot')!;
     expect(snapshot.self.equipment.find((slot) => slot.slot === 'mainHand')?.itemId).toBeNull();
+    expect(snapshot.actors.find((actor) => actor.id === snapshot.self.entityId)?.equipment.mainHand).toBeUndefined();
     expect(snapshot.self.equippedSpells).toEqual([
       expect.objectContaining({ slot: 'spell1', spellId: 'mend_wounds' }),
       expect.objectContaining({ slot: 'spell2', spellId: null }),

@@ -19,7 +19,7 @@ amendment; "a later model prefers a different shape" is not a defect.
 
 Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Multiplayer state model: one Sim, many characters, per-char keyed state (D-013).
-- Server-authoritative WebSocket protocol v5 + authenticated pre-hello boundary
+- Server-authoritative WebSocket protocol v6 + authenticated pre-hello boundary
   + interest-scoped 10 Hz snapshots (D-014/D-028).
 - Client prediction/reconciliation via sequenced intent (D-015).
 - StorageProvider persistence: server-owned characters + world (D-016).
@@ -51,6 +51,9 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   matching read-only target presentation (D-034).
 - Six fixed equipment slots plus two persistent, unique, known-spell hotkeys;
   separated loadout UI and authoritative equip/unequip intent (D-035).
+- Replicated equipped-item presentation for every actor, matching
+  first-person main/off-hand viewmodels, and weapon-family procedural combat
+  poses (D-039).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

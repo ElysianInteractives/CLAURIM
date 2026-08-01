@@ -123,6 +123,14 @@ keeps tiny corrections out of the walk cycle. Combat/search/flee steering is
 unchanged after explicit benchmark scoping. Exact boundaries are in
 `NPC_SCHEDULE_STABILITY_CONTRACT.md`.
 
+QA Phase G verifies AV-004 through D-039: every render-facing local or remote
+actor now carries authoritative equipped-item ids; third-person characters and
+the first-person rig build the matching visible gear; and sword/dagger, heavy,
+bow, spell, and block states use distinct presentation-only poses. Protocol v6
+adds remote loadout presentation without changing equipment authority, combat
+outcomes, or saves. Exact boundaries are in
+`EQUIPMENT_PRESENTATION_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -140,7 +148,7 @@ session added and TESTED:
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
 - Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
-  on :8787; protocol v5 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
+  on :8787; protocol v6 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with
@@ -169,6 +177,10 @@ session added and TESTED:
 - QA Phase F NPC stability (D-038): route-complete schedules, deterministic
   safe-home fallback, authored-leg coverage, and renderer-only locomotion
   hysteresis eliminate wall pressure and amplified correction jitter.
+- QA Phase G equipment presentation (D-039): interest-scoped actor views carry
+  authoritative gear, world and first-person rigs share the equipped weapon/
+  shield state, all six gear families render, and combat posing varies by
+  weapon family and phase.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -190,17 +202,18 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 206 tests / 23 suites green (multiplayer sim, server/net,
+- `npm test`: 210 tests / 24 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
   movement/sprint/recovery behavior, reticle-directed spell aim, player
   equipment/spell loadouts, shoulder-camera composition/collision, and
   multi-seed structure-pad/door-anchor placement, route-complete NPC
-  schedules, safe blocked fallback, and locomotion dead zones).
-- Live ws smoke under protocol v5: server + 2 real WebSocket clients: ack 30, 4.4 m
+  schedules, safe blocked fallback, locomotion dead zones, authoritative
+  equipped-item views, gear attachments, and weapon-specific poses).
+- Live ws smoke under protocol v6: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 6,719 / 6,707-byte snapshots.
+  replay rejection, preserved ownership, and current 6,780 / 6,767-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -210,7 +223,7 @@ session added and TESTED:
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 680.68 kB / 178.99 kB gzip.
+  build); Vite 8 production JavaScript is 685.15 kB / 180.36 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 

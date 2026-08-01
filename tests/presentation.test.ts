@@ -113,6 +113,9 @@ describe('development browser QA start points', () => {
     expect(qaStartFromSearch('?qa=unknown', true)).toBeNull();
     expect(qaStartFromSearch('?qa=fenharrow', false)).toBeNull();
     expect(qaStartFromSearch('?qa=inn-shift-change', true)).toMatchObject({ hour: 20.99 });
+    expect(qaStartFromSearch('?qa=gear', true)).toMatchObject({
+      equip: expect.arrayContaining(['iron_sword', 'wooden_shield', 'fur_mantle']),
+    });
     expect(qaTickForHour(20.99)).toBeGreaterThan(0);
   });
 });

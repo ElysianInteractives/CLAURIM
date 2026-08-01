@@ -111,6 +111,7 @@ export class SimWorld implements IWorld {
       attackKind: a.attack?.kind ?? null,
       attackPhase: a.attack?.phase ?? null,
       telegraphTicks: a.attack?.telegraph && a.attack.phase === 'windup' ? a.attack.t : 0,
+      equipment: { ...a.equipment },
       telegraph,
       isPlayer: a.kind === 'player',
       isRemotePlayer: a.kind === 'player' && a.id !== self.id,

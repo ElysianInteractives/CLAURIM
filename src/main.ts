@@ -58,6 +58,11 @@ if (online) {
   if (qaStart) {
     if (qaStart.hour !== undefined) sim.tickCount = qaTickForHour(qaStart.hour);
     sim.movePlayerTo('p1', qaStart.spaceId, qaStart.x, qaStart.z, qaStart.yaw);
+    const player = sim.playerActor('p1');
+    if (player) {
+      for (const itemId of qaStart.items ?? []) sim.context().addItem(player.id, itemId, 1);
+      for (const itemId of qaStart.equip ?? []) sim.playerEquip(itemId);
+    }
   }
   world = new SimWorld(sim);
 }

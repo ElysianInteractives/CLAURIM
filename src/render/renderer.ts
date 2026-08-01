@@ -10,7 +10,13 @@ import { CollisionIndex, worldObstructionT } from '../sim/world/collision';
 import { PALETTE } from './palette';
 import { TerrainStreamer, disposeGroup } from './terrain_mesh';
 import { buildContainerMesh, buildDoorMarker, buildInteriorShell, buildProp } from './structures';
-import { buildCharacter, poseCharacter } from './characters';
+import {
+  buildCharacter,
+  buildFirstPersonRig,
+  poseCharacter,
+  poseFirstPersonRig,
+  syncCharacterEquipment,
+} from './characters';
 import { thirdPersonCameraPose, unobstructedBoomScale } from './camera';
 import { TransformHistory } from './interpolation';
 
@@ -80,6 +86,7 @@ export class Renderer {
   private collision = new CollisionIndex(CONTENT);
   private builtSpace: string | null = null;
   private clock = 0;
+  private firstPersonRig: THREE.Group;
 
   /** Third/first person camera rig. */
   cameraYaw = 0;
@@ -94,7 +101,10 @@ export class Renderer {
     this.webgl = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.webgl.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1));
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, 900);
-    this.scene.add(this.sun, this.hemi, this.spaceGroup);
+    this.firstPersonRig = buildFirstPersonRig();
+    this.firstPersonRig.visible = false;
+    this.camera.add(this.firstPersonRig);
+    this.scene.add(this.sun, this.hemi, this.spaceGroup, this.camera);
     this.sun.position.set(120, 180, 60);
     this.terrain = new TerrainStreamer(this.scene, world.seed());
     this.resize();
@@ -211,6 +221,7 @@ export class Renderer {
       }
       mesh.position.set(displayView.x, displayView.y, displayView.z);
       mesh.rotation.y = displayView.yaw;
+      syncCharacterEquipment(mesh, displayView, 'world');
       poseCharacter(mesh, displayView, this.clock);
       const previousHealth = mesh.userData.lastHealth as number | undefined;
       if (previousHealth !== undefined && v.health < previousHealth) {
@@ -336,10 +347,14 @@ export class Renderer {
     const playerMesh = this.actorMeshes.get(player.id);
     if (this.firstPerson) {
       if (playerMesh) playerMesh.visible = false;
+      this.firstPersonRig.visible = true;
+      syncCharacterEquipment(this.firstPersonRig, player, 'viewmodel');
+      poseFirstPersonRig(this.firstPersonRig, player, this.clock);
       this.camera.position.set(eyePosition.x, eyePosition.y, eyePosition.z);
       this.camera.rotation.set(this.cameraPitch, this.cameraYaw + Math.PI, 0, 'YXZ');
       return;
     }
+    this.firstPersonRig.visible = false;
     // Camera collision (D-023/D-025): use the same oriented props,
     // interior boundaries, and terrain obstruction as the authoritative sim.
     // D-036 offsets the whole boom over the right shoulder while retaining

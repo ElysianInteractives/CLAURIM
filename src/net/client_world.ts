@@ -507,6 +507,9 @@ export class ClientWorld implements IWorld {
       attackKind: null,
       attackPhase: null,
       telegraphTicks: 0,
+      equipment: Object.fromEntries(
+        (s?.equipment ?? []).flatMap((slot) => slot.itemId ? [[slot.slot, slot.itemId]] : []),
+      ),
       isPlayer: true,
       isRemotePlayer: false,
       hostileToPlayer: false,

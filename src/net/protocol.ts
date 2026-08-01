@@ -1,4 +1,4 @@
-// Wire protocol v5 (D-014/D-028/D-033/D-034/D-035). Explicit versioned JSON message schemas with
+// Wire protocol v6 (D-014/D-028/D-033/D-034/D-035/D-039). Explicit versioned JSON message schemas with
 // inbound validation on BOTH ends; nothing serializes runtime objects
 // directly. The server rejects any message that fails validation.
 // See docs/project/NETWORK_ARCHITECTURE.md.
@@ -18,7 +18,7 @@ import type {
 } from '../world_api';
 import type { PerkView } from '../world_api/menus';
 
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 /** One tick of movement intent. Position is NEVER sent by clients (D-015). */
 export interface WireInput {

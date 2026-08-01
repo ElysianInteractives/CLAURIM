@@ -344,3 +344,14 @@ search, and flee retain existing local steering. Renderer-only speed
 hysteresis starts locomotion at `0.18 m/s` and stops it below `0.08 m/s`, so
 tiny corrections cannot trigger full walk bob/swing. Exact rules:
 `NPC_SCHEDULE_STABILITY_CONTRACT.md`.
+
+## D-039: Authoritative equipment presentation and weapon poses - LOCKED
+Every render-facing actor exposes a compact authoritative six-slot equipment
+map; protocol v6 carries it for interest-scoped remote actors. World models
+attach palette-driven weapon, shield, cuirass, head, feet, and mantle
+silhouettes to the correct body nodes, while a camera-local first-person rig
+uses the same main/off-hand state without covering the reticle at rest.
+Sword/dagger, heavy axe/mace, bow, spell, and block phases select distinct
+renderer-only poses from authoritative attack state. Inventory, item effects,
+attack timing, damage, saves, and simulation authority are unchanged. Exact
+rules: `EQUIPMENT_PRESENTATION_CONTRACT.md`.

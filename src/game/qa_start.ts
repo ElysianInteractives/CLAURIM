@@ -1,7 +1,7 @@
 // Named development-only start points for repeatable browser QA. Production
 // builds and online clients never apply them.
 
-import { DT, GAME_HOURS_PER_SECOND, type SpaceId } from '../sim/types';
+import { DT, GAME_HOURS_PER_SECOND, type ContentId, type SpaceId } from '../sim/types';
 
 export interface QaStartPoint {
   spaceId: SpaceId;
@@ -9,10 +9,17 @@ export interface QaStartPoint {
   z: number;
   yaw: number;
   hour?: number;
+  items?: readonly ContentId[];
+  equip?: readonly ContentId[];
 }
 
 export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
   falkmoor: { spaceId: 'kaldwyn', x: 40, z: -410, yaw: 0 },
+  gear: {
+    spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI,
+    items: ['iron_sword', 'hunting_bow', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],
+    equip: ['iron_sword', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],
+  },
   fenharrow: { spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI },
   'fenharrow-door': { spaceId: 'kaldwyn', x: 33, z: 142.5, yaw: 0 },
   inn: { spaceId: 'fenharrow_inn', x: 0, z: 2, yaw: 0 },

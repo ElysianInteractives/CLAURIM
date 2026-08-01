@@ -63,6 +63,8 @@ export interface ActorView {
   attackPhase: 'windup' | 'active' | 'recover' | null;
   /** Remaining telegraph ticks when winding up a telegraphed ability. */
   telegraphTicks: number;
+  /** Authoritative equipped item ids used by world and first-person presentation. */
+  equipment: Partial<Record<EquipSlot, ContentId>>;
   /** Authoritative danger shape for a currently winding-up ability. */
   telegraph?: {
     kind: 'frontal_cone' | 'ground_aoe' | 'summon' | 'heal_ally';

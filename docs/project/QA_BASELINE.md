@@ -570,6 +570,40 @@ protocol v5, and save formats remain unchanged.
   `qa-phase-f-inn-settled-1280x720.png`, and
   `qa-phase-f-inn-settled-1920x1080.png`.
 
+### QA Phase G equipment presentation exit
+
+QA Phase G resolves AV-004 and locks D-039. Render-facing equipment
+replication, character attachment factories, combat pose selection, and the
+first-person rig change; item effects, attack timing/outcomes, inventory
+ownership, collision, and save formats remain unchanged.
+
+- The failing reproduction proved the default dagger was absent from
+  `ActorView`, no slot attachment synchronizer or first-person rig existed,
+  and sword, axe, and bow windups could not select distinct poses.
+- Focused tests pin offline and protocol-v6 actor equipment, all six visible
+  gear families, removal after unequip, matching first-person main/off-hand
+  state, and distinct sword/dagger, heavy, bow, spell, and block pose paths.
+- The full gate is green at 24 suites / 210 tests. Vite 8 transforms 58
+  modules and produces 685.15 kB JavaScript / 180.36 kB gzip; content and IP
+  checks remain clean.
+- `npm run net:bench` keeps all four profiles connected with zero
+  disconnects and drains pending input to zero. Maximum correction remains
+  0 m Local/Good, 0.147 m Degraded, and 0.182 m Severe. `npm run mp:bench`
+  and all 23 routes / 43 placements in `npm run world:tour` also pass.
+- A real protocol-v6 WebSocket smoke connects two authenticated clients,
+  acknowledges input 30, moves 4.4 m, preserves mutual visibility, rotates
+  sessions, rejects replay, and preserves the resumed character. Snapshots
+  are 6,780 and 6,767 bytes.
+- Direct development-only `?qa=gear` browser QA at 1280x720 and 1920x1080
+  shows cuirass, hood, boots, mantle, sword, and shield on the world model,
+  then the same sword/shield state on a lowered camera-local rig. The reticle
+  and horizon remain clear at rest and browser warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-g-third-person-1280x720.png`,
+  `qa-phase-g-first-person-1280x720.png`,
+  `qa-phase-g-third-person-1920x1080.png`, and
+  `qa-phase-g-first-person-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -597,6 +631,7 @@ protocol v5, and save formats remain unchanged.
 | QA-CAM | Third-person reticle visibility and camera obstruction | `tests/camera_reticle.test.ts`, `tests/spell_reticle_aim.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | shoulder separation, exact aim-ray parity, whole-boom collision compression, close-wall body hiding, centered clear reticle, layout/overflow/logs |
 | QA-STRUCT | Terrain pads, foundations, prop completeness, and anchored entrances | `tests/world_structure_placement.test.ts`, `tests/world_traversal.test.ts`, `tests/navigation.test.ts`, `npm run world:tour`, `npm run gate`; development-only offline `?qa=fenharrow` and `?qa=fenharrow-door` at 1280 and 1920 | multi-seed footprint flatness, shared terrain, complete grounded meshes, resolved anchor/yaw, door endpoint reachability, layout/overflow/logs |
 | QA-NPC | Scheduled NPC reachability, blocked recovery, and pose stability | `tests/npc_schedule_stability.test.ts`, `tests/ai_encounter_reliability.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, `npm run ai:bench`, `npm run gate`; development-only offline `?qa=inn-shift-change` at 1280 and 1920 | exact-route requirement, no wall sliding, safe-home fallback, all authored legs, combat-scope benchmark, locomotion dead zone/hysteresis, before/settled shift, layout/overflow/logs |
+| QA-GEAR | Authoritative equipped-item and combat-pose presentation | `tests/equipment_presentation.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`, `npm run mp:bench`, `npm run world:tour`, `npm run qa:ws`, `npm run gate`; development-only offline `?qa=gear` in third/first person at 1280 and 1920 | local/remote equipped ids, six world gear families, synchronized first-person hands, weapon-specific phases, clear reticle/horizon, layout/overflow/logs |
 
 ## Browser visual-QA procedure
 

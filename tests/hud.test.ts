@@ -32,6 +32,7 @@ function actor(overrides: Partial<ActorView> = {}): ActorView {
     attackKind: null,
     attackPhase: null,
     telegraphTicks: 0,
+    equipment: {},
     isPlayer: true,
     isRemotePlayer: false,
     hostileToPlayer: false,
