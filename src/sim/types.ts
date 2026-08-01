@@ -192,6 +192,10 @@ export interface Brain {
   /** Consecutive ticks without movement toward the current goal. Used only
    * to recover from a provably unreachable static route. */
   stuckTicks: number;
+  /** Transient schedule identity and safe substitute goal. Never serialized;
+   * cleared when the authored schedule entry changes. */
+  scheduleKey: string | null;
+  scheduleGoal: Vec3 | null;
   alertness: number;
   /** Threat table: attacker entity id -> accumulated threat (D-017).
    * Transient (not serialized): combat state resets across saves. */

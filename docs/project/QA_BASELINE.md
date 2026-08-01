@@ -540,6 +540,36 @@ save formats remain unchanged.
   `qa-phase-e-inn-door-1280x720.png`, and
   `qa-phase-e-inn-door-1920x1080.png`.
 
+### QA Phase F NPC schedule stability exit
+
+QA Phase F resolves AI-005/AV-003 and locks D-038. Scheduled/return movement,
+transient brain recovery fields, renderer locomotion classification, and a
+development QA clock point change; combat steering, authored schedules,
+protocol v5, and save formats remain unchanged.
+
+- The failing reproduction moved a disconnected-room NPC 2.916 m toward a
+  provably unreachable goal in 30 ticks. Tiny 0.001 m frame corrections also
+  activated the full procedural walk cycle.
+- Focused tests pin no movement without a complete schedule route, 60-tick
+  safe-home fallback and settlement, every authored consecutive schedule leg,
+  and `0.18/0.08 m/s` presentation hysteresis. Existing active/offscreen door
+  schedule and unreachable-return recovery tests remain green.
+- `npm run world:tour` passes 23 routes / 43 placements. `npm run ai:bench`
+  preserves the pressure boundary: solo 0/3 under both policies, naive
+  three-player 1/3 at 191 s, and mechanics five-player 1/3 at 75 s. Full
+  metrics are recorded in `ENCOUNTER_DESIGN.md`.
+- The full gate is green at 23 suites / 206 tests. Vite 8 transforms 58
+  modules and produces 680.68 kB JavaScript / 178.99 kB gzip; content and IP
+  checks remain clean.
+- Direct offline `?qa=inn-shift-change` browser QA captures the common room at
+  20:59 and after the 21:00 schedule settles. NPCs are grounded/still after
+  arrival at 1280x720 and 1920x1080; the larger canvas/document exactly match
+  the viewport, with no overflow or warning/error logs.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-f-inn-before-shift-1280x720.png`,
+  `qa-phase-f-inn-settled-1280x720.png`, and
+  `qa-phase-f-inn-settled-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -566,6 +596,7 @@ save formats remain unchanged.
 | QA-LOADOUT | Item equipment and spell hotkey loadout | `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`; offline browser at 1280 and 1920 | fixed item slots, separate carried list, unique known-spell assignment, equipped-only cast, persistence/migrations, protocol replication, quickbar, layout/overflow/logs |
 | QA-CAM | Third-person reticle visibility and camera obstruction | `tests/camera_reticle.test.ts`, `tests/spell_reticle_aim.test.ts`, `npm run gate`; offline browser at 1280 and 1920 | shoulder separation, exact aim-ray parity, whole-boom collision compression, close-wall body hiding, centered clear reticle, layout/overflow/logs |
 | QA-STRUCT | Terrain pads, foundations, prop completeness, and anchored entrances | `tests/world_structure_placement.test.ts`, `tests/world_traversal.test.ts`, `tests/navigation.test.ts`, `npm run world:tour`, `npm run gate`; development-only offline `?qa=fenharrow` and `?qa=fenharrow-door` at 1280 and 1920 | multi-seed footprint flatness, shared terrain, complete grounded meshes, resolved anchor/yaw, door endpoint reachability, layout/overflow/logs |
+| QA-NPC | Scheduled NPC reachability, blocked recovery, and pose stability | `tests/npc_schedule_stability.test.ts`, `tests/ai_encounter_reliability.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, `npm run ai:bench`, `npm run gate`; development-only offline `?qa=inn-shift-change` at 1280 and 1920 | exact-route requirement, no wall sliding, safe-home fallback, all authored legs, combat-scope benchmark, locomotion dead zone/hysteresis, before/settled shift, layout/overflow/logs |
 
 ## Browser visual-QA procedure
 

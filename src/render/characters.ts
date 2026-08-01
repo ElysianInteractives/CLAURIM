@@ -98,6 +98,17 @@ export function buildCharacter(archetype: string): THREE.Group {
   }
 }
 
+const LOCOMOTION_START_SPEED = 0.18;
+const LOCOMOTION_STOP_SPEED = 0.08;
+
+/** Presentation-only locomotion hysteresis. Tiny interpolation/collision
+ * corrections stay idle instead of triggering a full procedural walk cycle. */
+export function locomotionMoving(distance: number, dtSec: number, wasMoving: boolean): boolean {
+  if (!Number.isFinite(distance) || !Number.isFinite(dtSec) || dtSec <= 0) return false;
+  const speed = Math.max(0, distance) / dtSec;
+  return speed >= (wasMoving ? LOCOMOTION_STOP_SPEED : LOCOMOTION_START_SPEED);
+}
+
 /** Per-frame posing: walk bob, attack arm raise, sneak crouch, death fall. */
 export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: number): void {
   if (view.dead || view.downed) {
@@ -106,10 +117,16 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
     return;
   }
   group.rotation.x = 0;
-  const moving = group.userData.lastX !== undefined &&
-    (Math.abs(group.userData.lastX - view.x) > 0.005 || Math.abs(group.userData.lastZ - view.z) > 0.005);
+  const hasPrevious = group.userData.lastX !== undefined && group.userData.lastPoseTime !== undefined;
+  const distance = hasPrevious
+    ? Math.hypot(group.userData.lastX - view.x, group.userData.lastZ - view.z)
+    : 0;
+  const dtSec = hasPrevious ? Math.max(0, timeSec - group.userData.lastPoseTime) : 0;
+  const moving = hasPrevious && locomotionMoving(distance, dtSec, !!group.userData.locomotionMoving);
   group.userData.lastX = view.x;
   group.userData.lastZ = view.z;
+  group.userData.lastPoseTime = timeSec;
+  group.userData.locomotionMoving = moving;
   const bob = moving ? Math.abs(Math.sin(timeSec * 8)) * 0.06 : 0;
   const crouch = view.sneaking ? -0.25 : 0;
   group.position.y = view.y + bob + crouch;

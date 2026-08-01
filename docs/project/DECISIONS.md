@@ -334,3 +334,13 @@ yaw; resolved world transforms remain compatible with existing consumers,
 and validation rejects parent, space, position, or rotation drift. Named
 offline QA starts exist only in development builds. Exact rules:
 `WORLD_STRUCTURE_PLACEMENT_CONTRACT.md`.
+
+## D-038: Route-complete schedules and locomotion dead zones - LOCKED
+Scheduled and returning NPCs move only when an exact line or complete A* route
+exists. An unreachable static schedule goal accumulates blocked time without
+collision sliding, then falls back after 60 ticks to the last reached safe
+schedule home until the schedule entry or wander target changes. Combat,
+search, and flee retain existing local steering. Renderer-only speed
+hysteresis starts locomotion at `0.18 m/s` and stops it below `0.08 m/s`, so
+tiny corrections cannot trigger full walk bob/swing. Exact rules:
+`NPC_SCHEDULE_STABILITY_CONTRACT.md`.

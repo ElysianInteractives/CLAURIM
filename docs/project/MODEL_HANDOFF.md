@@ -116,6 +116,13 @@ parent-prop local transforms with inherited yaw. Development-only named QA
 starts make remote presentation checks repeatable without changing saves.
 Exact boundaries are in `WORLD_STRUCTURE_PLACEMENT_CONTRACT.md`.
 
+QA Phase F verifies AI-005/AV-003 through D-038: schedule/return movement now
+requires an exact line or complete A* route, unreachable static goals settle
+at the last reached safe schedule home, and renderer-only speed hysteresis
+keeps tiny corrections out of the walk cycle. Combat/search/flee steering is
+unchanged after explicit benchmark scoping. Exact boundaries are in
+`NPC_SCHEDULE_STABILITY_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -159,6 +166,9 @@ session added and TESTED:
 - QA Phase E structure placement (D-037): final site-pad ordering, below-grade
   foundations, complete well geometry, and validated prop-relative exterior
   entrances share the existing terrain/traversal authority.
+- QA Phase F NPC stability (D-038): route-complete schedules, deterministic
+  safe-home fallback, authored-leg coverage, and renderer-only locomotion
+  hysteresis eliminate wall pressure and amplified correction jitter.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -180,26 +190,27 @@ session added and TESTED:
   schema, combat formula, stat key, or save shape.
 
 ## Verification evidence (this session)
-- `npm test`: 203 tests / 22 suites green (multiplayer sim, server/net,
+- `npm test`: 206 tests / 23 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
   movement/sprint/recovery behavior, reticle-directed spell aim, player
   equipment/spell loadouts, shoulder-camera composition/collision, and
-  multi-seed structure-pad/door-anchor placement).
+  multi-seed structure-pad/door-anchor placement, route-complete NPC
+  schedules, safe blocked fallback, and locomotion dead zones).
 - Live ws smoke under protocol v5: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,719 / 6,707-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
-- `npm run ai:bench` with the Plan 8 Barrow Sentinel pull: solo remains 0/3
-  under both policies; mechanics clears 1/3 at 3 players (135 s) and 1/3 at
-  5 players (75 s). See ENCOUNTER_DESIGN.md for full current metrics.
+- `npm run ai:bench` after D-038 scope verification: solo remains 0/3 under
+  both policies; naive clears 1/3 at 3 players (191 s) and mechanics clears
+  1/3 at 5 players (75 s). See ENCOUNTER_DESIGN.md for full current metrics.
 - `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 679.50 kB / 178.65 kB gzip.
+  build); Vite 8 production JavaScript is 680.68 kB / 178.99 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -217,7 +228,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-037), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-038), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

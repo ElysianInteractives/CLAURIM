@@ -48,7 +48,28 @@ encounter reset unlocks it (anti-exploit). See `AI_ENCOUNTER_CONTRACT.md`.
   - Phase 2 (<=33%): +30% damage escalation.
   - Wipe -> deterministic full reset; personal loot per party member.
 
-## Plan 8 current two-policy baseline (`npm run ai:bench`, 2026-07-31)
+## QA Phase F current two-policy baseline (`npm run ai:bench`, 2026-08-01)
+
+D-038 deliberately scopes complete-route enforcement to schedules and returns;
+combat/search/flee retain the established local steering. The fixed-seed
+comparison confirms the group-pressure boundary remains intact after that
+scope check.
+
+| policy | party | kills | avg kill | wipes | downs | revives | blocks | damage taken | max phase |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| naive | 1 | 0/3 | - | 9 | 15 | 0 | 0 | 1,307.2 | 0 |
+| mechanics | 1 | 0/3 | - | 9 | 11 | 0 | 13 | 921.5 | 0 |
+| naive | 3 | 1/3 | 191 s | 7 | 97 | 52 | 0 | 6,751.9 | 2 |
+| mechanics | 3 | 0/3 | - | 8 | 72 | 24 | 93 | 5,774.8 | 2 |
+| naive | 5 | 0/3 | - | 8 | 136 | 70 | 0 | 9,416.4 | 2 |
+| mechanics | 5 | 1/3 | 75 s | 6 | 66 | 21 | 43 | 5,983.3 | 2 |
+
+Solo still cannot reach phase 1, both supported group sizes can clear under at
+least one fixed policy, and mechanics-aware five-player play retains a clear
+with substantially less damage than naive five-player play. These bots remain
+a lower-bound regression signal rather than a final tuning verdict.
+
+## Plan 8 historical two-policy baseline (`npm run ai:bench`, 2026-07-31)
 
 The Barrow Sentinel is now part of the deep-corridor encounter. Both policies
 still use identical fixed seeds, iron sword/shield, three draughts, and the

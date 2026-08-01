@@ -37,6 +37,7 @@ const RANGED_PREFERRED_DIST = 14;
 const ARRIVE_DIST = 0.8;
 const LEASH_DIST = 70;
 const RETURN_RECOVERY_TICKS = 90;
+const SCHEDULE_RECOVERY_TICKS = 60;
 
 type MoveResult = 'arrived' | 'moving' | 'blocked';
 
@@ -51,6 +52,8 @@ export function makeBrain(home: Actor['pos']): NonNullable<Actor['brain']> {
     pathIdx: 0,
     repathCooldown: 0,
     stuckTicks: 0,
+    scheduleKey: null,
+    scheduleGoal: null,
     alertness: 0,
     threat: {},
     scaledFor: 0,
@@ -114,6 +117,7 @@ function moveToward(
   colliders: CollisionIndex,
   a: Actor,
   goal: { x: number; z: number },
+  requireCompleteRoute = false,
 ): MoveResult {
   const brain = a.brain!;
   const dx = goal.x - a.pos.x;
@@ -127,7 +131,8 @@ function moveToward(
 
   // Use straight-line movement when clear; otherwise follow / compute a path.
   let stepGoal = goal;
-  if (!lineWalkable(content, colliders, a.pos.spaceId, a.pos, goal, ctx.seed)) {
+  const directRoute = lineWalkable(content, colliders, a.pos.spaceId, a.pos, goal, ctx.seed);
+  if (!directRoute) {
     if (!brain.path && brain.repathCooldown <= 0) {
       brain.path = findPath(content, colliders, a.pos.spaceId, a.pos, goal, ctx.seed);
       brain.pathIdx = 0;
@@ -145,6 +150,13 @@ function moveToward(
       } else {
         stepGoal = brain.path[brain.pathIdx];
       }
+    }
+    // A traversable endpoint is not enough for static schedule/return goals.
+    // Collision sliding is not pathfinding and previously prevented their
+    // stuck recovery (D-038). Combat/search retain existing local steering.
+    if (!brain.path && requireCompleteRoute) {
+      brain.stuckTicks++;
+      return 'blocked';
     }
   } else {
     brain.path = null;
@@ -333,6 +345,19 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
   decayThreat(a);
 
   const scheduled = currentScheduleEntry(content, a, ctx.gameHours());
+  if (brain.state === 'idle' || brain.state === 'schedule') {
+    const key = scheduled
+      ? `${scheduled.fromHour}:${scheduled.toHour}:${scheduled.spaceId}:${scheduled.x}:${scheduled.z}:${scheduled.activity}`
+      : null;
+    if (brain.scheduleKey !== key) {
+      brain.scheduleKey = key;
+      brain.scheduleGoal = null;
+      brain.path = null;
+      brain.pathIdx = 0;
+      brain.repathCooldown = 0;
+      brain.stuckTicks = 0;
+    }
+  }
   if (!ctx.isActorActive(a)) {
     if (
       scheduled &&
@@ -354,6 +379,7 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
         brain.state = 'schedule';
         brain.path = null;
         brain.stuckTicks = 0;
+        brain.scheduleGoal = null;
       }
     }
     return;
@@ -389,7 +415,7 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
         const door = route?.[0];
         if (door) {
           brain.state = 'schedule';
-          if (moveToward(ctx, content, colliders, a, door) === 'arrived') {
+          if (moveToward(ctx, content, colliders, a, door, true) === 'arrived') {
             const arrival = nearestTraversablePoint(
               content,
               colliders,
@@ -403,12 +429,13 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
               a.yaw = door.targetYaw;
               brain.path = null;
               brain.stuckTicks = 0;
+              brain.scheduleGoal = null;
             }
           }
         }
       } else if (entry) {
         brain.state = 'schedule';
-        let goal: { x: number; z: number } = entry;
+        let goal: { x: number; z: number } = brain.scheduleGoal ?? entry;
         if (entry.activity === 'wander') {
           // Deterministic wander: drift around the anchor using sim rng, retarget on timer.
           if (brain.timer <= 0) {
@@ -418,12 +445,33 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
               y: 0,
               z: entry.z + ctx.rng.range(-8, 8),
             };
+            brain.scheduleGoal = null;
           }
           brain.timer--;
-          if (brain.lastKnownPos) goal = brain.lastKnownPos;
+          if (!brain.scheduleGoal && brain.lastKnownPos) goal = brain.lastKnownPos;
         }
-        if (moveToward(ctx, content, colliders, a, goal) === 'arrived') {
+        const move = moveToward(ctx, content, colliders, a, goal, true);
+        if (move === 'arrived') {
           brain.homePos = { ...a.pos };
+        } else if (move === 'blocked' && brain.stuckTicks >= SCHEDULE_RECOVERY_TICKS) {
+          // Fall back to the last schedule point the NPC actually reached.
+          // This is a stable, known-good location and remains the substitute
+          // only until the authored entry (or wander timer) changes.
+          const safe = brain.homePos.spaceId === a.pos.spaceId
+            ? nearestTraversablePoint(
+              content,
+              colliders,
+              a.pos.spaceId,
+              brain.homePos.x,
+              brain.homePos.z,
+              ctx.seed,
+            )
+            : null;
+          brain.scheduleGoal = safe ?? { x: a.pos.x, y: a.pos.y, z: a.pos.z };
+          brain.path = null;
+          brain.pathIdx = 0;
+          brain.repathCooldown = 0;
+          brain.stuckTicks = 0;
         }
       }
       break;
@@ -547,7 +595,7 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
     }
 
     case 'return': {
-      const move = moveToward(ctx, content, colliders, a, brain.homePos);
+      const move = moveToward(ctx, content, colliders, a, brain.homePos, true);
       if (move === 'arrived') {
         ctx.resetEncounter(a.id);
       } else if (move === 'blocked' && brain.stuckTicks >= RETURN_RECOVERY_TICKS) {

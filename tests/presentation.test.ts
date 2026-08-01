@@ -9,7 +9,7 @@ import { TransformHistory, interpolateYaw } from '../src/render/interpolation';
 import { renderAudioSettings, renderSettings } from '../src/ui/hud';
 import { equippedAttackKind, spellForHotkey } from '../src/game/host_actions';
 import { capturesEditableTargetKey } from '../src/game/input';
-import { qaStartFromSearch } from '../src/game/qa_start';
+import { qaStartFromSearch, qaTickForHour } from '../src/game/qa_start';
 
 describe('host-side transform interpolation', () => {
   it('blends position and takes the shortest yaw arc between observed ticks', () => {
@@ -112,5 +112,7 @@ describe('development browser QA start points', () => {
     expect(qaStartFromSearch('?qa=fenharrow', true)).toMatchObject({ spaceId: 'kaldwyn', x: 42, z: 158 });
     expect(qaStartFromSearch('?qa=unknown', true)).toBeNull();
     expect(qaStartFromSearch('?qa=fenharrow', false)).toBeNull();
+    expect(qaStartFromSearch('?qa=inn-shift-change', true)).toMatchObject({ hour: 20.99 });
+    expect(qaTickForHour(20.99)).toBeGreaterThan(0);
   });
 });
