@@ -1,9 +1,22 @@
 # Claurim
 
+[![QA and deploy Pages](https://github.com/ElysianInteractives/CLAURIM/actions/workflows/qa-pages.yml/badge.svg?branch=development)](https://github.com/ElysianInteractives/CLAURIM/actions/workflows/qa-pages.yml)
+
 A browser-playable, third-person, server-authoritative multiplayer action
 RPG: one deterministic TypeScript simulation, multiple hosts, code-authored
 world. Research/fan project with a strict clean-room IP boundary (see
 THIRD_PARTY_NOTICES.md).
+
+## Browser QA build
+
+The current `development` build is playable at
+[elysianinteractives.github.io/CLAURIM](https://elysianinteractives.github.io/CLAURIM/).
+It is automatically verified and redeployed after every push to
+`development`. The Pages build is the free, single-player/offline QA host;
+multiplayer still requires the authoritative server described below.
+
+Before a test session, use a private browser window for a clean save and
+follow the [QA playtest guide](docs/QA_PLAYTEST_GUIDE.md).
 
 Development requires Node `^20.19.0 || >=22.12.0`; use `npm ci` for the
 committed toolchain graph.
