@@ -53,7 +53,7 @@ PARTIAL / NONE.
 ## Presentation and platform
 | Family | State | Notes |
 |---|---|---|
-| UI surfaces | PARTIAL | HUD/dialogue/shop/loadout inventory with known-spell equip/journal/perks and audio settings exist; missing: map, full spellbook, general settings, main menu |
+| UI surfaces | PARTIAL | HUD/dialogue/shop/loadout inventory with known-spell equip/journal/perks, current-space map/navigation, and audio settings exist; missing: full spellbook, broader settings, main menu |
 | Audio | SYSTEM | D-031 browser mixer, persistent controls, combat cues, and procedural interior/day/night beds exist; final assets, spatial sources, and production mix remain KL-5 |
 | Asset pipeline | NONE->PLANNED | palette/primitive style locked (D-011); GLB pipeline is the upgrade path |
 | Accessibility | PARTIAL | semantic resource/audio controls exist; keybind remap, subtitles, colorblind palette, and broader settings remain |

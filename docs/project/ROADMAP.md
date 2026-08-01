@@ -6,7 +6,8 @@
    bounded browser audio architecture/control exemplar; Plan 10 closes the
    development-tool advisories and locks clean-install compatibility.
 3. M2 Systems depth: crafting, weather, followers, crime, radiant templates,
-   map/menus, final audio asset/spatial pipeline, GLB pipeline.
+   remaining menus (D-040 map/navigation landed in QA Phase H), final audio
+   asset/spatial pipeline, GLB pipeline.
 4. M3 Province: multi-region streaming, main arc, faction line, dragons,
    cities, mounts.
 5. M4 Completeness: shouts/powers, books, housing, accessibility, settings,

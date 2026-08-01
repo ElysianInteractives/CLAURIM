@@ -59,3 +59,7 @@
 - KL-18 The target frame uses a 20 m / 22-degree facing selection and does not
   ray-test world occlusion, so a hostile can briefly identify through a thin
   wall. Add a read-only world visibility query before denser interiors or PvP.
+- KL-19 The D-040 map is an always-revealed current-space survey with straight-
+  line, session-local landmark guidance. It has no discovery fog, quest
+  markers, cross-space routing, path distance, fast travel, or persisted
+  waypoint state.

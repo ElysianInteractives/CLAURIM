@@ -6,6 +6,13 @@ import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../wor
 import { DEFAULT_AUDIO_SETTINGS, type AudioBus, type AudioSettings } from '../game/combat_audio';
 import { reticleDirection } from '../sim/player/aim';
 import { LOADOUT_CSS, renderLoadoutPanel, renderSpellQuickbar } from './loadout';
+import {
+  WORLD_MAP_CSS,
+  mapDefinition,
+  renderNavigationCue,
+  renderWorldMap,
+  type MapWaypoint,
+} from './world_map';
 
 const CSS = `
   #hud { position: fixed; inset: 0; pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #e8e0cc; user-select: none; }
@@ -115,9 +122,10 @@ const CSS = `
     #hud .control-row { min-height: 21px; }
   }
   ${LOADOUT_CSS}
+  ${WORLD_MAP_CSS}
 `;
 
-type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social' | 'settings';
+type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social' | 'map' | 'settings';
 type ResourceKind = 'health' | 'stamina' | 'magicka';
 type ResourceReadout = Pick<
   ReturnType<IWorld['playerResources']>,
@@ -139,6 +147,7 @@ export class Hud {
   private connectionStatus: { text: string; tone: 'pending' | 'online' | 'error' } | null = null;
   private chatOpen = false;
   private chatDraft = '';
+  private waypoint: MapWaypoint | null = null;
   private renderedHtml = '';
   private renderedInteraction = '';
   panel: Panel = 'none';
@@ -181,6 +190,11 @@ export class Hud {
   toggleSettings(): void {
     this.togglePanel('settings');
     if (this.panel === 'settings') void document.exitPointerLock?.();
+  }
+
+  toggleMap(): void {
+    this.togglePanel('map');
+    if (this.panel === 'map') void document.exitPointerLock?.();
   }
 
   isMenuOpen(): boolean {
@@ -338,12 +352,13 @@ export class Hud {
 
   private renderHtml(): string {
     const r = this.world.playerResources();
+    const player = this.world.player();
     const spaceName = this.world.spaceName(this.world.currentSpace());
     const hour = this.world.gameHours() % 24;
     const hh = String(Math.floor(hour)).padStart(2, '0');
     const mm = String(Math.floor((hour % 1) * 60)).padStart(2, '0');
     const prompt = this.world.nearestInteractablePrompt();
-    const target = selectCombatTarget(this.world.player(), this.world.actorsInSpace());
+    const target = selectCombatTarget(player, this.world.actorsInSpace());
     const pulseClass = this.combatPulse ? ` crosshair--${this.combatPulse}` : '';
     let html = `
       <div class="clockrow">${esc(spaceName)} - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
@@ -355,6 +370,7 @@ export class Hud {
       ${this.combatPulse === 'hurt' ? '<div class="damage-vignette" aria-hidden="true"></div>' : ''}
       <div class="feed" aria-live="polite" aria-atomic="false">${this.feedLines.map((l) => `<div>${esc(l.text)}</div>`).join('')}</div>
     `;
+    if (this.waypoint?.spaceId === this.world.currentSpace()) html += renderNavigationCue(player, this.waypoint);
     if (this.panel === 'none' && !this.chatOpen) html += renderControlsHelp(this.controlsOpen);
     if (prompt && this.panel === 'none') html += `<div class="prompt">[E] ${esc(prompt)}</div>`;
     // Party frames (multiplayer presence).
@@ -442,6 +458,13 @@ export class Hud {
           this.world.actorsInSpace(),
         );
         break;
+      case 'map':
+        html += renderWorldMap(
+          mapDefinition(this.world.currentSpace()),
+          player,
+          this.waypoint?.spaceId === this.world.currentSpace() ? this.waypoint : null,
+        );
+        break;
       case 'settings':
         html += renderSettings(this.audio?.settings() ?? DEFAULT_AUDIO_SETTINGS, this.audio?.state() ?? 'locked');
         break;
@@ -471,6 +494,16 @@ export class Hud {
         else if (act === 'party-accept') this.world.partyAccept();
         else if (act === 'party-decline') this.world.partyDecline();
         else if (act === 'party-leave') this.world.partyLeave();
+        else if (act === 'map-waypoint') {
+          const map = mapDefinition(this.world.currentSpace());
+          const landmark = map.landmarks.find((candidate) => candidate.id === id);
+          if (landmark) {
+            this.waypoint = landmark;
+            this.panel = 'none';
+            this.notify(`Destination marked: ${landmark.name}`);
+          }
+        }
+        else if (act === 'map-clear') this.waypoint = null;
         else if (act === 'unequip-item') this.world.unequipItem(el.dataset.slot as Parameters<IWorld['unequipItem']>[0]);
         else if (act === 'equip-spell') this.world.equipSpell(el.dataset.slot as Parameters<IWorld['equipSpell']>[0], id);
         else if (act === 'unequip-spell') this.world.unequipSpell(el.dataset.slot as Parameters<IWorld['unequipSpell']>[0]);
@@ -744,6 +777,7 @@ export function renderControlsHelp(expanded: boolean): string {
       <section class="control-group"><h3>World</h3>
         <div class="control-row"><kbd>E</kbd><span>Interact</span></div>
         <div class="control-row"><kbd>Tab</kbd><span>Inventory</span></div>
+        <div class="control-row"><kbd>M</kbd><span>Map / destination</span></div>
         <div class="control-row"><kbd>J / P / O</kbd><span>Journal / perks / party</span></div>
       </section>
       <section class="control-group"><h3>Utility</h3>

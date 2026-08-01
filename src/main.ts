@@ -168,6 +168,7 @@ function frame(now: number): void {
     else hud.toggleSettings();
   }
   if (cmd.toggleInventory) hud.togglePanel('inventory');
+  if (cmd.toggleMap) hud.toggleMap();
   if (cmd.toggleJournal) hud.togglePanel('journal');
   if (cmd.togglePerks) hud.togglePanel('perks');
   if (cmd.toggleSocial) hud.togglePanel('social');

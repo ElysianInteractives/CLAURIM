@@ -1,7 +1,7 @@
 // Keyboard/mouse input -> per-tick PlayerInput + one-shot commands.
 // Keybinds: WASD move, mouse look (pointer lock), Shift sprint, C sneak,
 // Space jump, RMB block, LMB attack (weapon-appropriate), 1/2 aimed spells,
-// E interact, Tab inventory, J journal, P perks, O party, Enter chat,
+// E interact, Tab inventory, M map, J journal, P perks, O party, Enter chat,
 // H controls, V camera toggle,
 // F5/F9 save/load.
 
@@ -14,6 +14,7 @@ export interface FrameCommands {
   spell2: boolean;
   interact: boolean;
   toggleInventory: boolean;
+  toggleMap: boolean;
   toggleJournal: boolean;
   togglePerks: boolean;
   toggleSocial: boolean;
@@ -47,6 +48,9 @@ export class Input {
         case 'Tab':
           this.commands.toggleInventory = true;
           e.preventDefault();
+          break;
+        case 'KeyM':
+          this.commands.toggleMap = true;
           break;
         case 'KeyJ':
           this.commands.toggleJournal = true;
@@ -169,6 +173,7 @@ function emptyCommands(): FrameCommands {
     spell2: false,
     interact: false,
     toggleInventory: false,
+    toggleMap: false,
     toggleJournal: false,
     togglePerks: false,
     toggleSocial: false,

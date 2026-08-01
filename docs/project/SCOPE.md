@@ -40,10 +40,12 @@ relevant QA contract whenever a later phase changes that surface.
 
 ## Milestone 2: Systems depth (Fable-led design, Opus fill)
 Crafting (smithing/alchemy/enchanting), weather in-sim, followers, crime/
-bounty, radiant quest templating, map UI + main menu, final audio asset and
+bounty, radiant quest templating, main menu, final audio asset and
 spatial-source pipeline, second settlement (repeatability proof), GLB asset
 pipeline. The second cave/interior repeatability proof landed in Plan 8;
 host interpolation and the browser mixer/control boundary landed in Plan 9.
+The current-space survey map and destination guidance landed in QA Phase H;
+main menu and discovery/fast-travel extensions remain open.
 
 ## Milestone 3: Province scale
 Multi-region streaming, main-story arc + one faction line, dragons (flight

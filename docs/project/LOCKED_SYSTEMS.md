@@ -54,6 +54,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Replicated equipped-item presentation for every actor, matching
   first-person main/off-hand viewmodels, and weapon-family procedural combat
   poses (D-039).
+- Current-space exterior/interior maps, authoritative player heading marker,
+  and presentation-only landmark bearing/distance guidance (D-040).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

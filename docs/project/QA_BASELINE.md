@@ -604,6 +604,33 @@ ownership, collision, and save formats remain unchanged.
   `qa-phase-g-third-person-1920x1080.png`, and
   `qa-phase-g-first-person-1920x1080.png`.
 
+### QA Phase H map/navigation exit
+
+QA Phase H resolves UX-003 and locks D-040. Current-space map presentation,
+the `M` menu command, and a session-local destination cue change; simulation
+navigation, movement, quests, saves, snapshots, and protocol v6 remain
+unchanged.
+
+- The failing reproduction proved there was no map module, menu command,
+  player marker, landmark/floor-plan view, or destination calculation.
+- Focused tests pin the full Kaldwyn road and five authored destinations,
+  exact five-room Duskhollow projection without exterior leakage, north/player
+  heading, semantic selection state, and exact player-relative bearing plus
+  straight-line distance.
+- `npm run world:tour` passes all 23 routes and 43 placements. The full gate
+  is green at 25 suites / 214 tests. Vite 8 transforms 59 modules and produces
+  695.13 kB JavaScript / 183.26 kB gzip; content and IP checks remain clean.
+- Direct `?qa=falkmoor` browser QA at 1280x720 and 1920x1080 keeps every road,
+  label, marker, sidebar row, north arrow, coordinate, and player arrow inside
+  the panel. Selecting Fenharrow closes the map and shows an accessible
+  `568 m ahead` HUD cue. `?qa=mine` renders all five connected room shapes and
+  the exit destination. Browser warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-h-map-1280x720.png`,
+  `qa-phase-h-destination-1280x720.png`,
+  `qa-phase-h-floorplan-1280x720.png`, and
+  `qa-phase-h-map-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -632,6 +659,7 @@ ownership, collision, and save formats remain unchanged.
 | QA-STRUCT | Terrain pads, foundations, prop completeness, and anchored entrances | `tests/world_structure_placement.test.ts`, `tests/world_traversal.test.ts`, `tests/navigation.test.ts`, `npm run world:tour`, `npm run gate`; development-only offline `?qa=fenharrow` and `?qa=fenharrow-door` at 1280 and 1920 | multi-seed footprint flatness, shared terrain, complete grounded meshes, resolved anchor/yaw, door endpoint reachability, layout/overflow/logs |
 | QA-NPC | Scheduled NPC reachability, blocked recovery, and pose stability | `tests/npc_schedule_stability.test.ts`, `tests/ai_encounter_reliability.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, `npm run ai:bench`, `npm run gate`; development-only offline `?qa=inn-shift-change` at 1280 and 1920 | exact-route requirement, no wall sliding, safe-home fallback, all authored legs, combat-scope benchmark, locomotion dead zone/hysteresis, before/settled shift, layout/overflow/logs |
 | QA-GEAR | Authoritative equipped-item and combat-pose presentation | `tests/equipment_presentation.test.ts`, `tests/server_net.test.ts`, `npm run net:bench`, `npm run mp:bench`, `npm run world:tour`, `npm run qa:ws`, `npm run gate`; development-only offline `?qa=gear` in third/first person at 1280 and 1920 | local/remote equipped ids, six world gear families, synchronized first-person hands, weapon-specific phases, clear reticle/horizon, layout/overflow/logs |
+| QA-MAP | Current-space map and destination guidance | `tests/world_map.test.ts`, `npm run world:tour`, `npm run gate`; development-only `?qa=falkmoor` and `?qa=mine` at 1280 plus exterior at 1920 | road/five destinations, exact rooms/exit, player yaw marker, semantic selection, relative bearing/distance, clipping/overflow/logs |
 
 ## Browser visual-QA procedure
 

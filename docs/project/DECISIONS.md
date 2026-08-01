@@ -355,3 +355,13 @@ Sword/dagger, heavy axe/mace, bow, spell, and block phases select distinct
 renderer-only poses from authoritative attack state. Inventory, item effects,
 attack timing, damage, saves, and simulation authority are unchanged. Exact
 rules: `EQUIPMENT_PRESENTATION_CONTRACT.md`.
+
+## D-040: Current-space survey maps and destination guidance - LOCKED
+`M` opens a presentation-only current-space map. Kaldwyn projects its authored
+road and five named destinations; interiors project exact room unions and exit
+doors. Current authoritative position/yaw drives the player marker. Selecting
+a current-space landmark produces a session-local HUD bearing and straight-
+line distance, but never pathfinds, fast-travels, changes simulation state, or
+crosses the save/protocol boundary. Discovery fog, quest markers, cross-space
+routes, and persistent waypoints remain separate work. Exact rules:
+`MAP_NAVIGATION_CONTRACT.md`.
