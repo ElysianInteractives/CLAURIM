@@ -48,6 +48,21 @@ export const SPACES: Record<string, SpaceDef> = {
       ],
     },
   },
+  gloamroot_hollow: {
+    id: 'gloamroot_hollow',
+    name: 'Gloamroot Hollow',
+    kind: 'interior',
+    interior: {
+      ceilingY: 4.2,
+      rooms: [
+        { x0: -5, z0: 0, x1: 5, z1: 10 },
+        { x0: -1.75, z0: 10, x1: 1.75, z1: 21 },
+        { x0: -9, z0: 21, x1: 9, z1: 35 },
+        { x0: -1.75, z0: 35, x1: 1.75, z1: 43 },
+        { x0: -8, z0: 43, x1: 8, z1: 57 },
+      ],
+    },
+  },
 };
 
 export const PROPS: PropDef[] = [
@@ -58,6 +73,17 @@ export const PROPS: PropDef[] = [
   { id: 'house_b', spaceId: 'kaldwyn', kind: 'building_house', x: 55, z: 170, yaw: 0.2, sx: 7, sy: 5, sz: 7, solid: true },
   { id: 'well', spaceId: 'kaldwyn', kind: 'well', x: 42, z: 158, sx: 2, sy: 1.5, sz: 2, solid: true },
   { id: 'forge', spaceId: 'kaldwyn', kind: 'forge', x: 64, z: 133, sx: 2.5, sy: 1.2, sz: 2, solid: true },
+  { id: 'house_c', spaceId: 'kaldwyn', kind: 'building_house', x: 75, z: 185, yaw: -0.25, sx: 8, sy: 5, sz: 7, solid: true },
+  { id: 'fenharrow_storehouse', spaceId: 'kaldwyn', kind: 'building_storehouse', x: 8, z: 140, yaw: 0.12, sx: 10, sy: 5, sz: 7, solid: true },
+  { id: 'fenharrow_watch', spaceId: 'kaldwyn', kind: 'building_watchtower', x: 72, z: 115, yaw: 0.32, sx: 6, sy: 8, sz: 6, solid: true },
+
+  // Thornmere Crossing: an original south-road hamlet and trade stop.
+  { id: 'thornmere_lodge', spaceId: 'kaldwyn', kind: 'building_lodge', x: -32, z: -184, yaw: 0.1, sx: 11, sy: 5.5, sz: 8, solid: true },
+  { id: 'thornmere_house_a', spaceId: 'kaldwyn', kind: 'building_house', x: 12, z: -190, yaw: -0.2, sx: 8, sy: 5, sz: 7, solid: true },
+  { id: 'thornmere_granary', spaceId: 'kaldwyn', kind: 'building_storehouse', x: -28, z: -152, yaw: -0.18, sx: 9, sy: 5, sz: 7, solid: true },
+  { id: 'thornmere_house_b', spaceId: 'kaldwyn', kind: 'building_house', x: 15, z: -155, yaw: 0.24, sx: 8, sy: 5, sz: 7, solid: true },
+  { id: 'thornmere_stable', spaceId: 'kaldwyn', kind: 'building_stable', x: -8, z: -213, yaw: 0.04, sx: 12, sy: 4.5, sz: 7, solid: true },
+  { id: 'thornmere_well', spaceId: 'kaldwyn', kind: 'well', x: -3, z: -168, sx: 2, sy: 1.5, sz: 2, solid: true },
 
   // Falkmoor Ruin (start area): broken tower ring
   { id: 'ruin_tower', spaceId: 'kaldwyn', kind: 'ruin_tower', x: 40, z: -428, sx: 8, sy: 10, sz: 8, solid: true },
@@ -76,10 +102,27 @@ export const PROPS: PropDef[] = [
   // Riverbank entrance to the repeatable cave exemplar.
   { id: 'siltroot_arch', spaceId: 'kaldwyn', kind: 'mine_entrance', x: -33, z: 75, yaw: Math.PI / 2, sx: 5, sy: 3.5, sz: 2, solid: false },
 
+  // Gloamroot Hollow: a roadside animal den north of Thornmere.
+  { id: 'gloamroot_arch', spaceId: 'kaldwyn', kind: 'mine_entrance', x: -10, z: -105, yaw: 0, sx: 5, sy: 3.8, sz: 2, solid: false },
+
+  // Weeping Stones: a non-dungeon wilderness point of interest.
+  { id: 'weeping_stone_a', spaceId: 'kaldwyn', kind: 'standing_stone', x: 92, z: 269, yaw: 0.2, sx: 1.8, sy: 7, sz: 1.5, solid: true },
+  { id: 'weeping_stone_b', spaceId: 'kaldwyn', kind: 'standing_stone', x: 99, z: 274, yaw: -0.35, sx: 1.5, sy: 5.5, sz: 1.4, solid: true },
+  { id: 'weeping_stone_c', spaceId: 'kaldwyn', kind: 'standing_stone', x: 87, z: 277, yaw: 0.55, sx: 1.4, sy: 4.8, sz: 1.3, solid: true },
+  { id: 'weeping_basin', spaceId: 'kaldwyn', kind: 'shrine_basin', x: 93, z: 276, sx: 2.2, sy: 0.8, sz: 2.2, solid: true },
+
   // Mine interior props
   { id: 'mine_pillar_a', spaceId: 'duskhollow_mine', kind: 'pillar', x: -4, z: 32, sx: 1.5, sy: 4, sz: 1.5, solid: true },
   { id: 'mine_pillar_b', spaceId: 'duskhollow_mine', kind: 'pillar', x: 4, z: 34, sx: 1.5, sy: 4, sz: 1.5, solid: true },
   { id: 'boss_barrow', spaceId: 'duskhollow_mine', kind: 'barrow_slab', x: 0, z: 64, sx: 3, sy: 1, sz: 2, solid: true },
+
+  // Gloamroot interior roots and feeding remains.
+  { id: 'gloamroot_root_a', spaceId: 'gloamroot_hollow', kind: 'root_column', x: -5, z: 28, sx: 1.2, sy: 4.2, sz: 1.2, solid: true },
+  { id: 'gloamroot_root_b', spaceId: 'gloamroot_hollow', kind: 'root_column', x: 5, z: 30, sx: 1.1, sy: 4.2, sz: 1.1, solid: true },
+  { id: 'gloamroot_nest', spaceId: 'gloamroot_hollow', kind: 'nest', x: 0, z: 51, sx: 4, sy: 0.5, sz: 3, solid: false },
+  { id: 'gloamroot_caps_entry', spaceId: 'gloamroot_hollow', kind: 'glowcaps', x: 2.5, z: 7, sx: 1.5, sy: 0.8, sz: 1.5, solid: false },
+  { id: 'gloamroot_caps_den', spaceId: 'gloamroot_hollow', kind: 'glowcaps', x: -7, z: 30, sx: 1.8, sy: 0.9, sz: 1.8, solid: false },
+  { id: 'gloamroot_caps_heart', spaceId: 'gloamroot_hollow', kind: 'glowcaps', x: 4, z: 50, sx: 2, sy: 1, sz: 2, solid: false },
 
   // Inn interior props
   { id: 'inn_bar', spaceId: 'fenharrow_inn', kind: 'bar_counter', x: 4, z: 2.5, sx: 6, sy: 1.1, sz: 1.2, solid: true },
@@ -166,6 +209,26 @@ export const DOORS: DoorDef[] = [
     targetZ: 144,
     targetYaw: Math.PI,
   },
+  anchoredDoor({ propId: 'gloamroot_arch', localX: 0, localZ: -2, yawOffset: 0 }, {
+    id: 'door_gloamroot_in',
+    spaceId: 'kaldwyn',
+    name: 'Gloamroot Hollow',
+    targetSpaceId: 'gloamroot_hollow',
+    targetX: 0,
+    targetZ: 7,
+    targetYaw: 0,
+  }),
+  {
+    id: 'door_gloamroot_out',
+    spaceId: 'gloamroot_hollow',
+    x: 0,
+    z: 0.8,
+    name: 'Kaldwyn Reach',
+    targetSpaceId: 'kaldwyn',
+    targetX: -10,
+    targetZ: -112,
+    targetYaw: Math.PI,
+  },
 ];
 
 export const SPAWNERS: SpawnerDef[] = [
@@ -189,10 +252,21 @@ export const SPAWNERS: SpawnerDef[] = [
   // Second cave exemplar: a compact rat den with one proven support veteran.
   { id: 'sp_burrow_rats', spaceId: 'siltroot_burrow', x: 0, z: 29, actorId: 'marsh_rat', count: 3, radius: 5, encounterId: 'siltroot_feeding', respawnGameHours: 36 },
   { id: 'sp_burrow_matron', spaceId: 'siltroot_burrow', x: 0, z: 50, actorId: 'mire_matron', count: 1, radius: 3, encounterId: 'siltroot_brood', respawnGameHours: 36 },
+  // Gloamroot Hollow wildlife dungeon.
+  { id: 'sp_gloamroot_boars', spaceId: 'gloamroot_hollow', x: 0, z: 28, actorId: 'briarboar', count: 4, radius: 6, encounterId: 'gloamroot_sounder', respawnGameHours: 48 },
+  { id: 'sp_gloamroot_matriarch', spaceId: 'gloamroot_hollow', x: 0, z: 50, actorId: 'briarboar_matriarch', count: 1, radius: 2, encounterId: 'gloamroot_heart', respawnGameHours: 48 },
+  // Ambient wildlife. Non-aggressive harts wander around authored anchors.
+  { id: 'sp_harts_thornmere', spaceId: 'kaldwyn', x: 24, z: -220, actorId: 'ridge_hart', count: 3, radius: 7, respawnGameHours: 24 },
+  { id: 'sp_harts_north', spaceId: 'kaldwyn', x: 42, z: 255, actorId: 'ridge_hart', count: 2, radius: 6, respawnGameHours: 24 },
+  // Hostile animals around the standing stones.
+  { id: 'sp_stones_boars', spaceId: 'kaldwyn', x: 106, z: 276, actorId: 'briarboar', count: 2, radius: 5, encounterId: 'weeping_stones', respawnGameHours: 48 },
   // Villagers (spawned via schedule system, one per spawner)
   { id: 'sp_maera', spaceId: 'fenharrow_inn', x: 4, z: 4, actorId: 'maera', count: 1, radius: 1, respawnGameHours: 'never' },
   { id: 'sp_bronn', spaceId: 'kaldwyn', x: 67, z: 132, actorId: 'bronn', count: 1, radius: 1, respawnGameHours: 'never' },
   { id: 'sp_ysolde', spaceId: 'kaldwyn', x: 12, z: 182, actorId: 'ysolde', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_tamsin', spaceId: 'kaldwyn', x: -20, z: -175, actorId: 'tamsin', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_corren', spaceId: 'kaldwyn', x: 6, z: -170, actorId: 'corren', count: 1, radius: 1, respawnGameHours: 'never' },
+  { id: 'sp_vael', spaceId: 'kaldwyn', x: -2, z: -202, actorId: 'vael', count: 1, radius: 1, respawnGameHours: 'never' },
 ];
 
 export const CONTAINERS: ContainerDef[] = [
@@ -200,6 +274,8 @@ export const CONTAINERS: ContainerDef[] = [
   { id: 'hadrin_pack', spaceId: 'duskhollow_mine', x: 6, z: 66, name: "Hadrin's Pack", lootTable: 'journal_cache' },
   { id: 'ruin_chest', spaceId: 'kaldwyn', x: 45, z: -422, name: 'Weathered Chest', lootTable: 'mine_cache' },
   { id: 'siltroot_cache', spaceId: 'siltroot_burrow', x: 6, z: 52, name: 'Rootbound Cache', lootTable: 'burrow_cache' },
+  { id: 'gloamroot_cache', spaceId: 'gloamroot_hollow', x: 5.5, z: 52, name: 'Mossbound Satchel', lootTable: 'gloamroot_cache' },
+  { id: 'weeping_offering', spaceId: 'kaldwyn', x: 89, z: 273, name: 'Stone Offering', lootTable: 'stone_offering' },
 ];
 
 /** Player spawn (new game). */

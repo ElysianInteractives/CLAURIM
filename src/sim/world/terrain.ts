@@ -33,6 +33,11 @@ export const SETTLEMENT_CENTER = { x: 40, z: 150 };
 export const SETTLEMENT_RADIUS = 70;
 export const SETTLEMENT_PLATEAU_H = 14;
 
+/** Thornmere Crossing: a smaller roadside pad south of Fenharrow. */
+export const CROSSING_CENTER = { x: -10, z: -180 };
+export const CROSSING_RADIUS = 55;
+export const CROSSING_PLATEAU_H = 10;
+
 export const RUIN_CENTER = { x: 40, z: -420 };
 export const RUIN_RADIUS = 46;
 export const RUIN_PLATEAU_H = 22;
@@ -96,6 +101,9 @@ export function terrainHeight(x: number, z: number, seed: number): number {
   const sDist = Math.sqrt(dist2(x, z, SETTLEMENT_CENTER.x, SETTLEMENT_CENTER.z));
   const sMask = 1 - smoothstep(SETTLEMENT_RADIUS * 0.6, SETTLEMENT_RADIUS, sDist);
 
+  const crossingDist = Math.sqrt(dist2(x, z, CROSSING_CENTER.x, CROSSING_CENTER.z));
+  const crossingMask = 1 - smoothstep(CROSSING_RADIUS * 0.82, CROSSING_RADIUS, crossingDist);
+
   const rDist2 = Math.sqrt(dist2(x, z, RUIN_CENTER.x, RUIN_CENTER.z));
   const rMask = 1 - smoothstep(RUIN_RADIUS * 0.5, RUIN_RADIUS, rDist2);
 
@@ -116,11 +124,12 @@ export function terrainHeight(x: number, z: number, seed: number): number {
   // Authored site pads override road deformation throughout their core and
   // feather back into the surrounding heightfield at their established edge.
   h = h * (1 - sMask) + SETTLEMENT_PLATEAU_H * sMask;
+  h = h * (1 - crossingMask) + CROSSING_PLATEAU_H * crossingMask;
   h = h * (1 - rMask) + RUIN_PLATEAU_H * rMask;
   h = h * (1 - mineMask) + MINE_ENTRANCE_PLATEAU_H * mineMask;
 
   // Fine detail everywhere except roadbed/plateaus.
-  const detailMask = (1 - roadMask) * (1 - sMask) * (1 - rMask) * (1 - mineMask);
+  const detailMask = (1 - roadMask) * (1 - sMask) * (1 - crossingMask) * (1 - rMask) * (1 - mineMask);
   h += (fbm2(x * 0.09, z * 0.09, seed + 31, 3) - 0.5) * 2.2 * detailMask;
 
   return h;
@@ -143,6 +152,8 @@ export function biomeAt(x: number, z: number, seed: number): Biome {
   if (roadDistance(x, z) < 5) return 'road';
   const sDist = Math.sqrt(dist2(x, z, SETTLEMENT_CENTER.x, SETTLEMENT_CENTER.z));
   if (sDist < SETTLEMENT_RADIUS) return 'settlement';
+  const crossingDist = Math.sqrt(dist2(x, z, CROSSING_CENTER.x, CROSSING_CENTER.z));
+  if (crossingDist < CROSSING_RADIUS) return 'settlement';
   const h = terrainHeight(x, z, seed);
   if (h < WATER_LEVEL + 1.2) return 'riverbank';
   if (h > 60 || slopeAt(x, z, seed) > 0.9) return 'rock';

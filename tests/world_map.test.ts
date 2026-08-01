@@ -14,8 +14,11 @@ describe('QA Phase H world-map and navigation reproduction', () => {
     expect(map.landmarks.map((landmark) => landmark.id)).toEqual(expect.arrayContaining([
       'falkmoor',
       'road-camp',
+      'thornmere',
+      'gloamroot',
       'fenharrow',
       'siltroot',
+      'weeping-stones',
       'duskhollow',
     ]));
   });

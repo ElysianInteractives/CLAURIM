@@ -67,8 +67,10 @@ describe('determinism', () => {
 
 describe('terrain', () => {
   it('terrainHeight is pure and seed-stable', () => {
-    expect(terrainHeight(10.5, -200.25, 42)).toBe(terrainHeight(10.5, -200.25, 42));
-    expect(terrainHeight(10.5, -200.25, 42)).not.toBe(terrainHeight(10.5, -200.25, 43));
+    // Use unsmoothed wilderness; authored settlement pads are intentionally
+    // seed-invariant so structures share one stable grade.
+    expect(terrainHeight(210.5, -200.25, 42)).toBe(terrainHeight(210.5, -200.25, 42));
+    expect(terrainHeight(210.5, -200.25, 42)).not.toBe(terrainHeight(210.5, -200.25, 43));
   });
 
   it('settlement plateau is flat enough to build on', () => {

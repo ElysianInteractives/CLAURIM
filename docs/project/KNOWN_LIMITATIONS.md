@@ -67,3 +67,9 @@
   and two working defensive/utility effects. It does not yet provide area
   spells, summons, runes, channeling, trainers, research/crafting, school perk
   trees, discovery placement, or final magic economy/balance.
+- KL-21 D-043 makes Kaldwyn denser and raises the authored slice to two minor
+  settlements, eight mapped destinations, three natural interiors, ambient
+  harts, and hostile briarboars, but the world remains one roughly kilometre-
+  scale exterior region. Most buildings are exterior shells, trees have no
+  gameplay collision/harvesting, and wildlife uses bounded wandering plus the
+  existing combat AI rather than ecology, hunting, or population simulation.

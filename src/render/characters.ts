@@ -199,6 +199,39 @@ export function buildCharacter(archetype: string): THREE.Group {
     case 'wolf':
       character = quadruped(PALETTE.wolfFur, 1.1, 0.55);
       break;
+    case 'hart': {
+      const g = quadruped(PALETTE.hartFur, 1.15, 0.75, 1.05);
+      const head = g.getObjectByName('head');
+      if (head) {
+        for (const side of [-1, 1]) {
+          const antler = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.045, 0.62, 5), mat(PALETTE.bone));
+          antler.name = side < 0 ? 'antlerL' : 'antlerR';
+          antler.position.set(side * 0.16, 0.42, -0.02);
+          antler.rotation.z = side * -0.28;
+          const tine = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.3, 5), mat(PALETTE.bone));
+          tine.position.set(side * 0.24, 0.58, 0.05);
+          tine.rotation.z = side * -0.7;
+          head.add(antler, tine);
+        }
+      }
+      character = g;
+      break;
+    }
+    case 'boar': {
+      const g = quadruped(PALETTE.boarFur, 1.0, 0.62, 1.15);
+      const head = g.getObjectByName('head');
+      if (head) {
+        for (const side of [-1, 1]) {
+          const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.3, 6), mat(PALETTE.bone));
+          tusk.name = side < 0 ? 'tuskL' : 'tuskR';
+          tusk.position.set(side * 0.14, -0.08, 0.36);
+          tusk.rotation.x = Math.PI / 2;
+          head.add(tusk);
+        }
+      }
+      character = g;
+      break;
+    }
     case 'rat':
       character = quadruped(PALETTE.ratFur, 0.6, 0.25, 0.8);
       break;

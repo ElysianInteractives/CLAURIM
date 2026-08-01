@@ -154,7 +154,8 @@ export class Renderer {
     const kind = exterior ? 'exterior' : 'interior';
     if (!exterior) {
       const layout = CONTENT.spaces[space]?.interior;
-      if (layout) this.spaceGroup.add(buildInteriorShell(layout, space.includes('mine')));
+      const cavern = space.includes('mine') || space.includes('burrow') || space.includes('hollow');
+      if (layout) this.spaceGroup.add(buildInteriorShell(layout, cavern));
     }
     for (const p of CONTENT.props) {
       if (p.spaceId === space) this.spaceGroup.add(buildProp(p, kind, seed));

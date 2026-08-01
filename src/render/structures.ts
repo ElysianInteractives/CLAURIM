@@ -97,6 +97,47 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     const pillar = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.5, p.sx * 0.6, p.sy, 6), stone);
     pillar.position.y = p.sy / 2;
     g.add(pillar);
+  } else if (p.kind === 'standing_stone') {
+    const monolith = new THREE.Mesh(new THREE.DodecahedronGeometry(0.65, 0), ruin);
+    monolith.scale.set(p.sx * 0.65, p.sy * 0.62, p.sz * 0.65);
+    monolith.position.y = p.sy * 0.48;
+    monolith.rotation.z = 0.05;
+    g.add(monolith);
+  } else if (p.kind === 'shrine_basin') {
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.55, p.sx * 0.72, p.sy, 8), ruin);
+    basin.position.y = p.sy / 2;
+    const hollow = new THREE.Mesh(
+      new THREE.CircleGeometry(p.sx * 0.42, 8),
+      new THREE.MeshBasicMaterial({ color: 0x26333a, side: THREE.DoubleSide }),
+    );
+    hollow.rotation.x = -Math.PI / 2;
+    hollow.position.y = p.sy + 0.01;
+    g.add(basin, hollow);
+  } else if (p.kind === 'root_column') {
+    const root = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.35, p.sx * 0.58, p.sy, 6), woodDark);
+    root.position.y = p.sy / 2;
+    root.rotation.z = 0.08;
+    g.add(root);
+  } else if (p.kind === 'nest') {
+    for (let i = 0; i < 9; i++) {
+      const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, p.sx * 0.75, 5), woodDark);
+      branch.rotation.set(Math.PI / 2, (i / 9) * Math.PI * 2, (i % 2 ? 1 : -1) * 0.12);
+      branch.position.y = 0.18 + (i % 3) * 0.04;
+      g.add(branch);
+    }
+  } else if (p.kind === 'glowcaps') {
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x73d7bd });
+    for (let i = 0; i < 5; i++) {
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.35 + i * 0.05, 5), caveFloor);
+      stem.position.set((i - 2) * 0.18, 0.18 + i * 0.025, (i % 2 ? 1 : -1) * 0.12);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13 + (i % 2) * 0.04, 6, 4), glowMat);
+      cap.scale.y = 0.45;
+      cap.position.set(stem.position.x, stem.position.y * 2 + 0.05, stem.position.z);
+      g.add(stem, cap);
+    }
+    const light = new THREE.PointLight(0x8cebd3, 34, 24);
+    light.position.y = 1.2;
+    g.add(light);
   } else if (p.kind === 'well') {
     const rim = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.6, 1, 8, 1, true), stone);
     rim.position.y = 0.35;

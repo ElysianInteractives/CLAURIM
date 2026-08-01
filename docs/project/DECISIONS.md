@@ -386,3 +386,14 @@ append normalized alteration/illusion progression and working ward/concealment
 effects. Existing saves retain magic and receive safe defaults for new skill
 keys. Protocol v7 carries school metadata and private learning feedback. Exact
 rules: `MAGIC_PROGRESSION_CONTRACT.md`.
+
+## D-043: Original Kaldwyn location and wildlife expansion - LOCKED
+Kaldwyn remains one exterior simulation space while its proven content schema
+adds a second minor settlement, three more Fenharrow shells, an exterior
+standing-stone landmark, a five-room enterable wildlife den, three scheduled
+non-quest residents, ambient harts, hostile briarboars, and a veteran
+matriarch. The new settlement uses a final shared terrain pad; added routes,
+doors, schedules, spawns, and containers remain under the existing traversal
+and placement authority. Denser varied trees remain presentation-only, and
+all names/layouts are original Claurim content. Exact rules:
+`WORLD_CONTENT_EXPANSION_CONTRACT.md`.

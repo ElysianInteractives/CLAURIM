@@ -1,6 +1,8 @@
 # Roadmap
 
-1. M1 Kaldwyn Reach slice - implemented; exit: visual QA + balance pass.
+1. M1 Kaldwyn Reach slice - implemented and expanded in QA Phase K with
+   Thornmere, Weeping Stones, Gloamroot, wildlife, and denser forest coverage;
+   exit remains broader human balance/content pacing.
 2. M1.5 Hardening - COMPLETE: Plan 8 delivers catalog depth, the second cave,
    and the generic content guard; Plan 9 delivers host interpolation and the
    bounded browser audio architecture/control exemplar; Plan 10 closes the

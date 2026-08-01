@@ -62,6 +62,9 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Primer-gated spell learning, four original magic disciplines, safe legacy
   skill normalization, and explicit post-learning spell-slot assignment
   (D-042).
+- Original single-region content expansion with two minor settlements, eight
+  mapped destinations, shared-placement natural interiors, bounded ambient
+  wildlife wandering, and deterministic denser forest presentation (D-043).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

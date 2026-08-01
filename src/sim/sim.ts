@@ -108,6 +108,8 @@ import {
 const HOSTILE_PAIRS: ReadonlySet<string> = new Set([
   'redclaw|fenharrow',
   'fenharrow|redclaw',
+  'redclaw|thornmere',
+  'thornmere|redclaw',
   'redclaw|player',
   'player|redclaw',
 ]);

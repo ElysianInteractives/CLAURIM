@@ -10,7 +10,7 @@ import { CELL_SIZE } from '../sim/world/cells';
 import { PALETTE } from './palette';
 
 const SEGMENTS = 32;
-const TREE_TRIES_PER_CELL = 60;
+export const TREE_TRIES_PER_CELL = 90;
 
 const BIOME_COLORS: Record<string, number> = {
   tundra: PALETTE.tundra,
@@ -26,6 +26,7 @@ export class TerrainStreamer {
   private material = new THREE.MeshLambertMaterial({ vertexColors: true });
   private treeTrunkGeo = new THREE.CylinderGeometry(0.18, 0.28, 2.2, 5);
   private treeTopGeo = new THREE.ConeGeometry(1.5, 4.2, 6);
+  private treeTopTallGeo = new THREE.ConeGeometry(1.25, 5.2, 7);
   private rockGeo = new THREE.DodecahedronGeometry(0.8, 0);
   private trunkMat = new THREE.MeshLambertMaterial({ color: PALETTE.trunk });
   private pineMat = new THREE.MeshLambertMaterial({ color: PALETTE.pine });
@@ -137,10 +138,17 @@ export class TerrainStreamer {
         const trunk = new THREE.Mesh(this.treeTrunkGeo, this.trunkMat);
         trunk.position.set(wx, h + 1.1 * scale, wz);
         trunk.scale.setScalar(scale);
-        const top = new THREE.Mesh(hash2(i, cx, this.seed) > 0.5 ? this.treeTopGeo : this.treeTopGeo, hash2(i, cz, this.seed) > 0.5 ? this.pineMat : this.pineDarkMat);
-        top.position.set(wx, h + (2.2 + 2.1) * scale, wz);
+        const tall = hash2(i, cx, this.seed + 47) > 0.55;
+        const top = new THREE.Mesh(tall ? this.treeTopTallGeo : this.treeTopGeo, hash2(i, cz, this.seed) > 0.5 ? this.pineMat : this.pineDarkMat);
+        top.position.set(wx, h + (2.2 + (tall ? 2.6 : 2.1)) * scale, wz);
         top.scale.setScalar(scale);
-        group.add(trunk, top);
+        const crown = new THREE.Mesh(
+          new THREE.ConeGeometry(tall ? 0.9 : 1.05, tall ? 3.2 : 2.7, 6),
+          hash2(i, cz, this.seed + 53) > 0.5 ? this.pineDarkMat : this.pineMat,
+        );
+        crown.position.set(wx, h + (tall ? 6.4 : 5.4) * scale, wz);
+        crown.scale.setScalar(scale);
+        group.add(trunk, top, crown);
       } else if (biome === 'rock' && i % 5 === 0 && h > WATER_LEVEL) {
         const scale = 0.6 + hash2(i, cx - cz, this.seed + 41) * 1.6;
         const rock = new THREE.Mesh(this.rockGeo, this.rockMat);

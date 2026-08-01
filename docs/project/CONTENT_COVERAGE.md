@@ -10,9 +10,9 @@ PARTIAL / NONE.
 |---|---|---|---|---|---|---|---|---|
 | Exterior regions | terrain D-005, cells D-004 | DONE (1) | Kaldwyn Reach | ~8 more holds | multi-region space graph + region streaming across borders | author features per approved sketch | geography sign-off | nav+terrain tests, tour screenshots |
 | Major settlements | props, schedules | PARTIAL | Fenharrow (village) | ~5 cities | city-scale streaming + walled-city layout tooling | building placement from exemplar | yes | schedule/nav tests |
-| Minor settlements | same | DONE (1) | Fenharrow | ~15 | none | yes | light | same |
-| Wilderness landmarks | props | DONE (pattern) | Falkmoor Ruin, road camp | dozens | none | yes | light | screenshot + spawner tests |
-| Caves/mines | interior spaces | DONE (2) | Duskhollow Mine, Siltroot Burrow | ~29 | none (rooms+corridors proven twice) | yes | light | nav test per dungeon |
+| Minor settlements | same | DONE (2) | Fenharrow, Thornmere Crossing | ~14 | none | yes | light | same |
+| Wilderness landmarks | props | DONE (pattern) | Falkmoor Ruin, road camp, Weeping Stones | dozens | none | yes | light | screenshot + spawner tests |
+| Caves/mines | interior spaces | DONE (3) | Duskhollow Mine, Siltroot Burrow, Gloamroot Hollow | ~28 | none (rooms+corridors proven three times) | yes | light | nav test per dungeon |
 | Nordic-style ruins (interior) | interiors + trap system | NONE | - | ~20 | trap/puzzle primitives | after | yes | e2e dungeon test |
 | Dwemer-style ruins | interiors + automatons | NONE | - | ~10 | construct AI archetype | after | yes | same |
 | Daedric-style spaces | portal/plane rules | NONE | - | few | space-transition fx + rules | after | yes | same |
@@ -31,7 +31,7 @@ PARTIAL / NONE.
 | Armor | items | SYSTEM | 12 | ~52 | armor-class perks interplay | tier fills | no | validation |
 | Consumables/ingredients | effects | SYSTEM | 4/2 | ~100 | alchemy crafting system | records | no | validation |
 | Crafting (smith/alch/ench) | none | NONE | - | 3 systems | all three system designs | recipes after | yes | e2e |
-| Loot tables/economy | loot | SYSTEM | 10 tables | full economy | price/scarcity model | tables | no | validation |
+| Loot tables/economy | loot | SYSTEM | 14 tables | full economy | price/scarcity model | tables | no | validation |
 | Followers | ai | NONE | - | system + ~10 | follower package (follow/wait/trade/commands) | records | yes | e2e |
 | Crime/bounty | factions | NONE | - | system | ownership, witness, bounty state machine | town data | yes | e2e |
 | Housing | interiors | NONE | - | later | - | - | - | - |
@@ -47,8 +47,8 @@ PARTIAL / NONE.
 | Radiant activities | quest templating | NONE | - | system | radiant generator over template pool | templates | yes | generator tests |
 | Dialogue | dialogue runtime | DONE | 3 NPCs, conditional entries | all NPCs | only new condition/action kinds | trees per template | prose review | validation + e2e |
 | Books/lore | ui reading | NONE | - | ~100 | reading UI + book item kind | original texts | prose review | validation |
-| NPC archetypes | ai/schedules | DONE (7) | villagers, raiders, boss | dozens | new BEHAVIOR archetypes only | records | light | brain tests |
-| Creatures | ai | SYSTEM | wolf/rat/wight plus Rimehowl/Sentinel veterans | ~28 | new locomotion modes (fly/swim/burrow) | melee/ranged variants | light | combat tests |
+| NPC archetypes | ai/schedules | DONE (10) | Fenharrow/Thornmere residents, raiders, boss | dozens | new BEHAVIOR archetypes only | records | light | brain tests |
+| Creatures | ai | SYSTEM | wolf/rat/wight, ambient hart, briarboar, and veteran variants | ~26 | new locomotion modes (fly/swim/burrow) | melee/ranged variants | light | combat tests |
 
 ## Presentation and platform
 | Family | State | Notes |

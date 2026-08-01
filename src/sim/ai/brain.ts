@@ -473,6 +473,28 @@ export function tickBrain(ctx: SimContext, actorId: EntityId): void {
           brain.repathCooldown = 0;
           brain.stuckTicks = 0;
         }
+      } else if (tpl?.ambientWanderRadius) {
+        // Ambient wildlife roam near their spawn home without becoming a
+        // scheduled NPC or acquiring a target. Invalid terrain goals are
+        // discarded through the same complete-route rule as schedules.
+        if (brain.timer <= 0 || !brain.lastKnownPos) {
+          brain.timer = ctx.rng.int(120, 300);
+          brain.lastKnownPos = {
+            x: brain.homePos.x + ctx.rng.range(-tpl.ambientWanderRadius, tpl.ambientWanderRadius),
+            y: 0,
+            z: brain.homePos.z + ctx.rng.range(-tpl.ambientWanderRadius, tpl.ambientWanderRadius),
+          };
+        }
+        brain.timer--;
+        const movement = moveToward(ctx, content, colliders, a, brain.lastKnownPos, true);
+        if (movement === 'arrived' || movement === 'blocked') {
+          brain.lastKnownPos = null;
+          brain.path = null;
+          brain.pathIdx = 0;
+          brain.repathCooldown = 0;
+          brain.stuckTicks = 0;
+          if (movement === 'blocked') brain.timer = 0;
+        }
       }
       break;
     }

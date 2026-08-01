@@ -319,6 +319,14 @@ export const ITEMS: Record<string, ItemDef> = {
     weight: 1.5,
     value: 10,
   },
+  briar_tusk: {
+    id: 'briar_tusk',
+    name: 'Briarboar Tusk',
+    kind: 'misc',
+    stackable: true,
+    weight: 0.8,
+    value: 14,
+  },
   bread: {
     id: 'bread',
     name: 'Hearth Bread',

@@ -190,6 +190,8 @@ export interface ActorTemplate {
   lootTable?: ContentId;
   factionId?: ContentId;
   schedule?: ScheduleEntry[];
+  /** Unscheduled ambient creature roaming radius around its spawn home. */
+  ambientWanderRadius?: number;
   dialogueId?: ContentId;
   merchant?: { buys: ItemKind[]; stockTable: ContentId; gold: number };
   /** Visual archetype key for the renderer (not gameplay). */
@@ -504,6 +506,8 @@ export function validateContent(c: ContentRegistry): string[] {
     if (a.dialogueId && !c.dialogues[a.dialogueId]) err(`actor ${id}: unknown dialogue`);
     if (a.merchant && !c.lootTables[a.merchant.stockTable]) err(`actor ${id}: unknown stockTable`);
     if (a.level < 1) err(`actor ${id}: level must be >= 1`);
+    if (a.ambientWanderRadius !== undefined && a.ambientWanderRadius <= 0)
+      err(`actor ${id}: ambientWanderRadius must be > 0`);
     for (const s of a.schedule ?? []) {
       if (!c.spaces[s.spaceId]) err(`actor ${id}: schedule references unknown space ${s.spaceId}`);
       if (s.fromHour < 0 || s.toHour > 24) err(`actor ${id}: schedule hours out of range`);

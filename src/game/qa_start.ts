@@ -22,6 +22,10 @@ export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
     equip: ['iron_sword', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],
   },
   rig: { spaceId: 'kaldwyn', x: 0, z: 38, yaw: 0 },
+  thornmere: { spaceId: 'kaldwyn', x: -10, z: -180, yaw: 0 },
+  'thornmere-harts': { spaceId: 'kaldwyn', x: 10, z: -220, yaw: Math.PI / 2 },
+  'weeping-stones': { spaceId: 'kaldwyn', x: 80, z: 270, yaw: Math.PI / 2 },
+  gloamroot: { spaceId: 'gloamroot_hollow', x: 0, z: 7, yaw: 0 },
   magic: {
     spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI,
     items: [

@@ -692,6 +692,42 @@ known spells and explicit hotkey assignments remain save-compatible.
   `docs/screenshots/2026-08-01/qa-phase-j-disciplines-1280x720.png` and
   `qa-phase-j-disciplines-1920x1080.png`.
 
+### QA Phase K world-expansion exit
+
+QA Phase K resolves WRL-008 and locks D-043. It adds original Claurim world
+volume without changing the region-streaming boundary or copying another
+game's map, names, layout, stories, or encounters.
+
+- Fenharrow gains three building shells. Thornmere Crossing adds five shells,
+  a well, and three route-complete scheduled non-quest residents. Weeping
+  Stones adds an exterior landmark, offering cache, and hostile encounter.
+- Gloamroot Hollow adds a five-room enterable den, return path, loot cache,
+  natural cavern materials, glowcap illumination, standard briarboars, and a
+  veteran matriarch. Its doorway places the third-person camera inside the
+  first room and faces progression rather than the exit.
+- Ridge harts are visibly distinct, non-hostile, and roam deterministic
+  bounded complete routes. Briarboars are hostile and use a separate tusked
+  silhouette. Forest cells now attempt 90 deterministic tree placements with
+  varied two-layer conifer crowns.
+- Content v0.4 validates 36 items, 8 effects, 6 spells, 15 perks, 19 actor
+  templates, 5 spaces, 42 props, 8 doors, 24 spawners, 6 containers, 1 quest,
+  and 3 dialogues. The originality gate is clean.
+- `npm run world:tour` passes all 5 spaces, 31 routes, and 69 placements.
+  `npm run gate` is green at 28 suites / 228 tests; Vite 8 transforms 59
+  modules and produces 713.64 kB JavaScript / 187.86 kB gzip. Combat, AI,
+  multiplayer, and all four network profiles retain their locked results.
+- The live two-client WebSocket smoke reports ack 30, 4.4 m movement, mutual
+  visibility, session/replay safety, and 6,755/6,742-byte snapshots.
+- Direct browser QA at 1280 covers Thornmere, harts, Weeping Stones, and the
+  readable Gloamroot arrival. A 1920 pass shows all eight mapped destinations;
+  warning/error logs are empty.
+- Evidence is stored in
+  `docs/screenshots/2026-08-01/qa-phase-k-thornmere-1280x720.png`,
+  `qa-phase-k-harts-1280x720.png`,
+  `qa-phase-k-weeping-stones-1280x720.png`,
+  `qa-phase-k-gloamroot-1280x720.png`, and
+  `qa-phase-k-map-1920x1080.png`.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -723,6 +759,7 @@ known spells and explicit hotkey assignments remain save-compatible.
 | QA-MAP | Current-space map and destination guidance | `tests/world_map.test.ts`, `npm run world:tour`, `npm run gate`; development-only `?qa=falkmoor` and `?qa=mine` at 1280 plus exterior at 1920 | road/five destinations, exact rooms/exit, player yaw marker, semantic selection, relative bearing/distance, clipping/overflow/logs |
 | QA-RIG | Articulated character detail and full-body posing | `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/presentation.test.ts`, `npm run ai:bench`, `npm run gate`; development-only `?qa=inn-shift-change`, `?qa=gear`, and `?qa=rig` at 1280/1920 | stable joints/mesh detail, leg/knee/torso gait, secondary combat joints, quadruped gait/tail, hand-following gear, first-person framing/logs |
 | QA-MAGIC | Magic initiation, disciplines, and persistent loadout | `tests/magic_progression.test.ts`, `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `npm run combat:bench`, `npm run net:bench`, `npm run qa:ws`, `npm run gate`; development-only `?qa=magic` at 1280/1920 | empty fresh state, atomic primer study/duplicate safety, four schools, ward/veil effects and skill XP, legacy save normalization, private protocol state, manual equip/cast, responsive layout/logs |
+| QA-WORLD-EXPANSION | Original settlement, landmark, den, forest, and wildlife volume | `tests/world_content_expansion.test.ts`, `tests/world_map.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere`, `?qa=thornmere-harts`, `?qa=weeping-stones`, and `?qa=gloamroot` at 1280 plus map at 1920 | shared terrain pads, route-complete locations/schedules, cavern arrival/readability, ambient/hostile wildlife behavior and silhouettes, eight destinations, content/IP validation, layout/overflow/logs |
 
 ## Browser visual-QA procedure
 

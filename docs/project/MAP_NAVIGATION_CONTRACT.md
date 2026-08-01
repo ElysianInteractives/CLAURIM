@@ -8,9 +8,10 @@ authority.
 
 - `M` opens the current space map and suppresses movement through the existing
   menu-capture boundary.
-- Kaldwyn renders its authored road, Falkmoor Ruin, the Redclaw road camp,
-  Fenharrow, Siltroot Burrow, and Duskhollow Mine. Marker labels choose an
-  inward anchor so edge destinations remain readable.
+- Kaldwyn renders its authored road and current landmark catalog. D-043
+  expands the original five destinations with Thornmere Crossing, Gloamroot
+  Hollow, and Weeping Stones for eight total. Marker labels choose an inward
+  anchor so edge destinations remain readable.
 - Interiors project the exact authored room union and current-space exit door.
   Exterior landmarks never leak into an interior floor plan.
 - Every view contains a north indicator, rounded X/Z readout, and a player

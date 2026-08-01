@@ -153,6 +153,13 @@ tested defensive/utility effects and alteration/illusion progression; older
 saves keep known/equipped spells and receive safe new-skill defaults. Exact
 boundaries are in `MAGIC_PROGRESSION_CONTRACT.md`.
 
+QA Phase K verifies WRL-008 through D-043: Kaldwyn now has two minor
+settlements, eight mapped destinations, three natural interiors, denser varied
+forest presentation, three additional scheduled residents, ambient ridge
+harts, hostile briarboars, and a veteran den matriarch. Gloamroot's arrival is
+third-person safe and faces a lit natural interior. Exact boundaries are in
+`WORLD_CONTENT_EXPANSION_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -213,6 +220,12 @@ session added and TESTED:
   six primers teach six persistent, manually equipped spells across four
   original disciplines, with legacy-save compatibility and private protocol
   feedback.
+- QA Phase K world expansion (D-043): Fenharrow gains three shells; Thornmere
+  Crossing adds five buildings, a well, and three scheduled residents;
+  Weeping Stones adds an exterior encounter/cache; Gloamroot Hollow adds a
+  five-room den, loot, lit dressing, and two briarboar tiers; ridge harts roam
+  bounded complete routes; the deterministic conifer pass is denser and more
+  varied.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -228,12 +241,13 @@ session added and TESTED:
 - Naming/dialogue regime (D-022): NAMING_GUIDE + IP_STYLE_GUIDE + automated
   check_ip gate; slice audit done (Brandvar Hale, Eydris Varr renames);
   all dialogue rewritten with voices + plural-adventurer framing.
-- Proven-schema content depth (D-030/D-042): content v0.3 contains 35 items,
-  6 spells, 15 perks, 13 actor templates, and 4 spaces; primer/school records
-  extend the validated catalog while existing save envelopes remain stable.
+- Proven-schema content depth (D-030/D-042/D-043): content v0.4 contains 36
+  items, 6 spells, 15 perks, 19 actor templates, 5 spaces, 42 props, 8 doors,
+  24 spawners, and 6 containers; magic and world-expansion records extend the
+  validated catalog while existing save envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 222 tests / 27 suites green (multiplayer sim, server/net,
+- `npm test`: 228 tests / 28 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -244,20 +258,22 @@ session added and TESTED:
   equipped-item views, gear attachments, weapon-specific poses, authored
   map/floor-plan coverage, destination bearing/distance, articulated rig
   structure, full-body gait, secondary combat/creature posing, primer-gated
-  spell learning, discipline grouping, effects, and legacy skill defaults).
+  spell learning, discipline grouping, effects, legacy skill defaults,
+  expanded original geography, wildlife behavior/presentation, and cavern
+  arrival/readability).
 - Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
+  replay rejection, preserved ownership, and current 6,755 / 6,742-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
 - `npm run ai:bench` after D-038 scope verification: solo remains 0/3 under
   both policies; naive clears 1/3 at 3 players (191 s) and mechanics clears
   1/3 at 5 players (75 s). See ENCOUNTER_DESIGN.md for full current metrics.
-- `npm run world:tour`: all 4 spaces, 23 routes, and 43 placements pass;
+- `npm run world:tour`: all 5 spaces, 31 routes, and 69 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 703.00 kB / 185.59 kB gzip.
+  build); Vite 8 production JavaScript is 713.64 kB / 187.86 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -275,7 +291,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-042), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-043), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

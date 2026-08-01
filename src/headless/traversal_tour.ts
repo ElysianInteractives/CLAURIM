@@ -49,6 +49,24 @@ const legs: Leg[] = [
     from: ROAD_POINTS[4],
     to: CONTENT.doors.find((door) => door.id === 'door_siltroot_in')!,
   },
+  {
+    spaceId: 'kaldwyn',
+    label: 'Thornmere road to village commons',
+    from: ROAD_POINTS[2],
+    to: { x: -18, z: -175 },
+  },
+  {
+    spaceId: 'kaldwyn',
+    label: 'South road to Gloamroot entrance',
+    from: ROAD_POINTS[2],
+    to: CONTENT.doors.find((door) => door.id === 'door_gloamroot_in')!,
+  },
+  {
+    spaceId: 'kaldwyn',
+    label: 'North road to Weeping Stones',
+    from: ROAD_POINTS[6],
+    to: { x: 82, z: 270 },
+  },
 ];
 
 for (const space of Object.values(CONTENT.spaces)) {

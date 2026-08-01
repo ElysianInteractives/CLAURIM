@@ -39,8 +39,11 @@ export interface MapDefinition {
 const EXTERIOR_LANDMARKS: readonly MapWaypoint[] = [
   { id: 'falkmoor', name: 'Falkmoor Ruin', spaceId: 'kaldwyn', x: 40, z: -420, kind: 'ruin' },
   { id: 'road-camp', name: 'Redclaw Road Camp', spaceId: 'kaldwyn', x: 30, z: -300, kind: 'camp' },
+  { id: 'thornmere', name: 'Thornmere Crossing', spaceId: 'kaldwyn', x: -10, z: -180, kind: 'town' },
+  { id: 'gloamroot', name: 'Gloamroot Hollow', spaceId: 'kaldwyn', x: -10, z: -105, kind: 'cave' },
   { id: 'fenharrow', name: 'Fenharrow', spaceId: 'kaldwyn', x: 42, z: 158, kind: 'town' },
   { id: 'siltroot', name: 'Siltroot Burrow', spaceId: 'kaldwyn', x: -30, z: 75, kind: 'cave' },
+  { id: 'weeping-stones', name: 'Weeping Stones', spaceId: 'kaldwyn', x: 93, z: 274, kind: 'ruin' },
   { id: 'duskhollow', name: 'Duskhollow Mine', spaceId: 'kaldwyn', x: 118, z: 338, kind: 'mine' },
 ];
 
