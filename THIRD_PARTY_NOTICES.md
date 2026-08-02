@@ -17,9 +17,15 @@
   discipline, CLAUDE.md conventions). No code, assets, or content were copied.
 
 ## Game assets
-- All geometry is procedural (three.js primitives) and all colors are from the
-  original palette in `src/render/palette.ts`. No external art, audio, fonts
-  (system serif stack only), or data files are bundled.
+- Live game geometry remains procedural (three.js primitives) and live colors
+  remain from the original palette in `src/render/palette.ts`.
+- Asset Phase A0 adds the original clean-room Falkmoor Blender pilot source at
+  `art/blender/falkmoor_ruins.blend` and its three GLB exports under
+  `public/assets/models/environment/falkmoor/`. They were generated with the
+  repository's `scripts/blender/build_falkmoor_pilot.py` and contain no
+  downloaded meshes, textures, fonts, brands, or third-party source material.
+  The pilot is not yet instantiated by the live renderer.
+- No external art, audio, or fonts (system serif stack only) are bundled.
 - All names, dialogue, lore, quest text, and place names are original Claurim
   material. This is a clean-room fan-genre project: no Bethesda code, assets,
   text, or trademarks are used.

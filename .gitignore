@@ -5,3 +5,4 @@ smoke_tmp.mjs
 server_data/
 *.bundle
 *.bundle.lock
+*.blend[0-9]

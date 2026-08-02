@@ -36,6 +36,7 @@ the one shared Sim - never clone the world per client.
 | `src/server/` | `core.ts` (transport-agnostic authoritative server), `ws_host.ts` (`npm run server`, :8787), `storage.ts` (StorageProvider + FileStorage; server owns online persistence). |
 | `tests/` | Vitest: architecture guards, determinism, save/migrations, quest e2e, navigation, combat. |
 | `scripts/` | `validate_content.ts` (content gate), `make_standalone.mjs` (single-file build). |
+| `art/` | Blender source catalog and manifest. `.blend` sources use Git LFS; optimized GLBs live under `public/assets/models/`. |
 | `docs/project/` | Charter, architecture, locked decisions/contracts (including audio presentation and toolchain security), deficit register, QA baseline, responsibility map, backlog, and coverage matrix. Read `MODEL_HANDOFF.md` first in a new session. |
 
 ## Commands
@@ -47,6 +48,7 @@ the one shared Sim - never clone the world per client.
 - `npm test` - Vitest. Prefer one file while iterating: `npx vitest run tests/sim_core.test.ts`.
 - `npm run typecheck` - `tsc --noEmit` (fast; run liberally).
 - `npm run validate` - content gate.
+- `npm run validate:assets` - Blender manifest/GLB/provenance/budget gate.
 - `npm run headless` - headless run (`-- ticks=9000 seed=42`).
 - `npm run qa:ws` - real two-client WebSocket smoke against a running server.
 - `npm run audit:deps` / `npm run audit:prod` - networked full and

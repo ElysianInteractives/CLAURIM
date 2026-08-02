@@ -91,6 +91,13 @@ read-only for an already-current transform. Timestamped online non-local
 tracks continue to bypass this history. See
 `STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
 
+D-050 adds a build-time art-source boundary outside simulation and renderer
+authority. `art/asset-manifest.json` describes Blender source, GLB exports,
+budgets, transforms, collider intent, and provenance;
+`scripts/validate_assets.ts` parses exported binaries during the normal gate.
+The Falkmoor pilot GLBs remain dormant until A1 adds a renderer-owned runtime
+catalog. See `BLENDER_ASSET_AUTHORING_CONTRACT.md`.
+
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use
 `roomBoundarySegments`; the camera reads `worldObstructionT`. These imports

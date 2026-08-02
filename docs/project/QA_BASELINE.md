@@ -910,6 +910,25 @@ D-048 as the whole AV-009 fix.
   confirmed that the stopped-actor/static-building jitter is fixed. AV-009 is
   therefore `VERIFIED` and the Blender/asset workflow is unblocked.
 
+### Asset Phase A0 Blender-authoring exit
+
+Asset Phase A0 implements D-050 without replacing a live runtime model.
+
+- Blender 5.2.0 LTS headlessly generates one editable Falkmoor source and
+  three independent self-contained GLB exports.
+- The tower measures 2,360/116 LOD0/LOD1 triangles, the wall 1,320/12, and the
+  arch 792/132; every level remains under its explicit material and geometry
+  ceilings with at least the required reduction.
+- Exported bounds retain metre scale and ground-centred origins: tower
+  8.02 x 10.00 x 8.02 m, wall 10.00 x 3.00 x 1.50 m, and arch
+  6.00 x 5.09 x 2.00 m, each within manifest tolerance.
+- `npm run validate:assets` parses GLB structure, transforms, extras, geometry,
+  materials, embedded-resource limits, paths, and provenance during every
+  normal build. Three focused tests pin the valid kit and rejection cases.
+- Direct inspection of `asset_phase_a0_falkmoor_pilot.png` shows the complete
+  tower, broken wall, and arch on one unobstructed ground plane. Runtime
+  visuals, collision, placement, terrain, protocols, and saves are unchanged.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -948,6 +967,7 @@ D-048 as the whole AV-009 fix.
 | QA-FRAME-STABILITY | Whole-scene camera continuity, frame-rate-neutral online motion, projectile history, and sustained-load protection | `tests/camera_stability.test.ts`, `tests/camera_reticle.test.ts`, `tests/world_traversal.test.ts`, `tests/remote_presentation.test.ts`, `tests/frame_pacing.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`, `npm run world:tour`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=inn-shift-change` | <0.1 m Fenharrow camera frame step, refined contact, obstruction flicker/release bounds, read-independent remote interpolation, projectile adjacent-tick motion, adaptive raster thresholds, exterior/interior/first-person browser logs |
 | QA-FIND7 | Recorded-frame cadence and close-model headroom | Decode Find7 at native timing; `tests/model_fidelity.test.ts`, `tests/frame_pacing.test.ts`, `npm run gate`; development-only `?qa=thornmere&qaPerf=1&qaWalk=1` | repeated/near-identical frame count, 2,000-3,000 triangles per close shell, 10,000-12,000 for five Thornmere shells, matrix-correct populated budgets, raster-first tier thresholds, local player high, telemetry at steady 60 fps with zero missed frames |
 | QA-STATIONARY-SETTLEMENT | Stop gait and camera-anchor replay | `tests/presentation.test.ts`, `tests/character_rig.test.ts`, `tests/camera_stability.test.ts`; development-only `?qa=thornmere-wall&qaPerf=1&qaWalk=1`; follow a scheduled resident to arrival | equal tick produces `current -> current`; gait/bob settles; camera anchor stays fixed across alpha; held wall input and moving interpolation retain authority |
+| QA-ASSET-A0 | Blender source/export constitution and Falkmoor pilot | Blender 5.2.x headless `scripts/blender/build_falkmoor_pilot.py`; `npm run validate:assets`; `tests/asset_pipeline.test.ts`; `npm run gate`; inspect `docs/screenshots/asset_phase_a0_falkmoor_pilot.png` | editable `.blend`, three self-contained GLBs, stable roots/LOD/collider extras, ground-centred metre bounds, provenance, actual triangle/material/texture budgets, complete unobstructed pilot render |
 
 ## Browser visual-QA procedure
 

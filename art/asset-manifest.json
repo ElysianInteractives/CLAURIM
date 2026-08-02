@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "toolchain": {
+    "blenderVersion": "5.2.0 LTS",
+    "unitMeters": 1,
+    "sourceUpAxis": "Z",
+    "runtimeUpAxis": "Y",
+    "runtimeFormat": "glTF Binary 2.0"
+  },
+  "assets": [
+    {
+      "id": "falkmoor_ruin_tower_a",
+      "type": "structure",
+      "status": "pilot",
+      "source": "art/blender/falkmoor_ruins.blend",
+      "export": "public/assets/models/environment/falkmoor/falkmoor_ruin_tower_a.glb",
+      "rootNode": "falkmoor_ruin_tower_a",
+      "dimensionsMeters": [8, 10, 8],
+      "boundsToleranceMeters": 0.35,
+      "origin": "ground-center",
+      "lods": [
+        { "name": "LOD0", "node": "falkmoor_ruin_tower_a__LOD0", "maxTriangles": 3000, "maxMaterials": 2 },
+        { "name": "LOD1", "node": "falkmoor_ruin_tower_a__LOD1", "maxTriangles": 300, "maxMaterials": 1 }
+      ],
+      "minimumLodReduction": 0.5,
+      "maxTextures": 4,
+      "maxEmbeddedTextureBytes": 8388608,
+      "collider": {
+        "node": "falkmoor_ruin_tower_a__COLLIDER",
+        "shape": "box",
+        "solid": true,
+        "sizeMeters": [7.2, 9.5, 7.2]
+      },
+      "provenance": {
+        "kind": "original",
+        "author": "Elysian Interactives",
+        "license": "Claurim-Original",
+        "sourceUrl": null,
+        "notes": "Original clean-room Phase A0 pilot generated and edited in Blender."
+      }
+    },
+    {
+      "id": "falkmoor_ruin_wall_a",
+      "type": "structure",
+      "status": "pilot",
+      "source": "art/blender/falkmoor_ruins.blend",
+      "export": "public/assets/models/environment/falkmoor/falkmoor_ruin_wall_a.glb",
+      "rootNode": "falkmoor_ruin_wall_a",
+      "dimensionsMeters": [10, 3, 1.5],
+      "boundsToleranceMeters": 0.2,
+      "origin": "ground-center",
+      "lods": [
+        { "name": "LOD0", "node": "falkmoor_ruin_wall_a__LOD0", "maxTriangles": 2500, "maxMaterials": 2 },
+        { "name": "LOD1", "node": "falkmoor_ruin_wall_a__LOD1", "maxTriangles": 100, "maxMaterials": 1 }
+      ],
+      "minimumLodReduction": 0.5,
+      "maxTextures": 4,
+      "maxEmbeddedTextureBytes": 8388608,
+      "collider": {
+        "node": "falkmoor_ruin_wall_a__COLLIDER",
+        "shape": "box",
+        "solid": true,
+        "sizeMeters": [9.8, 2.9, 1.35]
+      },
+      "provenance": {
+        "kind": "original",
+        "author": "Elysian Interactives",
+        "license": "Claurim-Original",
+        "sourceUrl": null,
+        "notes": "Original clean-room Phase A0 pilot generated and edited in Blender."
+      }
+    },
+    {
+      "id": "falkmoor_ruin_arch_a",
+      "type": "structure",
+      "status": "pilot",
+      "source": "art/blender/falkmoor_ruins.blend",
+      "export": "public/assets/models/environment/falkmoor/falkmoor_ruin_arch_a.glb",
+      "rootNode": "falkmoor_ruin_arch_a",
+      "dimensionsMeters": [6, 5, 2],
+      "boundsToleranceMeters": 0.25,
+      "origin": "ground-center",
+      "lods": [
+        { "name": "LOD0", "node": "falkmoor_ruin_arch_a__LOD0", "maxTriangles": 1400, "maxMaterials": 2 },
+        { "name": "LOD1", "node": "falkmoor_ruin_arch_a__LOD1", "maxTriangles": 300, "maxMaterials": 1 }
+      ],
+      "minimumLodReduction": 0.4,
+      "maxTextures": 4,
+      "maxEmbeddedTextureBytes": 8388608,
+      "collider": {
+        "node": "falkmoor_ruin_arch_a__COLLIDER",
+        "shape": "none",
+        "solid": false,
+        "sizeMeters": [0, 0, 0]
+      },
+      "provenance": {
+        "kind": "original",
+        "author": "Elysian Interactives",
+        "license": "Claurim-Original",
+        "sourceUrl": null,
+        "notes": "Original clean-room Phase A0 pilot generated and edited in Blender."
+      }
+    }
+  ]
+}

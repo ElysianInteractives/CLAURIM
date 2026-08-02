@@ -81,11 +81,16 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   with a permanently high-detail local player (D-048).
 - Equal fixed-tick settlement that collapses a final moving pair on unchanged
   arrival/collision ticks while keeping render sampling read-only (D-049).
+- Blender 5.2.x LTS asset identity, metre/axis/origin and applied-transform
+  conventions, manifest/provenance requirements, GLB/LOD/material/texture
+  budgets, separate collider intent, Git/LFS ownership, and the editable
+  Falkmoor pilot source/export gate (D-050).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,
-dragons/flight, multi-region streaming, radiant generation, commissioned model
-library/textures/authored skeletal animation,
+dragons/flight, multi-region streaming, radiant generation, runtime model
+catalog, commissioned model library/textures/authored skeletal animation,
+no-code Blender world bridge, authored terrain migration,
 account recovery/MFA/operations, matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading, expanded spell
 kinds/hotbars, trainers/research, loadout presets, and drag-and-drop inventory.

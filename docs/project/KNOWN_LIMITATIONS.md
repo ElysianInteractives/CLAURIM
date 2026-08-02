@@ -82,7 +82,8 @@
   geometry with bounded high/medium character, wildlife, structure, and
   vegetation tiers; adds hysteretic actor/building LOD and render culling;
   and provides a validated lazy Meshopt-capable GLB/glTF replacement seam.
-- KL-24 D-046 ships optimized code-native higher-fidelity models, not a final
-  commissioned art library. It has no authored texture sets, production GLB
-  catalog, skeletal animation clips, impostors, or texture compression. Those
-  are content-production tasks behind the now-locked asset/socket/budget seam.
+- KL-24 D-050 now supplies an editable, validated Blender Falkmoor pilot kit
+  and locked authoring/export conventions, but the three GLBs are deliberately
+  dormant until Asset Phase A1. The game still has no runtime environment
+  catalog, authored texture sets, skeletal animation clips, impostors, KTX2
+  delivery, or commissioned art library.

@@ -475,3 +475,14 @@ sampling remains read-only for an already-current transform. Simulation,
 movement, schedules, navigation, colliders, camera obstruction, protocols,
 saves, and content remain unchanged. Exact rules:
 `STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
+
+## D-050: Blender asset authoring constitution and Falkmoor pilot - LOCKED
+Asset Phase A0 standardizes Blender 5.2.x LTS, one-metre scale, Z-up source to
+Y-up GLB conversion, ground-centred origins, applied transforms, stable asset
+IDs, explicit LOD/collider nodes, Principled material limits, provenance, and
+Git/LFS ownership. A native editable Falkmoor tower/wall/arch kit exports as
+three bounded GLBs and a repository validator parses their actual nodes,
+geometry, bounds, materials, textures, and extras during every build. The
+assets are not registered in the renderer yet; current TypeScript visuals,
+placement, collision, terrain, simulation, networking, and saves remain
+unchanged. Exact rules: `BLENDER_ASSET_AUTHORING_CONTRACT.md`.

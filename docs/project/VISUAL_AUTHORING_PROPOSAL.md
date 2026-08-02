@@ -4,6 +4,13 @@ This is a proposal only. It does not change D-005 terrain authority, content
 placement, collision, or the current runtime until the user and Codex lock a
 bounded implementation phase.
 
+Asset Phase A0 is now locked and implemented by D-050: Blender 5.2 LTS
+conventions, an enforceable manifest/provenance/GLB gate, editable Falkmoor
+tower/wall/arch source, repeatable validated exports, and visual evidence
+exist. The
+runtime catalog, Blender placement bridge, authored terrain, and location
+migration remain the later phases proposed below.
+
 ## Honest current state
 
 - Claurim renders code-native procedural geometry. D-046 can validate and
@@ -79,7 +86,7 @@ The add-on provides one **Claurim** panel rather than requiring code edits:
   content IDs so quests, schedules, maps, saves, and networking do not depend
   on Blender object order.
 
-## Proposed locked phases
+## Remaining proposed locked phases
 
 1. **Asset foundation:** manifest/licensing, runtime world/prop GLB registry,
    KTX2 + Meshopt support, fallbacks, budgets, and hot reload.
