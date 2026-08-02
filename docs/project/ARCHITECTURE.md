@@ -76,6 +76,14 @@ interpolated from timestamped snapshot tracks and bypass that history. Camera
 collision recovery and adaptive raster density are renderer-owned state and
 never enter IWorld authority. See `FRAME_PRESENTATION_STABILITY_CONTRACT.md`.
 
+D-048 keeps adaptive quality in the same renderer-only boundary. Raster
+density responds first; only sustained slow timing at its floor may select
+socket-compatible medium surrounding actors, a shorter building detail band,
+and medium outer-cell decoration. The local player remains high detail, and
+the tier never enters IWorld, collision, protocol, or saves. Query-gated
+`qaPerf` telemetry observes this boundary without writing gameplay state. See
+`FIND7_RENDER_HEADROOM_CONTRACT.md`.
+
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use
 `roomBoundarySegments`; the camera reads `worldObstructionT`. These imports

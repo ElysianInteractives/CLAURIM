@@ -9,7 +9,13 @@ import { CONTENT } from '../sim/content';
 import { CollisionIndex, worldObstructionT } from '../sim/world/collision';
 import { PALETTE } from './palette';
 import { TerrainStreamer, disposeGroup } from './terrain_mesh';
-import { buildContainerMesh, buildDoorMarker, buildInteriorShell, buildProp } from './structures';
+import {
+  buildContainerMesh,
+  buildDoorMarker,
+  buildInteriorShell,
+  buildProp,
+  setBuildingPerformanceDetail,
+} from './structures';
 import {
   buildCharacter,
   buildFirstPersonRig,
@@ -19,10 +25,10 @@ import {
 } from './characters';
 import { CameraBoomSmoother, thirdPersonCameraPose, unobstructedBoomScale } from './camera';
 import { TransformHistory } from './interpolation';
-import { AdaptivePixelRatio } from './frame_pacing';
+import { AdaptiveGeometryDetail, AdaptivePixelRatio } from './frame_pacing';
 import {
-  characterModelDetail,
   characterWithinRenderDistance,
+  presentedCharacterDetail,
   type ModelDetail,
 } from './model_quality';
 
@@ -104,6 +110,7 @@ export class Renderer {
   private projectileTransforms = new TransformHistory(8);
   private cameraBoom = new CameraBoomSmoother();
   private resolution: AdaptivePixelRatio;
+  private geometryDetail = new AdaptiveGeometryDetail();
   private collision = new CollisionIndex(CONTENT);
   private builtSpace: string | null = null;
   private clock = 0;
@@ -141,6 +148,32 @@ export class Renderer {
     this.camera.updateProjectionMatrix();
     void w;
     void h;
+  }
+
+  /** Lightweight QA telemetry. This is read only when `?qaPerf=1` is active;
+   * normal play does not traverse the scene or allocate this snapshot. */
+  diagnostics(): {
+    pixelRatio: number;
+    drawCalls: number;
+    triangles: number;
+    geometries: number;
+    textures: number;
+    visibleMeshes: number;
+    geometryDetail: 'high' | 'performance';
+  } {
+    let visibleMeshes = 0;
+    this.scene.traverseVisible((object) => {
+      if (object instanceof THREE.Mesh) visibleMeshes += 1;
+    });
+    return {
+      pixelRatio: this.webgl.getPixelRatio(),
+      drawCalls: this.webgl.info.render.calls,
+      triangles: this.webgl.info.render.triangles,
+      geometries: this.webgl.info.memory.geometries,
+      textures: this.webgl.info.memory.textures,
+      visibleMeshes,
+      geometryDetail: this.geometryDetail.current(),
+    };
   }
 
   /** Preserve the last two simulation states even when several ticks occur before one render. */
@@ -182,7 +215,14 @@ export class Renderer {
     if (this.builtSpace !== space) this.rebuildSpace(space, exterior);
     this.updateLighting(exterior);
     const displayPlayer = this.updateActors(space, alpha) ?? this.world.player();
-    if (exterior) this.terrain.update(displayPlayer.x, displayPlayer.z, 2);
+    if (exterior) {
+      this.terrain.update(
+        displayPlayer.x,
+        displayPlayer.z,
+        2,
+        this.geometryDetail.current() === 'high' ? 1 : 0,
+      );
+    }
     this.updateProjectiles(space, alpha);
     this.updateGroundAoes();
     this.updateCamera(displayPlayer, dtSec);
@@ -191,8 +231,14 @@ export class Renderer {
       this.webgl.setPixelRatio(nextRatio);
       this.resize();
     }
+    const geometryChange = this.geometryDetail.observe(dtSec, this.resolution.atFloor());
+    if (geometryChange !== null) this.applyBuildingDetailTier(geometryChange);
     this.camera.userData.renderPixelRatio = this.resolution.current();
     this.webgl.render(this.scene, this.camera);
+  }
+
+  private applyBuildingDetailTier(tier: 'high' | 'performance'): void {
+    setBuildingPerformanceDetail(this.spaceGroup, tier === 'performance');
   }
 
   private rebuildSpace(space: string, exterior: boolean): void {
@@ -227,6 +273,7 @@ export class Renderer {
     for (const c of CONTENT.containers) {
       if (c.spaceId === space) this.spaceGroup.add(buildContainerMesh(c, kind, seed));
     }
+    this.applyBuildingDetailTier(this.geometryDetail.current());
     this.builtSpace = space;
   }
 
@@ -297,10 +344,11 @@ export class Renderer {
         }
         continue;
       }
-      const desiredDetail = characterModelDetail(
+      const desiredDetail = presentedCharacterDetail(
         distance,
         mesh?.userData.modelDetail as ModelDetail | undefined,
         localPlayer,
+        this.geometryDetail.current() === 'performance',
       );
       let presentationState: Record<string, unknown> | null = null;
       if (mesh && mesh.userData.modelDetail !== desiredDetail) {
@@ -333,15 +381,29 @@ export class Renderer {
       }
       mesh.userData.lastHealth = v.health;
       const hitFlash = (mesh.userData.hitFlashUntil as number | undefined) ?? 0;
-      mesh.traverse((part) => {
-        if (!(part instanceof THREE.Mesh)) return;
-        const materials = Array.isArray(part.material) ? part.material : [part.material];
-        for (const material of materials) {
-          if (material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) {
-            material.emissive.setHex(hitFlash > this.clock ? 0x7a1711 : 0x000000);
-          }
+      const hitFlashActive = hitFlash > this.clock;
+      if (mesh.userData.hitFlashActive !== hitFlashActive) {
+        let flashMaterials = mesh.userData.hitFlashMaterials as Array<
+          THREE.MeshLambertMaterial | THREE.MeshStandardMaterial
+        > | undefined;
+        if (!flashMaterials) {
+          flashMaterials = [];
+          mesh.traverse((part) => {
+            if (!(part instanceof THREE.Mesh)) return;
+            const materials = Array.isArray(part.material) ? part.material : [part.material];
+            for (const material of materials) {
+              if (material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) {
+                flashMaterials!.push(material);
+              }
+            }
+          });
+          mesh.userData.hitFlashMaterials = flashMaterials;
         }
-      });
+        for (const material of flashMaterials) {
+          material.emissive.setHex(hitFlashActive ? 0x7a1711 : 0x000000);
+        }
+        mesh.userData.hitFlashActive = hitFlashActive;
+      }
       // Hide the player body in first person.
       mesh.visible = !(v.isPlayer && !v.isRemotePlayer && this.firstPerson);
       // Telegraphs render the authoritative danger shape: cone, target pool,

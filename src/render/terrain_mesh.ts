@@ -99,7 +99,7 @@ export class TerrainStreamer {
   }
 
   /** Sync built cells with the active set around (px, pz). */
-  update(px: number, pz: number, radius: number): void {
+  update(px: number, pz: number, radius: number, highDetailRadius = 1): void {
     const ccx = Math.floor(px / CELL_SIZE);
     const ccz = Math.floor(pz / CELL_SIZE);
     const wanted = new Set<string>();
@@ -113,7 +113,7 @@ export class TerrainStreamer {
           this.scene.add(group);
         }
         const group = this.cells.get(key)!;
-        const high = Math.max(Math.abs(dx), Math.abs(dz)) <= 1;
+        const high = Math.max(Math.abs(dx), Math.abs(dz)) <= highDetailRadius;
         const highGroup = group.getObjectByName('decoration-high');
         const mediumGroup = group.getObjectByName('decoration-medium');
         if (highGroup) highGroup.visible = high;

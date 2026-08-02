@@ -75,9 +75,13 @@ Run these in order so one clean save covers the whole session.
   but recover outward continuously; the entire scene must never snap between
   the NPCs and static buildings. Repeat in the Fenharrow Hearth near a wall.
 - If the device is under sustained graphics load, image sharpness may step
-  down before motion stutters and recover only after several stable seconds.
+  down before surrounding model detail steps down; the controlled player must
+  remain high detail. Both recover only after several stable seconds.
   Report continued frame skips with viewport, display scaling, browser, and a
   ten-second recording.
+- For a development performance capture, add `?qaPerf=1` to log five-second
+  FPS/draw/triangle/tier windows. `?qa=thornmere&qaPerf=1&qaWalk=1` supplies a
+  repeatable Find7-style route; `qaWalk` is ignored in production.
 - Approach and leave a resident, hart, briarboar, and settlement building.
   Close silhouettes should be smooth and detailed; distance transitions
   should not flicker repeatedly, drop equipped gear, break poses, or alter

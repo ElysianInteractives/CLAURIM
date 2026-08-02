@@ -450,3 +450,16 @@ their own fixed-step history. Sustained slow rendering lowers only raster pixel
 density and restores it slowly after recovery. Reticle direction, collision
 authority, simulation, protocols, saves, content, geometry, and LOD budgets are
 unchanged. Exact rules: `FRAME_PRESENTATION_STABILITY_CONTRACT.md`.
+
+## D-048: Find7 render headroom and raster-first geometry fallback - LOCKED
+Native-frame inspection of Find7 separates the remaining repeated-frame
+cadence from collision response: the same Thornmere path holds 60 fps under
+telemetry, camera obstruction costs about 0.05 ms, while D-046 assigned 12,732
+triangles to every nearby building shell. High shells retain their rounded
+silhouette but remove invisible narrow-trim bevel density; articulated rigs
+and hit-flash materials cache their per-frame presentation lookups. If timing
+remains below 45 fps after D-047 reaches its raster floor, surrounding actors,
+building distance bands, and outer vegetation use existing medium tiers while
+the local player stays high. Six stable seconds above 57 fps restore normal
+detail. Simulation, colliders, camera authority, content, protocols, and saves
+remain unchanged. Exact rules: `FIND7_RENDER_HEADROOM_CONTRACT.md`.

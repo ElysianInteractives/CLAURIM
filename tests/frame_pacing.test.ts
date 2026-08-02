@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AdaptivePixelRatio } from '../src/render/frame_pacing';
+import { AdaptiveGeometryDetail, AdaptivePixelRatio } from '../src/render/frame_pacing';
 
 describe('QA frame-pacing protection', () => {
   it('reduces raster load only after sustained slow frames', () => {
@@ -30,5 +30,22 @@ describe('QA frame-pacing protection', () => {
     const controller = new AdaptivePixelRatio(1);
     for (let frame = 0; frame < 120; frame++) controller.observe(1 / 30);
     expect(controller.current()).toBe(0.75);
+  });
+
+  it('reduces surrounding geometry only after raster protection is exhausted', () => {
+    const detail = new AdaptiveGeometryDetail();
+    for (let frame = 0; frame < 180; frame++) detail.observe(1 / 30, false);
+    expect(detail.current()).toBe('high');
+
+    for (let frame = 0; frame < 180; frame++) detail.observe(1 / 30, true);
+    expect(detail.current()).toBe('performance');
+  });
+
+  it('restores high geometry only after a long stable recovery', () => {
+    const detail = new AdaptiveGeometryDetail();
+    for (let frame = 0; frame < 180; frame++) detail.observe(1 / 30, true);
+    expect(detail.current()).toBe('performance');
+    for (let frame = 0; frame < 900; frame++) detail.observe(1 / 60, true);
+    expect(detail.current()).toBe('high');
   });
 });

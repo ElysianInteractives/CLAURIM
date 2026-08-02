@@ -23,10 +23,11 @@
 - KL-6 Projectile sweeps stop on terrain-relative oriented solid props and
   implicit interior walls/floors/ceilings. Non-box meshes retain KL-2's
   conservative rectangle.
-- KL-7 Browser QA has a repeatable baseline plus D-047 deterministic camera-
-  discontinuity and adaptive-load tests. There is still no automated pixel-
-  diff or real-device frame-time capture harness; visual changes and hardware-
-  specific performance still require human review on the viewport matrix.
+- KL-7 Browser QA has a repeatable baseline, D-047 deterministic camera tests,
+  and D-048 query-gated live frame/draw/triangle/tier telemetry. There is still
+  no automated pixel diff or reporting-device capture harness; visual changes,
+  browser resource limits, recording overhead, and hardware-specific pacing
+  still require human review on the viewport matrix.
 - KL-8 Player projectile spells now follow bounded center-reticle pitch, but
   melee remains a 1.5 m vertical-envelope arc and bows/NPC projectiles remain
   horizontal-facing. Revisit those actions with a locked ranged/flying or

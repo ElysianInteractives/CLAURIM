@@ -76,6 +76,9 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Sub-step camera-contact refinement, obstruction-safe bounded boom recovery,
   timestamped/read-independent online motion, projectile interpolation, and
   sustained-load adaptive raster density (D-047).
+- Find7 close-structure triangle headroom, cached character presentation work,
+  query-gated frame telemetry, and raster-first surrounding-geometry fallback
+  with a permanently high-detail local player (D-048).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

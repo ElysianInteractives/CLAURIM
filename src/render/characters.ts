@@ -554,6 +554,40 @@ export function buildFirstPersonRig(): THREE.Group {
 const LOCOMOTION_START_SPEED = 0.18;
 const LOCOMOTION_STOP_SPEED = 0.08;
 
+interface CharacterRigCache {
+  torso?: THREE.Object3D;
+  headPivot?: THREE.Object3D;
+  tail?: THREE.Object3D;
+  legFL?: THREE.Object3D;
+  legFR?: THREE.Object3D;
+  legBL?: THREE.Object3D;
+  legBR?: THREE.Object3D;
+  legL?: THREE.Object3D;
+  legR?: THREE.Object3D;
+  kneeL?: THREE.Object3D;
+  kneeR?: THREE.Object3D;
+  armL?: THREE.Object3D;
+  armR?: THREE.Object3D;
+  forearmL?: THREE.Object3D;
+  forearmR?: THREE.Object3D;
+}
+
+function characterRig(group: THREE.Group): CharacterRigCache {
+  const existing = group.userData.rigCache as CharacterRigCache | undefined;
+  if (existing) return existing;
+  const cache: CharacterRigCache = {};
+  for (const name of [
+    'torso', 'headPivot', 'tail',
+    'legFL', 'legFR', 'legBL', 'legBR',
+    'legL', 'legR', 'kneeL', 'kneeR',
+    'armL', 'armR', 'forearmL', 'forearmR',
+  ] as const) {
+    cache[name] = group.getObjectByName(name);
+  }
+  group.userData.rigCache = cache;
+  return cache;
+}
+
 /** Presentation-only locomotion hysteresis. Tiny interpolation/collision
  * corrections stay idle instead of triggering a full procedural walk cycle. */
 export function locomotionMoving(distance: number, dtSec: number, wasMoving: boolean): boolean {
@@ -621,15 +655,16 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
   const baseScaleY = (group.userData.baseScaleY ??= group.scale.y) as number;
   group.scale.y = baseScaleY * (view.sneaking ? 0.85 : 1);
   const stride = moving ? Math.sin(timeSec * 8) : 0;
-  const torso = group.getObjectByName('torso');
-  const headPivot = group.getObjectByName('headPivot');
+  const rig = characterRig(group);
+  const torso = rig.torso;
+  const headPivot = rig.headPivot;
 
   if (group.userData.rigType === 'quadruped') {
     for (const [name, sign] of [['legFL', 1], ['legFR', -1], ['legBL', -1], ['legBR', 1]] as const) {
-      const leg = group.getObjectByName(name);
+      const leg = rig[name];
       if (leg) leg.rotation.x = stride * 0.5 * sign;
     }
-    const tail = group.getObjectByName('tail');
+    const tail = rig.tail;
     if (tail) {
       tail.rotation.y = Math.sin(timeSec * (moving ? 7 : 3)) * (moving ? 0.35 : 0.18);
       tail.rotation.x = moving ? 0.12 : -0.08;
@@ -642,10 +677,10 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
     return;
   }
 
-  const legL = group.getObjectByName('legL');
-  const legR = group.getObjectByName('legR');
-  const kneeL = group.getObjectByName('kneeL');
-  const kneeR = group.getObjectByName('kneeR');
+  const legL = rig.legL;
+  const legR = rig.legR;
+  const kneeL = rig.kneeL;
+  const kneeR = rig.kneeR;
   if (legL) legL.rotation.x = stride * 0.55;
   if (legR) legR.rotation.x = -stride * 0.55;
   if (kneeL) kneeL.rotation.x = moving ? Math.max(0, -stride) * 0.68 : 0;
@@ -660,8 +695,8 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
     headPivot.rotation.x = -view.aimPitch * 0.22;
     headPivot.rotation.y = moving ? -stride * 0.04 : Math.sin(timeSec * 0.7) * 0.025;
   }
-  const armR = group.getObjectByName('armR');
-  const armL = group.getObjectByName('armL');
+  const armR = rig.armR;
+  const armL = rig.armL;
   const pose = characterCombatPose(view, moving, timeSec);
   if (armR) {
     armR.rotation.x = pose.rightX;
@@ -671,8 +706,8 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
     armL.rotation.x = pose.leftX;
     armL.rotation.z = pose.leftZ;
   }
-  const forearmR = group.getObjectByName('forearmR');
-  const forearmL = group.getObjectByName('forearmL');
+  const forearmR = rig.forearmR;
+  const forearmL = rig.forearmL;
   let rightForearmX = 0;
   let rightForearmZ = 0;
   let leftForearmX = 0;

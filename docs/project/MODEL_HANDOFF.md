@@ -190,6 +190,15 @@ interpolation; projectiles gain fixed-step history; adaptive raster density
 protects sustained frame pacing without changing geometry or gameplay. Exact
 boundaries are in `FRAME_PRESENTATION_STABILITY_CONTRACT.md`.
 
+QA Phase P implements D-048 for AV-009 from the native Find7 recording;
+reporting-device replay remains the final visual verification.
+The captured cadence is missed presentation rather than collision pushback.
+Close building shells retain their rounded silhouette at 2,172 triangles
+instead of 12,732, repeated rig/flash hierarchy work is cached, and devices
+that remain below 45 fps at the raster floor use bounded surrounding medium
+tiers while the local player remains high. Exact boundaries are in
+`FIND7_RENDER_HEADROOM_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -274,6 +283,10 @@ session added and TESTED:
   reproduction falls from a 5.86 m one-frame jump to 0.073 m; online remote
   reads are timestamped and side-effect-free; projectiles interpolate; and
   sustained slow rendering adapts only raster density.
+- QA Phase P Find7 headroom (D-048): close building shells fall from 12,732 to
+  2,172 triangles without losing their visible forms; character rig/flash
+  lookups are cached; raster-first geometry fallback protects devices that
+  remain slow while the local player stays high detail.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -296,7 +309,7 @@ session added and TESTED:
   envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 250 tests / 33 suites green (multiplayer sim, server/net,
+- `npm test`: 253 tests / 33 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -315,7 +328,8 @@ session added and TESTED:
   fidelity and socket parity, hysteretic actor/building LOD, asset override
   validation, populated exterior triangle/draw limits, sub-step camera
   contact, bounded collider release, timestamped remote presentation,
-  projectile history, and adaptive frame-pacing protection).
+  projectile history, adaptive frame-pacing protection, Find7 structure
+  headroom, and raster-first surrounding-geometry fallback).
 - Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
@@ -328,11 +342,12 @@ session added and TESTED:
 - `npm run world:tour`: all 5 spaces, 31 routes, and 69 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 762.11 kB / 201.01 kB gzip.
-- D-046 populated exterior metrics are 242/306/282 visible mesh nodes and
-  124,746/107,180/120,110 triangles at Fenharrow, Thornmere, and Weeping
-  Stones. High player/building models are 6,588/12,732 triangles; medium
-  fallbacks are 156/36.
+  build); Vite 8 production JavaScript is 764.48 kB / 201.83 kB gzip.
+- D-048 matrix-correct populated exterior metrics are 260/321/282 visible
+  mesh nodes and 137,562/117,860/120,110 triangles at Fenharrow, Thornmere,
+  and Weeping Stones. High player/building models are 6,588/2,172 triangles;
+  medium fallbacks are 156/36, and all five Thornmere high shells total
+  10,860 triangles.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -350,7 +365,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-047), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-048), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

@@ -6,12 +6,20 @@ import {
   characterWithinRenderDistance,
   missingRigNodes,
   modelTriangleCount,
+  presentedCharacterDetail,
 } from '../src/render/model_quality';
 import {
   clearCharacterModelAssets,
   registerCharacterModelAsset,
 } from '../src/render/model_assets';
-import { buildContainerMesh, buildDoorMarker, buildProp } from '../src/render/structures';
+import {
+  BUILDING_HIGH_DETAIL_DISTANCE,
+  BUILDING_PRESSURE_DETAIL_DISTANCE,
+  buildContainerMesh,
+  buildDoorMarker,
+  buildProp,
+  setBuildingPerformanceDetail,
+} from '../src/render/structures';
 import { TerrainStreamer } from '../src/render/terrain_mesh';
 import { CONTENT } from '../src/sim/content';
 import { Sim } from '../src/sim/sim';
@@ -53,6 +61,8 @@ describe('QA Phase N game-ready model fidelity', () => {
     expect(characterWithinRenderDistance(121, true)).toBe(false);
     expect(characterWithinRenderDistance(101, false)).toBe(false);
     expect(characterWithinRenderDistance(1_000, false, true)).toBe(true);
+    expect(presentedCharacterDetail(1, 'high', false, true)).toBe('medium');
+    expect(presentedCharacterDetail(1_000, 'medium', true, true)).toBe('high');
   });
 
   it('accepts validated registered asset overrides behind the same build seam', () => {
@@ -78,13 +88,37 @@ describe('QA Phase N game-ready model fidelity', () => {
 
     expect(lod).toBeInstanceOf(THREE.LOD);
     expect(lod.levels).toHaveLength(2);
-    expect(lod.levels[1].distance).toBe(55);
+    expect(lod.levels[1].distance).toBe(BUILDING_HIGH_DETAIL_DISTANCE);
     expect(lod.levels[1].hysteresis).toBe(0.15);
     const highTriangles = modelTriangleCount(lod.levels[0].object);
     const mediumTriangles = modelTriangleCount(lod.levels[1].object);
-    expect(highTriangles).toBeGreaterThanOrEqual(8_000);
-    expect(highTriangles).toBeGreaterThan(mediumTriangles * 20);
-    expect(highTriangles).toBeLessThanOrEqual(40_000);
+    expect(highTriangles).toBeGreaterThanOrEqual(2_000);
+    expect(highTriangles).toBeGreaterThan(mediumTriangles * 40);
+    expect(highTriangles).toBeLessThanOrEqual(3_000);
+
+    setBuildingPerformanceDetail(group, true);
+    expect(lod.levels[1].distance).toBe(BUILDING_PRESSURE_DETAIL_DISTANCE);
+    setBuildingPerformanceDetail(group, false);
+    expect(lod.levels[1].distance).toBe(BUILDING_HIGH_DETAIL_DISTANCE);
+  });
+
+  it('keeps the five-building Find7 Thornmere view inside its close-detail headroom', () => {
+    const thornmereIds = [
+      'thornmere_lodge',
+      'thornmere_house_a',
+      'thornmere_granary',
+      'thornmere_house_b',
+      'thornmere_stable',
+    ];
+    const total = thornmereIds.reduce((triangles, id) => {
+      const prop = CONTENT.props.find((candidate) => candidate.id === id)!;
+      const group = buildProp(prop, 'exterior', 42);
+      const lod = group.getObjectByName('building-lod') as THREE.LOD;
+      return triangles + modelTriangleCount(lod.levels[0].object);
+    }, 0);
+
+    expect(total).toBeGreaterThanOrEqual(10_000);
+    expect(total).toBeLessThanOrEqual(12_000);
   });
 
   it('keeps dense vegetation instanced while switching nine near cells to high geometry', () => {
@@ -102,6 +136,10 @@ describe('QA Phase N game-ready model fidelity', () => {
     expect(modelTriangleCount(detailedCell.getObjectByName('decoration-high')!))
       .toBeGreaterThan(modelTriangleCount(detailedCell.getObjectByName('decoration-medium')!));
     expect(scene.children.some((cell) => cell.getObjectByName('tree-tops-high') instanceof THREE.InstancedMesh)).toBe(true);
+
+    terrain.update(42, 158, 2, 0);
+    expect(cells.filter((cell) => cell.getObjectByName('decoration-high')!.visible)).toHaveLength(1);
+    expect(cells.filter((cell) => cell.getObjectByName('decoration-medium')!.visible)).toHaveLength(24);
   });
 
   it('holds complete populated exterior checkpoints inside the fidelity render budget', () => {
@@ -142,6 +180,9 @@ describe('QA Phase N game-ready model fidelity', () => {
 
       const camera = new THREE.PerspectiveCamera();
       camera.position.set(checkpoint.x, 3, checkpoint.z);
+      // LOD reads matrixWorld, not the mutable position fields. Keeping the
+      // camera matrix stale silently measures every checkpoint from origin.
+      camera.updateMatrixWorld(true);
       scene.updateMatrixWorld(true);
       scene.traverse((object) => {
         if (object instanceof THREE.LOD) object.update(camera);

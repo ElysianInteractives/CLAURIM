@@ -26,8 +26,9 @@ mean unbounded film-resolution meshes.
 - Building shells use a high-detail close tier with rounded masonry, pitched
   roof panels, trim, window panes, and chimney detail. At 55 m they transition
   to a 36-triangle silhouette shell through a Three.js LOD with 15 percent
-  hysteresis. Authored doors and conservative gameplay colliders are
-  unchanged.
+  hysteresis. D-048 removes invisible narrow-trim bevel density and bounds a
+  close shell to 2,000-3,000 triangles without removing those visible forms.
+  Authored doors and conservative gameplay colliders are unchanged.
 - Every deterministic D-043 vegetation placement remains present. The near
   3x3 cells use smoother shared trunk, canopy, crown, and rock geometry; the
   outer 16 streamed cells use medium geometry. Both tiers remain instanced and
@@ -49,7 +50,11 @@ mean unbounded film-resolution meshes.
 - A populated Fenharrow, Thornmere, or Weeping Stones exterior checkpoint may
   expose no more than 325 visible mesh nodes and 175,000 visible triangles.
 - D-045's 25-cell terrain limits remain no more than 300 mesh nodes and 40
-  unique geometries. One high-detail building may not exceed 40,000 triangles.
+  unique geometries. One high-detail building must remain within 2,000-3,000
+  triangles; all five Thornmere shells together remain within 10,000-12,000.
+- Normal-load high fidelity remains the default. D-048 may use existing medium
+  actor/building/vegetation tiers only after raster density reaches its floor
+  and sustained timing remains below 45 fps. The local player stays high.
 - Geometry LOD, material choice, asset loading, and actor render culling are
   presentation-only. Simple content colliders remain authoritative; visual
   triangle shape never enters navigation, projectiles, combat, saves, or the

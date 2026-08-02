@@ -20,6 +20,9 @@ const caveFloor = new THREE.MeshStandardMaterial({ color: PALETTE.caveFloor, rou
 const chestMat = new THREE.MeshStandardMaterial({ color: PALETTE.leather, roughness: 0.8 });
 const windowMat = new THREE.MeshStandardMaterial({ color: 0x253641, roughness: 0.2, metalness: 0.15 });
 
+export const BUILDING_HIGH_DETAIL_DISTANCE = 55;
+export const BUILDING_PRESSURE_DETAIL_DISTANCE = 28;
+
 function groundY(spaceKind: 'exterior' | 'interior', x: number, z: number, seed: number): number {
   return spaceKind === 'exterior' ? terrainHeight(x, z, seed) : 0;
 }
@@ -34,9 +37,13 @@ interface RoundedPart {
   rz?: number;
 }
 
-function mergedRoundedParts(parts: readonly RoundedPart[], radius: number): THREE.BufferGeometry {
+function mergedRoundedParts(
+  parts: readonly RoundedPart[],
+  radius: number,
+  segments = 3,
+): THREE.BufferGeometry {
   const geometries = parts.map((part) => {
-    const geometry = new RoundedBoxGeometry(part.sx, part.sy, part.sz, 3, radius);
+    const geometry = new RoundedBoxGeometry(part.sx, part.sy, part.sz, segments, radius);
     geometry.applyMatrix4(new THREE.Matrix4().compose(
       new THREE.Vector3(part.x, part.y, part.z),
       new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), part.rz ?? 0),
@@ -47,6 +54,22 @@ function mergedRoundedParts(parts: readonly RoundedPart[], radius: number): THRE
   const merged = mergeGeometries(geometries, false);
   for (const geometry of geometries) geometry.dispose();
   if (!merged) throw new Error('building detail geometry could not be merged');
+  return merged;
+}
+
+function mergedBoxParts(parts: readonly RoundedPart[]): THREE.BufferGeometry {
+  const geometries = parts.map((part) => {
+    const geometry = new THREE.BoxGeometry(part.sx, part.sy, part.sz);
+    geometry.applyMatrix4(new THREE.Matrix4().compose(
+      new THREE.Vector3(part.x, part.y, part.z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), part.rz ?? 0),
+      new THREE.Vector3(1, 1, 1),
+    ));
+    return geometry;
+  });
+  const merged = mergeGeometries(geometries, false);
+  for (const geometry of geometries) geometry.dispose();
+  if (!merged) throw new Error('building trim geometry could not be merged');
   return merged;
 }
 
@@ -66,9 +89,13 @@ function buildBuildingLevel(p: PropDef, highDetail: boolean): THREE.Group {
     return level;
   }
 
-  const walls = new THREE.Mesh(new RoundedBoxGeometry(p.sx, wallH, p.sz, 4, 0.12), wood);
+  // Broad silhouettes retain rounded high-detail surfaces. Narrow trim uses
+  // merged boxes: sub-centimetre bevel tessellation is invisible at the
+  // gameplay camera but previously consumed most of each building's GPU
+  // budget (Find7).
+  const walls = new THREE.Mesh(new RoundedBoxGeometry(p.sx, wallH, p.sz, 3, 0.12), wood);
   walls.position.y = wallH / 2;
-  const base = new THREE.Mesh(new RoundedBoxGeometry(p.sx * 1.05, 0.9, p.sz * 1.05, 3, 0.1), stone);
+  const base = new THREE.Mesh(new RoundedBoxGeometry(p.sx * 1.05, 0.9, p.sz * 1.05, 2, 0.1), stone);
   base.position.y = 0.1;
 
   const roofWidth = p.sx * 1.15;
@@ -79,7 +106,7 @@ function buildBuildingLevel(p: PropDef, highDetail: boolean): THREE.Group {
   const roof = new THREE.Mesh(mergedRoundedParts([
     { sx: slope + 0.2, sy: 0.18, sz: roofDepth, x: -halfRoof / 2, y: wallH + roofH / 2, z: 0, rz: roofAngle },
     { sx: slope + 0.2, sy: 0.18, sz: roofDepth, x: halfRoof / 2, y: wallH + roofH / 2, z: 0, rz: -roofAngle },
-  ], 0.045), roofMat);
+  ], 0.045, 2), roofMat);
 
   const beam = Math.max(0.14, Math.min(0.24, p.sx * 0.025));
   const trimParts: RoundedPart[] = [];
@@ -105,9 +132,9 @@ function buildBuildingLevel(p: PropDef, highDetail: boolean): THREE.Group {
       { sx: 0.07, sy: paneHeight, sz: 0.08, x: x + paneWidth / 2, y: wallH * 0.58, z: p.sz / 2 + 0.08 },
     );
   }
-  const trim = new THREE.Mesh(mergedRoundedParts(trimParts, 0.025), woodDark);
-  const windows = new THREE.Mesh(mergedRoundedParts(panes, 0.02), windowMat);
-  const chimney = new THREE.Mesh(new RoundedBoxGeometry(0.55, 1.4, 0.55, 3, 0.06), stone);
+  const trim = new THREE.Mesh(mergedBoxParts(trimParts), woodDark);
+  const windows = new THREE.Mesh(mergedRoundedParts(panes, 0.02, 1), windowMat);
+  const chimney = new THREE.Mesh(new RoundedBoxGeometry(0.55, 1.4, 0.55, 2, 0.06), stone);
   chimney.position.set(p.sx * 0.28, wallH + roofH * 0.72, 0);
   level.add(base, walls, roof, trim, windows, chimney);
   return level;
@@ -125,7 +152,7 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     const lod = new THREE.LOD();
     lod.name = 'building-lod';
     lod.addLevel(buildBuildingLevel(p, true), 0);
-    lod.addLevel(buildBuildingLevel(p, false), 55, 0.15);
+    lod.addLevel(buildBuildingLevel(p, false), BUILDING_HIGH_DETAIL_DISTANCE, 0.15);
     g.add(lod);
   } else if (p.kind.startsWith('ruin')) {
     if (p.kind === 'ruin_tower') {
@@ -276,6 +303,20 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     g.add(box);
   }
   return g;
+}
+
+/** Changes only the visual distance band; authored transforms and colliders
+ * are independent of the render LOD. */
+export function setBuildingPerformanceDetail(root: THREE.Object3D, enabled: boolean): void {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.LOD) || object.name !== 'building-lod') return;
+    const medium = object.levels[1];
+    if (medium) {
+      medium.distance = enabled
+        ? BUILDING_PRESSURE_DETAIL_DISTANCE
+        : BUILDING_HIGH_DETAIL_DISTANCE;
+    }
+  });
 }
 
 function coneRoof(sx: number, h: number, sz: number): THREE.BufferGeometry {

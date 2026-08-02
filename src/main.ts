@@ -34,6 +34,8 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
 const wsUrl = params.get('ws');
 const online = wsUrl !== null;
+const qaPerf = params.get('qaPerf') === '1';
+const qaWalk = qaPerf && import.meta.env.DEV && params.get('qaWalk') === '1';
 
 let sim: Sim | null = null;
 let world: IWorld;
@@ -157,9 +159,14 @@ addEventListener('resize', () => renderer.resize());
 
 let accumulator = 0;
 let last = performance.now();
+let qaPerfWindowStart = last;
+let qaPerfFrames = 0;
+let qaPerfMissedFrames = 0;
+let qaPerfWorstMs = 0;
 
 function frame(now: number): void {
-  const dtSec = Math.min(0.1, (now - last) / 1000);
+  const rawFrameMs = now - last;
+  const dtSec = Math.min(0.1, rawFrameMs / 1000);
   last = now;
 
   // One-shot commands.
@@ -230,7 +237,7 @@ function frame(now: number): void {
   // Fixed-step simulation (offline: advances the local sim; online: sends the
   // input to the server and advances local prediction).
   accumulator += dtSec;
-  const axes = menuOpen ? { x: 0, z: 0 } : input.moveAxes();
+  const axes = qaWalk ? { x: 0, z: 1 } : menuOpen ? { x: 0, z: 0 } : input.moveAxes();
   const worldReady = !clientWorld || clientWorld.ready();
   while (accumulator >= DT) {
     accumulator -= DT;
@@ -256,6 +263,24 @@ function frame(now: number): void {
   }
   combatAudio.update(world.spaceKind(world.currentSpace()), world.gameHours());
   renderer.render(dtSec, accumulator / DT);
+  if (qaPerf) {
+    qaPerfFrames += 1;
+    if (rawFrameMs > 25) qaPerfMissedFrames += 1;
+    qaPerfWorstMs = Math.max(qaPerfWorstMs, rawFrameMs);
+    const elapsedMs = now - qaPerfWindowStart;
+    if (elapsedMs >= 5_000) {
+      console.info('[qa-perf]', JSON.stringify({
+        fps: (qaPerfFrames * 1_000) / elapsedMs,
+        missedFramePercent: (qaPerfMissedFrames / Math.max(1, qaPerfFrames)) * 100,
+        worstFrameMs: qaPerfWorstMs,
+        ...renderer.diagnostics(),
+      }));
+      qaPerfWindowStart = now;
+      qaPerfFrames = 0;
+      qaPerfMissedFrames = 0;
+      qaPerfWorstMs = 0;
+    }
+  }
   requestAnimationFrame(frame);
 }
 

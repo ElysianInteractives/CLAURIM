@@ -30,6 +30,18 @@ export function characterModelDetail(
   return distance < CHARACTER_HIGH_DETAIL_ENTER ? 'high' : 'medium';
 }
 
+/** Device-pressure override. The controlled local model remains high while
+ * surrounding actors use their socket-compatible medium rig. */
+export function presentedCharacterDetail(
+  distance: number,
+  current: ModelDetail | undefined,
+  localPlayer: boolean,
+  performanceTier: boolean,
+): ModelDetail {
+  if (performanceTier && !localPlayer) return 'medium';
+  return characterModelDetail(distance, current, localPlayer);
+}
+
 /** Fog-aware actor culling with hysteresis; gameplay visibility is unaffected. */
 export function characterWithinRenderDistance(
   distance: number,

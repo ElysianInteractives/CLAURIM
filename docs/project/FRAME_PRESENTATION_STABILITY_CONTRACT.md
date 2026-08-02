@@ -40,6 +40,9 @@ rule, save, protocol, or world placement changes.
   UI CSS resolution remain unchanged.
 - Quality recovers by 0.25 only after four seconds of sustained faster-than-
   58-fps timing. Background-sized gaps are ignored.
+- D-048 extends this raster-first response only when a device remains below
+  45 fps at the pixel-ratio floor. Its bounded surrounding-geometry fallback
+  and Find7 budgets are defined in `FIND7_RENDER_HEADROOM_CONTRACT.md`.
 
 ## Acceptance
 

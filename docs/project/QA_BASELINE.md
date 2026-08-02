@@ -840,6 +840,43 @@ earlier exterior repair had not eliminated the whole visible symptom.
   Thornmere exterior, the tight Fenharrow Hearth, and first person. Non-debug
   logs are empty.
 
+### QA Phase P Find7 render-headroom exit
+
+QA Phase P implements the AV-009 repair and locks D-048 against the exact
+reporting-device capture in `Find7.mp4`. Final `VERIFIED` status requires a
+clean replay on that device.
+
+- The 22.21-second, 30-fps source contains 663 frames. Native-timing decode
+  finds 172 near-identical adjacent transitions, with the visible cadence
+  clustering during otherwise continuous movement rather than showing player
+  transform reversals.
+- The shared camera/actor obstruction query remains authoritative and
+  unchanged. Its measured Thornmere building case costs about 0.05 ms per
+  query, excluding collision work as the frame-budget cause of this capture.
+- A close building shell falls from 12,732 to 2,172 triangles while retaining
+  its wall, roof, beam, window, base, and chimney silhouette. The five close
+  Thornmere shells fall from 63,660 to 10,860 triangles. The same authored
+  transforms and colliders remain in force.
+- Cached character articulation nodes and hit-flash materials remove repeated
+  recursive hierarchy scans from ordinary actor frames. If a device remains
+  below 45 fps after raster density reaches its floor, only surrounding
+  character, building, and terrain detail steps down; the local player stays
+  high detail. High geometry returns only after six stable seconds above
+  57 fps.
+- The model-budget test now updates the camera matrix before evaluating LODs,
+  closing a stale-matrix gap. Corrected populated metrics are 260 meshes /
+  137,562 triangles at Fenharrow, 321 / 117,860 at Thornmere, and 282 /
+  120,110 at Weeping Stones, all inside the locked 325 / 175,000 limits.
+- Query-gated `?qaPerf=1` telemetry reports frame cadence and renderer load.
+  The development-only `?qa=thornmere&qaPerf=1&qaWalk=1` route holds steady
+  60 fps with zero over-25-ms frames after load; the idle Find7 view falls
+  from 80,320 to 59,200 submitted triangles without a visible scene change.
+- `npm run gate` is green at 33 suites / 253 tests. Vite 8 transforms 68
+  modules and produces 764.48 kB JavaScript / 201.83 kB gzip. The 5-space /
+  31-route / 69-placement world tour, renderer-independent AI comparison, all
+  four network profiles, and two-client WebSocket smoke remain green. Direct
+  browser logs contain no warnings or errors.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -876,6 +913,7 @@ earlier exterior repair had not eliminated the whole visible symptom.
 | QA-EXTERIOR-STABILITY | Dense exterior draw submission and adjacent-tick presentation | `tests/world_content_expansion.test.ts`, `tests/presentation.test.ts`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=weeping-stones` | <=300 terrain draw nodes, <=40 unique geometries, retained decoration density, multi-tick history, visible residents/wildlife/buildings, browser logs |
 | QA-HIGH-FIDELITY | Bounded close detail, stable LOD/socket transitions, and populated exterior cost | `tests/model_fidelity.test.ts`, `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/world_content_expansion.test.ts`, `npm run ai:bench`, `npm run world:tour`, `npm run gate`; development-only `?qa=gear`, `?qa=thornmere-harts`, `?qa=thornmere-tamsin`, and `?qa=weeping-stones` | high/medium triangle ratios and socket parity, LOD/cull hysteresis, asset validation seam, <=325 populated mesh nodes, <=175,000 visible triangles, first-/third-person equipment, close/far buildings, wildlife/vegetation, browser logs |
 | QA-FRAME-STABILITY | Whole-scene camera continuity, frame-rate-neutral online motion, projectile history, and sustained-load protection | `tests/camera_stability.test.ts`, `tests/camera_reticle.test.ts`, `tests/world_traversal.test.ts`, `tests/remote_presentation.test.ts`, `tests/frame_pacing.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`, `npm run world:tour`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=inn-shift-change` | <0.1 m Fenharrow camera frame step, refined contact, obstruction flicker/release bounds, read-independent remote interpolation, projectile adjacent-tick motion, adaptive raster thresholds, exterior/interior/first-person browser logs |
+| QA-FIND7 | Recorded-frame cadence and close-model headroom | Decode Find7 at native timing; `tests/model_fidelity.test.ts`, `tests/frame_pacing.test.ts`, `npm run gate`; development-only `?qa=thornmere&qaPerf=1&qaWalk=1` | repeated/near-identical frame count, 2,000-3,000 triangles per close shell, 10,000-12,000 for five Thornmere shells, matrix-correct populated budgets, raster-first tier thresholds, local player high, telemetry at steady 60 fps with zero missed frames |
 
 ## Browser visual-QA procedure
 
