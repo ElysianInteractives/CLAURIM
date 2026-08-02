@@ -6,6 +6,11 @@ presentation ownership and performance; simulation, collision, navigation,
 combat, networking, saves, and authored world density remain authoritative and
 unchanged.
 
+User retesting after D-046 exposed a separate whole-camera discontinuity and
+online read-count smoothing defect. D-047 supersedes the complete jitter exit
+while retaining every D-045 density/draw/history requirement; see
+`FRAME_PRESENTATION_STABILITY_CONTRACT.md`.
+
 ## Terrain decoration
 
 - Every streamed exterior cell retains `TREE_TRIES_PER_CELL >= 90` and the

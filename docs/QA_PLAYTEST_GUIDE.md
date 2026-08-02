@@ -70,6 +70,14 @@ Run these in order so one clean save covers the whole session.
   should remain smooth; static structures must not shiver against the terrain
   or horizon. If it recurs, record at least ten seconds with the viewport and
   exact location noted.
+- At Fenharrow, stand close enough that a building compresses the third-person
+  camera, then walk/turn until it clears. The camera must pull inward promptly
+  but recover outward continuously; the entire scene must never snap between
+  the NPCs and static buildings. Repeat in the Fenharrow Hearth near a wall.
+- If the device is under sustained graphics load, image sharpness may step
+  down before motion stutters and recover only after several stable seconds.
+  Report continued frame skips with viewport, display scaling, browser, and a
+  ten-second recording.
 - Approach and leave a resident, hart, briarboar, and settlement building.
   Close silhouettes should be smooth and detailed; distance transitions
   should not flicker repeatedly, drop equipped gear, break poses, or alter

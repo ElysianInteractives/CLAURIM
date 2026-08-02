@@ -17,8 +17,9 @@ import {
   poseFirstPersonRig,
   syncCharacterEquipment,
 } from './characters';
-import { thirdPersonCameraPose, unobstructedBoomScale } from './camera';
+import { CameraBoomSmoother, thirdPersonCameraPose, unobstructedBoomScale } from './camera';
 import { TransformHistory } from './interpolation';
+import { AdaptivePixelRatio } from './frame_pacing';
 import {
   characterModelDetail,
   characterWithinRenderDistance,
@@ -100,6 +101,9 @@ export class Renderer {
   private aoeMeshes = new Map<number, THREE.Mesh>();
   private telegraphRings = new Map<number, THREE.Mesh>();
   private actorTransforms = new TransformHistory();
+  private projectileTransforms = new TransformHistory(8);
+  private cameraBoom = new CameraBoomSmoother();
+  private resolution: AdaptivePixelRatio;
   private collision = new CollisionIndex(CONTENT);
   private builtSpace: string | null = null;
   private clock = 0;
@@ -116,7 +120,9 @@ export class Renderer {
     canvas: HTMLCanvasElement,
   ) {
     this.webgl = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.webgl.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1));
+    const nativeRatio = Math.min(2, globalThis.devicePixelRatio || 1);
+    this.resolution = new AdaptivePixelRatio(nativeRatio);
+    this.webgl.setPixelRatio(this.resolution.current());
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, 900);
     this.firstPersonRig = buildFirstPersonRig();
     this.firstPersonRig.visible = false;
@@ -142,6 +148,7 @@ export class Renderer {
     const space = this.world.currentSpace();
     const seen = new Set<number>();
     for (const actor of this.world.actorsInSpace()) {
+      if (actor.presentationInterpolated) continue;
       seen.add(actor.id);
       this.actorTransforms.observe(actor.id, {
         spaceId: space,
@@ -152,6 +159,18 @@ export class Renderer {
       });
     }
     this.actorTransforms.retain(seen);
+    const seenProjectiles = new Set<number>();
+    for (const projectile of this.world.projectilesInSpace()) {
+      seenProjectiles.add(projectile.id);
+      this.projectileTransforms.observe(projectile.id, {
+        spaceId: space,
+        x: projectile.x,
+        y: projectile.y,
+        z: projectile.z,
+        yaw: 0,
+      });
+    }
+    this.projectileTransforms.retain(seenProjectiles);
   }
 
   /** Full render pass for the current frame. */
@@ -164,9 +183,15 @@ export class Renderer {
     this.updateLighting(exterior);
     const displayPlayer = this.updateActors(space, alpha) ?? this.world.player();
     if (exterior) this.terrain.update(displayPlayer.x, displayPlayer.z, 2);
-    this.updateProjectiles();
+    this.updateProjectiles(space, alpha);
     this.updateGroundAoes();
-    this.updateCamera(displayPlayer);
+    this.updateCamera(displayPlayer, dtSec);
+    const nextRatio = this.resolution.observe(dtSec);
+    if (nextRatio !== null) {
+      this.webgl.setPixelRatio(nextRatio);
+      this.resize();
+    }
+    this.camera.userData.renderPixelRatio = this.resolution.current();
     this.webgl.render(this.scene, this.camera);
   }
 
@@ -182,6 +207,8 @@ export class Renderer {
     }
     this.actorMeshes.clear();
     this.actorTransforms.clear();
+    this.projectileTransforms.clear();
+    this.cameraBoom.reset();
     if (!exterior) this.terrain.clear();
 
     const seed = this.world.seed();
@@ -231,16 +258,20 @@ export class Renderer {
     const views = this.world.actorsInSpace();
     const focus = this.world.player();
     const seen = new Set<number>();
+    const fixedTransformIds = new Set<number>();
     let displayPlayer: ActorView | null = null;
     for (const v of views) {
       seen.add(v.id);
-      const transform = this.actorTransforms.sample(v.id, {
-        spaceId: space,
-        x: v.x,
-        y: v.y,
-        z: v.z,
-        yaw: v.yaw,
-      }, alpha);
+      const transform = v.presentationInterpolated
+        ? { spaceId: space, x: v.x, y: v.y, z: v.z, yaw: v.yaw }
+        : this.actorTransforms.sample(v.id, {
+          spaceId: space,
+          x: v.x,
+          y: v.y,
+          z: v.z,
+          yaw: v.yaw,
+        }, alpha);
+      if (!v.presentationInterpolated) fixedTransformIds.add(v.id);
       const displayView: ActorView = {
         ...v,
         x: transform.x,
@@ -357,11 +388,11 @@ export class Renderer {
         this.telegraphRings.delete(id);
       }
     }
-    this.actorTransforms.retain(seen);
+    this.actorTransforms.retain(fixedTransformIds);
     return displayPlayer;
   }
 
-  private updateProjectiles(): void {
+  private updateProjectiles(space: string, alpha: number): void {
     const views = this.world.projectilesInSpace();
     const seen = new Set<number>();
     for (const v of views) {
@@ -376,7 +407,14 @@ export class Renderer {
         this.projectileMeshes.set(v.id, mesh);
         this.scene.add(mesh);
       }
-      mesh.position.set(v.x, v.y, v.z);
+      const transform = this.projectileTransforms.sample(v.id, {
+        spaceId: space,
+        x: v.x,
+        y: v.y,
+        z: v.z,
+        yaw: 0,
+      }, alpha);
+      mesh.position.set(transform.x, transform.y, transform.z);
     }
     for (const [id, mesh] of [...this.projectileMeshes]) {
       if (!seen.has(id)) {
@@ -385,6 +423,7 @@ export class Renderer {
         this.projectileMeshes.delete(id);
       }
     }
+    this.projectileTransforms.retain(seen);
   }
 
   private updateGroundAoes(): void {
@@ -414,11 +453,12 @@ export class Renderer {
     }
   }
 
-  private updateCamera(player: ActorView): void {
+  private updateCamera(player: ActorView, dtSec: number): void {
     const eye = 1.62;
     const eyePosition = { x: player.x, y: player.y + eye, z: player.z };
     const playerMesh = this.actorMeshes.get(player.id);
     if (this.firstPerson) {
+      this.cameraBoom.reset();
       if (playerMesh) playerMesh.visible = false;
       this.firstPersonRig.visible = true;
       syncCharacterEquipment(this.firstPersonRig, player, 'viewmodel');
@@ -452,13 +492,17 @@ export class Renderer {
       desiredPose.position.y - eyePosition.y,
       desiredPose.position.z - eyePosition.z,
     );
+    const obstructionScale = unobstructedBoomScale(obstruction, desiredLength);
+    const stableScale = this.cameraBoom.update(obstructionScale, desiredLength, dtSec);
     const pose = thirdPersonCameraPose(
       eyePosition,
       this.cameraYaw,
       this.cameraPitch,
       this.cameraDistance,
-      unobstructedBoomScale(obstruction, desiredLength),
+      stableScale,
     );
+    this.camera.userData.obstructionScale = obstructionScale;
+    this.camera.userData.stableBoomScale = stableScale;
     const cx = pose.position.x;
     const cz = pose.position.z;
     let cy = pose.position.y;

@@ -437,3 +437,16 @@ have test-locked triangle/draw limits. LOD, culling, materials, and asset
 loading remain presentation-only; content colliders, simulation, protocols,
 saves, and authored placement are unchanged. Exact rules:
 `HIGH_FIDELITY_RENDERING_CONTRACT.md`.
+
+## D-047: Continuous camera recovery and frame-rate-neutral presentation - LOCKED
+D-045's batching and adjacent-tick capture were necessary but did not cover a
+third-person obstruction disappearing at a collider edge: the boom could
+expand by almost six metres in one frame, shifting actors and static buildings
+together. Camera contact is now sub-step refined, newly blocked motion remains
+immediate, and clear recovery is stability-gated and speed-bounded. Remote
+actors use timestamped snapshot tracks whose reads never advance motion;
+already-interpolated views bypass fixed-tick interpolation. Projectiles receive
+their own fixed-step history. Sustained slow rendering lowers only raster pixel
+density and restores it slowly after recovery. Reticle direction, collision
+authority, simulation, protocols, saves, content, geometry, and LOD budgets are
+unchanged. Exact rules: `FRAME_PRESENTATION_STABILITY_CONTRACT.md`.

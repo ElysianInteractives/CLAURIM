@@ -812,6 +812,34 @@ without changing D-045 stability or any gameplay/network/save authority.
   Thornmere structures, Thornmere wildlife, and Weeping Stones vegetation at
   desktop viewports; warning/error logs are empty.
 
+### QA Phase O frame-presentation-stability exit
+
+QA Phase O resolves AV-008 and locks D-047 after user retesting proved the
+earlier exterior repair had not eliminated the whole visible symptom.
+
+- The exact Fenharrow path reproduces a 5.86 m one-frame raw third-person
+  camera expansion when a building collider clears. Sub-step contact and
+  stability-gated, 5 m/s bounded release reduce the maximum to 0.073 m per
+  60 Hz frame—normal player travel for that frame and an approximately 80x
+  reduction.
+- Online non-local actors interpolate by snapshot timestamp over measured
+  50-250 ms intervals. Repeated `actorsInSpace()` reads return identical
+  positions at one time, and already-interpolated views bypass the fixed-tick
+  renderer path. Projectiles now retain adjacent fixed-step history.
+- Raster pixel density steps down only after 0.75 seconds of sustained slower-
+  than-50-fps timing and recovers after four seconds above 58 fps. Background
+  gaps, simulation, geometry detail, UI resolution, and LOD rules are not
+  changed.
+- `npm run gate` is green at 33 suites / 250 tests. Vite 8 transforms 68
+  modules and produces 762.11 kB JavaScript / 201.01 kB gzip.
+- `npm run net:bench` preserves all four profiles, `npm run qa:ws` passes two
+  real clients with ack 30 / 4.4 m / mutual visibility / session safety,
+  `npm run world:tour` passes 5 spaces / 31 routes / 69 placements, and the AI
+  comparison is unchanged.
+- Direct browser checks traverse the Fenharrow collider edge, a moving
+  Thornmere exterior, the tight Fenharrow Hearth, and first person. Non-debug
+  logs are empty.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -847,6 +875,7 @@ without changing D-045 stability or any gameplay/network/save authority.
 | QA-NARRATIVE | Original Thornmere dialogue, Gloamroot/Weeping Stones side quests, and visible turn-ins | `tests/world_narrative_expansion.test.ts`, `tests/quest_playthrough.test.ts`, `tests/content_catalog.test.ts`, `tests/save.test.ts`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere-tamsin` at 1280 and `?qa=thornmere-vael` at 1920 | dialogue acquisition/branches, reach/kill/talk progression, per-character reward, save/load, pre-credit return entry, journal, conditional reactions, originality, responsive layout/logs |
 | QA-EXTERIOR-STABILITY | Dense exterior draw submission and adjacent-tick presentation | `tests/world_content_expansion.test.ts`, `tests/presentation.test.ts`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=weeping-stones` | <=300 terrain draw nodes, <=40 unique geometries, retained decoration density, multi-tick history, visible residents/wildlife/buildings, browser logs |
 | QA-HIGH-FIDELITY | Bounded close detail, stable LOD/socket transitions, and populated exterior cost | `tests/model_fidelity.test.ts`, `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/world_content_expansion.test.ts`, `npm run ai:bench`, `npm run world:tour`, `npm run gate`; development-only `?qa=gear`, `?qa=thornmere-harts`, `?qa=thornmere-tamsin`, and `?qa=weeping-stones` | high/medium triangle ratios and socket parity, LOD/cull hysteresis, asset validation seam, <=325 populated mesh nodes, <=175,000 visible triangles, first-/third-person equipment, close/far buildings, wildlife/vegetation, browser logs |
+| QA-FRAME-STABILITY | Whole-scene camera continuity, frame-rate-neutral online motion, projectile history, and sustained-load protection | `tests/camera_stability.test.ts`, `tests/camera_reticle.test.ts`, `tests/world_traversal.test.ts`, `tests/remote_presentation.test.ts`, `tests/frame_pacing.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`, `npm run world:tour`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=inn-shift-change` | <0.1 m Fenharrow camera frame step, refined contact, obstruction flicker/release bounds, read-independent remote interpolation, projectile adjacent-tick motion, adaptive raster thresholds, exterior/interior/first-person browser logs |
 
 ## Browser visual-QA procedure
 

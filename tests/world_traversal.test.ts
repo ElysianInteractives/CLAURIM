@@ -15,6 +15,7 @@ import {
 } from '../src/sim/world/collision';
 import { findPath } from '../src/sim/navigation/navgrid';
 import {
+  groundHeight,
   interiorOf,
   isTerrainWalkable,
   MAX_WADING_DEPTH,
@@ -63,6 +64,22 @@ describe('Plan 3 oriented environmental collision', () => {
     expect(hit).not.toBeNull();
     expect(hit!).toBeGreaterThan(0);
     expect(hit!).toBeLessThan(1);
+  });
+
+  it('refines terrain camera contact below the coarse five-centimetre march', () => {
+    const from = { x: -480, y: 78.34232721355299, z: -480 };
+    const to = { x: -480.9, y: 79.82675096908012, z: -485.8134745302639 };
+    const hit = worldObstructionT(CONTENT, colliders, 'kaldwyn', from, to, 20260730, 0.22);
+    expect(hit).not.toBeNull();
+    const clearance = (t: number): number => {
+      const x = from.x + (to.x - from.x) * t;
+      const y = from.y + (to.y - from.y) * t;
+      const z = from.z + (to.z - from.z) * t;
+      return groundHeight(CONTENT, 'kaldwyn', x, z, 20260730) + 0.22 - y;
+    };
+    expect(Math.abs(clearance(hit!))).toBeLessThan(0.001);
+    expect(clearance(hit! - 0.0001)).toBeLessThanOrEqual(0);
+    expect(clearance(hit! + 0.0001)).toBeGreaterThan(0);
   });
 
   it('substeps long movement so an actor cannot tunnel through the smithy', () => {

@@ -70,6 +70,12 @@ two-tier instanced vegetation, and a validated lazy GLB/glTF replacement
 registry. Selection state never enters IWorld, simulation, snapshots, saves,
 collision, or navigation. See `HIGH_FIDELITY_RENDERING_CONTRACT.md`.
 
+D-047 separates presentation clocks explicitly. Offline actors/projectiles
+consume adjacent fixed-tick history; online non-local actors arrive already
+interpolated from timestamped snapshot tracks and bypass that history. Camera
+collision recovery and adaptive raster density are renderer-owned state and
+never enter IWorld authority. See `FRAME_PRESENTATION_STABILITY_CONTRACT.md`.
+
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use
 `roomBoundarySegments`; the camera reads `worldObstructionT`. These imports

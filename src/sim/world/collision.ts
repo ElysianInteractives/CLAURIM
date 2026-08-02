@@ -215,17 +215,34 @@ export function worldObstructionT(
   const layout = interiorOf(content, spaceId);
   const length = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
   const samples = Math.max(1, Math.ceil(length / 0.05));
-  for (let index = 1; index <= samples; index++) {
-    const t = index / samples;
-    if (earliest !== null && t >= earliest) break;
+  const sampleBlocked = (t: number): boolean => {
     const x = from.x + (to.x - from.x) * t;
     const y = from.y + (to.y - from.y) * t;
     const z = from.z + (to.z - from.z) * t;
     if (layout) {
-      if (!bodyFitsInRooms(layout, x, z, padding)) return t;
-      if (y < padding || y > layout.ceilingY - padding) return t;
+      if (!bodyFitsInRooms(layout, x, z, padding)) return true;
+      if (y < padding || y > layout.ceilingY - padding) return true;
     }
-    if (groundHeight(content, spaceId, x, z, seed) + padding > y) return t;
+    return groundHeight(content, spaceId, x, z, seed) + padding > y;
+  };
+  for (let index = 1; index <= samples; index++) {
+    const t = index / samples;
+    if (earliest !== null && t >= earliest) break;
+    if (sampleBlocked(t)) {
+      // The 5 cm march finds a conservative bracket. Refine its entry so a
+      // camera moving over terrain or an interior boundary does not jump in
+      // visible 5 cm increments. This does not discover new obstructions or
+      // change the authoritative yes/no result; it only improves hit precision.
+      let clearT = (index - 1) / samples;
+      let blockedT = t;
+      if (sampleBlocked(clearT)) return clearT;
+      for (let iteration = 0; iteration < 9; iteration++) {
+        const middle = (clearT + blockedT) / 2;
+        if (sampleBlocked(middle)) blockedT = middle;
+        else clearT = middle;
+      }
+      return blockedT;
+    }
   }
   return earliest;
 }

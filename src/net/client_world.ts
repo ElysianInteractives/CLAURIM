@@ -72,8 +72,14 @@ export interface ClientNetworkDiagnostics {
 
 /** Position error beyond which the client snaps instead of smoothing. */
 const SNAP_DISTANCE = 3.0;
-/** Remote-actor smoothing factor per frame (exponential interpolation). */
-const REMOTE_SMOOTH = 0.35;
+const REMOTE_INTERPOLATION_DEFAULT_MS = 100;
+
+interface RemotePresentation {
+  from: { x: number; y: number; z: number; yaw: number };
+  target: { x: number; y: number; z: number; yaw: number };
+  startedAtMs: number;
+  durationMs: number;
+}
 
 export class ClientWorld implements IWorld {
   private transport: ClientTransport | null = null;
@@ -88,8 +94,9 @@ export class ClientWorld implements IWorld {
   private predicted: PredictedMovement = { x: 0, y: 0, z: 0, stamina: 0, sprinting: false };
   private predictedAimPitch = 0;
   private predictedSpace = '';
-  /** Smoothed display positions for remote actors. */
-  private display = new Map<number, { x: number; y: number; z: number; yaw: number }>();
+  /** Timestamped interpolation tracks for remote actors. Reads are pure: HUD
+   * and renderer queries cannot advance motion by calling more often. */
+  private display = new Map<number, RemotePresentation>();
   rejectedReason: string | null = null;
   closed = false;
   private sessionStartedAtMs = 0;
@@ -100,6 +107,7 @@ export class ClientWorld implements IWorld {
   private lastCorrectionMeters = 0;
   private maxCorrectionMeters = 0;
   private snapshotBytes = 0;
+  private lastSnapshotReceivedAtMs = 0;
 
   constructor(
     public charId = '',
@@ -135,6 +143,7 @@ export class ClientWorld implements IWorld {
     this.lastCorrectionMeters = 0;
     this.maxCorrectionMeters = 0;
     this.snapshotBytes = 0;
+    this.lastSnapshotReceivedAtMs = 0;
     this.sendMsg({ t: 'hello', protocol: PROTOCOL_VERSION, charId: this.charId });
   }
 
@@ -184,6 +193,26 @@ export class ClientWorld implements IWorld {
           this.lastAckLatencyMs = Math.max(0, receivedAtMs - latestAcknowledged.sentAtMs);
           this.maxAckLatencyMs = Math.max(this.maxAckLatencyMs, this.lastAckLatencyMs);
         }
+        const interpolationMs = this.lastSnapshotReceivedAtMs > 0
+          ? Math.max(50, Math.min(250, receivedAtMs - this.lastSnapshotReceivedAtMs))
+          : REMOTE_INTERPOLATION_DEFAULT_MS;
+        const selfId = msg.self.entityId;
+        const visibleRemoteIds = new Set<number>();
+        for (const actor of msg.actors) {
+          if (actor.id === selfId) continue;
+          visibleRemoteIds.add(actor.id);
+          const target = { x: actor.x, y: actor.y, z: actor.z, yaw: actor.yaw };
+          const existing = this.display.get(actor.id);
+          const current = existing ? this.sampleRemote(existing, receivedAtMs) : target;
+          const distance = Math.hypot(target.x - current.x, target.y - current.y, target.z - current.z);
+          this.display.set(actor.id, distance > SNAP_DISTANCE
+            ? { from: target, target, startedAtMs: receivedAtMs, durationMs: interpolationMs }
+            : { from: current, target, startedAtMs: receivedAtMs, durationMs: interpolationMs });
+        }
+        for (const id of this.display.keys()) {
+          if (!visibleRemoteIds.has(id)) this.display.delete(id);
+        }
+        this.lastSnapshotReceivedAtMs = receivedAtMs;
         this.snapshot = msg;
         this.eventBuffer.push(...msg.events);
         // Reconciliation (D-015): drop acknowledged inputs, then re-run the
@@ -439,9 +468,8 @@ export class ClientWorld implements IWorld {
     if (!this.snapshot) return [];
     const selfId = this.snapshot.self.entityId;
     const out: ActorView[] = [];
-    const seen = new Set<number>();
+    const displayAtMs = this.now();
     for (const a of this.snapshot.actors) {
-      seen.add(a.id);
       if (a.id === selfId) {
         // Local player renders at the PREDICTED position.
         out.push({
@@ -453,25 +481,29 @@ export class ClientWorld implements IWorld {
         });
         continue;
       }
-      // Remote smoothing: move the display position toward the latest server
-      // position each frame.
-      let d = this.display.get(a.id);
-      if (!d) {
-        d = { x: a.x, y: a.y, z: a.z, yaw: a.yaw };
-        this.display.set(a.id, d);
-      } else {
-        d.x += (a.x - d.x) * REMOTE_SMOOTH;
-        d.y += (a.y - d.y) * REMOTE_SMOOTH;
-        d.z += (a.z - d.z) * REMOTE_SMOOTH;
-        const dy = ((a.yaw - d.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        d.yaw += dy * REMOTE_SMOOTH;
-      }
-      out.push({ ...a, x: d.x, y: d.y, z: d.z, yaw: d.yaw });
-    }
-    for (const id of [...this.display.keys()]) {
-      if (!seen.has(id)) this.display.delete(id);
+      const track = this.display.get(a.id);
+      const d = track ? this.sampleRemote(track, displayAtMs) : a;
+      out.push({
+        ...a,
+        x: d.x,
+        y: d.y,
+        z: d.z,
+        yaw: d.yaw,
+        presentationInterpolated: true,
+      });
     }
     return out;
+  }
+
+  private sampleRemote(track: RemotePresentation, atMs: number): RemotePresentation['target'] {
+    const t = Math.max(0, Math.min(1, (atMs - track.startedAtMs) / Math.max(1, track.durationMs)));
+    const yawDelta = ((track.target.yaw - track.from.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    return {
+      x: track.from.x + (track.target.x - track.from.x) * t,
+      y: track.from.y + (track.target.y - track.from.y) * t,
+      z: track.from.z + (track.target.z - track.from.z) * t,
+      yaw: track.from.yaw + yawDelta * t,
+    };
   }
 
   projectilesInSpace(): ProjectileView[] {

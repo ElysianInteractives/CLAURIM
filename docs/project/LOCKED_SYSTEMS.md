@@ -73,6 +73,9 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Game-ready high/medium model tiers, stable socket parity, hysteretic actor
   and building LOD, instanced vegetation tiers, populated exterior budgets,
   and a validated lazy GLB/glTF replacement seam (D-046).
+- Sub-step camera-contact refinement, obstruction-safe bounded boom recovery,
+  timestamped/read-independent online motion, projectile interpolation, and
+  sustained-load adaptive raster density (D-047).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

@@ -53,6 +53,9 @@ export interface ActorView {
   y: number;
   z: number;
   yaw: number;
+  /** Host-provided timestamp interpolation is already applied. The renderer
+   * must not run this transform through fixed-tick interpolation again. */
+  presentationInterpolated?: boolean;
   /** Vertical center-reticle angle in radians. */
   aimPitch: number;
   dead: boolean;

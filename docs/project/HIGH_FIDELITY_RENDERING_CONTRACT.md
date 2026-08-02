@@ -61,4 +61,5 @@ Acceptance requires focused fidelity/socket/LOD/asset-seam tests, populated
 exterior budget tests, the D-045 stability suite, `npm run ai:bench`,
 `npm run world:tour`, the full `npm run gate`, and direct third-person,
 first-person, settlement, vegetation, and wildlife browser checks with clean
-warning/error logs.
+warning/error logs. Any asset-density change also reruns D-047
+`QA-FRAME-STABILITY`.

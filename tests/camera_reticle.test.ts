@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CAMERA_RELEASE_MAX_METERS_PER_SECOND,
+  CameraBoomSmoother,
   THIRD_PERSON_SHOULDER_OFFSET,
   thirdPersonCameraPose,
   unobstructedBoomScale,
@@ -48,5 +50,30 @@ describe('QA Phase D third-person reticle visibility reproduction', () => {
     expect(unobstructedBoomScale(0.5, 6, 0.2)).toBeCloseTo(0.5 - 0.2 / 6);
     expect(thirdPersonCameraPose({ x: 0, y: 1.62, z: 0 }, 0, 0, 6, 0.4).bodyVisible).toBe(true);
     expect(thirdPersonCameraPose({ x: 0, y: 1.62, z: 0 }, 0, 0, 6, 0.1).bodyVisible).toBe(false);
+  });
+
+  it('releases a cleared camera gradually and re-enters obstruction immediately', () => {
+    const smoother = new CameraBoomSmoother();
+    const frame = 1 / 60;
+    expect(smoother.update(0.05, 6, frame)).toBe(0.05);
+
+    // A collider edge changing from blocked to clear cannot move the camera
+    // several metres in one rendered frame.
+    for (let index = 0; index < 4; index++) smoother.update(1, 6, frame);
+    const released = smoother.update(1, 6, frame);
+    expect((released - 0.05) * 6).toBeLessThanOrEqual(CAMERA_RELEASE_MAX_METERS_PER_SECOND * frame * 2);
+    expect(released).toBeLessThan(0.2);
+
+    expect(smoother.update(0.03, 6, frame)).toBe(0.03);
+  });
+
+  it('does not chase an alternating clear signal at a collider edge', () => {
+    const smoother = new CameraBoomSmoother();
+    const frame = 1 / 60;
+    smoother.update(0.08, 6, frame);
+    for (let index = 0; index < 12; index++) {
+      smoother.update(index % 2 === 0 ? 1 : 0.08, 6, frame);
+    }
+    expect(smoother.update(0.08, 6, frame)).toBeCloseTo(0.08);
   });
 });
