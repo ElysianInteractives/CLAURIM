@@ -88,6 +88,9 @@ primitives; terrain is vertex-colored by biome. A GLB asset pipeline
 (ClaudeCraft's image-to-glb style) is the planned upgrade path and must slot
 in behind `buildCharacter`/`buildProp` without touching the sim.
 
+D-046 supersedes D-011's fidelity and external-asset status while preserving
+its palette ownership and strict renderer/simulation boundary.
+
 ## D-013: Multiplayer state model - LOCKED (2026-07-31 MMO pivot)
 One authoritative Sim hosts many characters: `players: Map<CharacterId,
 EntityId>`, per-character keyed state (journals, spells, container loot,
@@ -377,6 +380,9 @@ protocol v6, and saves remain unchanged. A future GLB pipeline may replace
 geometry behind these stable nodes. Exact rules:
 `CHARACTER_PRESENTATION_CONTRACT.md`.
 
+D-046 preserves these nodes while replacing the old low-detail geometry and
+providing the validated GLB/glTF replacement pipeline.
+
 ## D-042: Primer-gated magic and original disciplines - LOCKED
 Fresh characters begin with no known or equipped magic. Authoritative tome
 items teach one validated spell, are consumed exactly once, never auto-equip,
@@ -417,3 +423,17 @@ slow animation frame interpolates only the final adjacent tick pair. All state
 remains renderer/host-only; simulation, protocol, saves, collision, content
 density, and code-native model fidelity are unchanged. Exact rules:
 `EXTERIOR_RENDER_STABILITY_CONTRACT.md`.
+
+## D-046: Bounded high-fidelity models and hysteretic LOD - LOCKED
+The renderer ships game-ready high/medium code-native character, wildlife,
+structure, and vegetation tiers behind D-041's stable rig/equipment sockets.
+The local player remains high detail; non-local character detail and render
+presence, and building shell detail, use explicit hysteretic distance bands.
+Near/outer vegetation cells retain every deterministic placement through two
+shared-geometry instance tiers. A lazy Meshopt-capable GLB/glTF registry may
+replace an archetype only after required-node and triangle-budget validation.
+Populated exterior checkpoints, individual archetypes, and building shells
+have test-locked triangle/draw limits. LOD, culling, materials, and asset
+loading remain presentation-only; content colliders, simulation, protocols,
+saves, and authored placement are unchanged. Exact rules:
+`HIGH_FIDELITY_RENDERING_CONTRACT.md`.

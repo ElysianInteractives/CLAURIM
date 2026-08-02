@@ -64,6 +64,12 @@ Streams terrain cells, swaps space contents on `currentSpace()` change,
 poses characters from ActorView state. May not import `Sim` (only
 `game/sim_world.ts` may) and may not write back.
 
+D-046 adds a renderer-owned model-quality layer: stable high/medium rig
+factories, hysteretic actor/building selection, distance presentation culling,
+two-tier instanced vegetation, and a validated lazy GLB/glTF replacement
+registry. Selection state never enters IWorld, simulation, snapshots, saves,
+collision, or navigation. See `HIGH_FIDELITY_RENDERING_CONTRACT.md`.
+
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use
 `roomBoundarySegments`; the camera reads `worldObstructionT`. These imports
@@ -83,3 +89,5 @@ Loads validate, migrate linearly, and reject rather than half-load.
 - Terrain cell build: 33x33 vertex grid + scatter; 25 cells live worst case.
 - D-045 batches repeated terrain decoration per cell and locks the four named
   25-cell checkpoints to <=300 mesh draw nodes and <=40 unique geometries.
+- D-046 additionally locks populated exterior presentation to <=325 visible
+  mesh nodes and <=175,000 visible triangles, with per-archetype limits.

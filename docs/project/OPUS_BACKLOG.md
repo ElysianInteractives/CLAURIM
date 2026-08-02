@@ -108,12 +108,12 @@ route to the scheduled anchor. Both modes have focused tests.
 ## OB-9 FABLE_REQUIRED - Weather system in sim (state, perception/movement
 hooks, render fx), final audio asset/spatial-source pipeline, crafting systems,
 follower package, crime/bounty, dragon flight architecture, multi-region
-streaming, GLB asset pipeline. Do not start these from a ticket; they need
-design.
+streaming, and a commissioned model/texture/animation content library behind
+the D-046 asset seam. Do not start these from a ticket; they need design.
 
 ## OB-10 HUMAN_DECISION - Name check ("Claurim" trademark search), license
 choice for the repo (MIT vs proprietary), distribution target (itch/steam/web),
-art direction sign-off once the GLB pipeline is proposed.
+art direction sign-off before commissioning the production model library.
 
 ## OB-11 DONE - Content test template
 Plan 8 adds `tests/content_catalog.test.ts`, covering numeric envelopes,

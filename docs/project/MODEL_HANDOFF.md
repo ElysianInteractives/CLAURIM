@@ -174,6 +174,14 @@ interpolation. Named 25-cell budgets and multi-tick frame tests prevent the
 open-terrain jitter regression. Exact boundaries are in
 `EXTERIOR_RENDER_STABILITY_CONTRACT.md`.
 
+QA Phase N verifies AV-007 through D-046: close characters, equipment,
+wildlife, buildings, and vegetation use bounded higher-fidelity geometry;
+stable medium rigs and structure/vegetation tiers reduce distant cost through
+hysteretic LOD and presentation-only actor culling. A validated lazy
+Meshopt-capable GLB/glTF registry now supports future authored replacements
+without changing the D-041 sockets. Exact boundaries are in
+`HIGH_FIDELITY_RENDERING_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -249,6 +257,11 @@ session added and TESTED:
   instance-batched with shared geometry, the named 25-cell checkpoints fall
   to 56-189 draw nodes, and every successful fixed step advances renderer-only
   transform history before the next animation frame.
+- QA Phase N high-fidelity rendering (D-046): the local player stays on the
+  high tier; remote actors, building shells, and outer vegetation use stable
+  hysteretic detail bands; populated exterior checkpoints stay within 325
+  visible mesh nodes and 175,000 triangles; and optional GLB/glTF assets are
+  socket- and budget-validated before replacing live procedural models.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -271,7 +284,7 @@ session added and TESTED:
   envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 234 tests / 29 suites green (multiplayer sim, server/net,
+- `npm test`: 241 tests / 30 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -286,7 +299,9 @@ session added and TESTED:
   expanded original geography, wildlife behavior/presentation, cavern
   arrival/readability, complete Thornmere quest playthroughs, save/load,
   rewards, conditional reactions, visible return scenes, dense-exterior draw
-  budgets, and multi-step adjacent-tick presentation history).
+  budgets, multi-step adjacent-tick presentation history, high/medium model
+  fidelity and socket parity, hysteretic actor/building LOD, asset override
+  validation, and populated exterior triangle/draw limits).
 - Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
@@ -299,7 +314,11 @@ session added and TESTED:
 - `npm run world:tour`: all 5 spaces, 31 routes, and 69 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 727.31 kB / 192.00 kB gzip.
+  build); Vite 8 production JavaScript is 759.01 kB / 200.07 kB gzip.
+- D-046 populated exterior metrics are 242/306/282 visible mesh nodes and
+  124,746/107,180/120,110 triangles at Fenharrow, Thornmere, and Weeping
+  Stones. High player/building models are 6,588/12,732 triangles; medium
+  fallbacks are 156/36.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -317,7 +336,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-045), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-046), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

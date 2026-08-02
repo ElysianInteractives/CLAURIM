@@ -3,22 +3,114 @@
 // gameplay decisions here.
 
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { ContainerDef, DoorDef, InteriorLayout, PropDef } from '../sim/content/schema';
 import { terrainHeight } from '../sim/world/terrain';
 import { roomBoundarySegments } from '../sim/world/spaces';
 import { PALETTE } from './palette';
 
-const wood = new THREE.MeshLambertMaterial({ color: PALETTE.woodWall });
-const woodDark = new THREE.MeshLambertMaterial({ color: PALETTE.woodDark });
-const roofMat = new THREE.MeshLambertMaterial({ color: PALETTE.roof });
-const stone = new THREE.MeshLambertMaterial({ color: PALETTE.stone });
-const ruin = new THREE.MeshLambertMaterial({ color: PALETTE.ruinStone });
-const caveRock = new THREE.MeshLambertMaterial({ color: PALETTE.caveRock, side: THREE.BackSide });
-const caveFloor = new THREE.MeshLambertMaterial({ color: PALETTE.caveFloor });
-const chestMat = new THREE.MeshLambertMaterial({ color: PALETTE.leather });
+const wood = new THREE.MeshStandardMaterial({ color: PALETTE.woodWall, roughness: 0.88 });
+const woodDark = new THREE.MeshStandardMaterial({ color: PALETTE.woodDark, roughness: 0.82 });
+const roofMat = new THREE.MeshStandardMaterial({ color: PALETTE.roof, roughness: 0.9 });
+const stone = new THREE.MeshStandardMaterial({ color: PALETTE.stone, roughness: 0.96 });
+const ruin = new THREE.MeshStandardMaterial({ color: PALETTE.ruinStone, roughness: 0.97 });
+const caveRock = new THREE.MeshStandardMaterial({ color: PALETTE.caveRock, roughness: 1, side: THREE.BackSide });
+const caveFloor = new THREE.MeshStandardMaterial({ color: PALETTE.caveFloor, roughness: 1 });
+const chestMat = new THREE.MeshStandardMaterial({ color: PALETTE.leather, roughness: 0.8 });
+const windowMat = new THREE.MeshStandardMaterial({ color: 0x253641, roughness: 0.2, metalness: 0.15 });
 
 function groundY(spaceKind: 'exterior' | 'interior', x: number, z: number, seed: number): number {
   return spaceKind === 'exterior' ? terrainHeight(x, z, seed) : 0;
+}
+
+interface RoundedPart {
+  sx: number;
+  sy: number;
+  sz: number;
+  x: number;
+  y: number;
+  z: number;
+  rz?: number;
+}
+
+function mergedRoundedParts(parts: readonly RoundedPart[], radius: number): THREE.BufferGeometry {
+  const geometries = parts.map((part) => {
+    const geometry = new RoundedBoxGeometry(part.sx, part.sy, part.sz, 3, radius);
+    geometry.applyMatrix4(new THREE.Matrix4().compose(
+      new THREE.Vector3(part.x, part.y, part.z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), part.rz ?? 0),
+      new THREE.Vector3(1, 1, 1),
+    ));
+    return geometry;
+  });
+  const merged = mergeGeometries(geometries, false);
+  for (const geometry of geometries) geometry.dispose();
+  if (!merged) throw new Error('building detail geometry could not be merged');
+  return merged;
+}
+
+function buildBuildingLevel(p: PropDef, highDetail: boolean): THREE.Group {
+  const level = new THREE.Group();
+  level.name = highDetail ? 'building-high' : 'building-medium';
+  const wallH = p.sy * 0.65;
+  const roofH = p.sy * 0.45;
+  if (!highDetail) {
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(p.sx, wallH, p.sz), wood);
+    walls.position.y = wallH / 2;
+    const roof = new THREE.Mesh(coneRoof(p.sx * 1.15, roofH, p.sz * 1.15), roofMat);
+    roof.position.y = wallH + roofH / 2;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(p.sx * 1.05, 0.9, p.sz * 1.05), stone);
+    base.position.y = 0.1;
+    level.add(base, walls, roof);
+    return level;
+  }
+
+  const walls = new THREE.Mesh(new RoundedBoxGeometry(p.sx, wallH, p.sz, 4, 0.12), wood);
+  walls.position.y = wallH / 2;
+  const base = new THREE.Mesh(new RoundedBoxGeometry(p.sx * 1.05, 0.9, p.sz * 1.05, 3, 0.1), stone);
+  base.position.y = 0.1;
+
+  const roofWidth = p.sx * 1.15;
+  const roofDepth = p.sz * 1.18;
+  const halfRoof = roofWidth / 2;
+  const slope = Math.hypot(halfRoof, roofH);
+  const roofAngle = Math.atan2(roofH, halfRoof);
+  const roof = new THREE.Mesh(mergedRoundedParts([
+    { sx: slope + 0.2, sy: 0.18, sz: roofDepth, x: -halfRoof / 2, y: wallH + roofH / 2, z: 0, rz: roofAngle },
+    { sx: slope + 0.2, sy: 0.18, sz: roofDepth, x: halfRoof / 2, y: wallH + roofH / 2, z: 0, rz: -roofAngle },
+  ], 0.045), roofMat);
+
+  const beam = Math.max(0.14, Math.min(0.24, p.sx * 0.025));
+  const trimParts: RoundedPart[] = [];
+  for (const x of [-p.sx * 0.47, p.sx * 0.47]) {
+    for (const z of [-p.sz * 0.47, p.sz * 0.47]) {
+      trimParts.push({ sx: beam, sy: wallH + 0.12, sz: beam, x, y: wallH / 2, z });
+    }
+  }
+  trimParts.push(
+    { sx: p.sx * 0.94, sy: beam, sz: beam, x: 0, y: wallH * 0.48, z: p.sz * 0.505 },
+    { sx: p.sx * 0.94, sy: beam, sz: beam, x: 0, y: wallH * 0.48, z: -p.sz * 0.505 },
+  );
+
+  const paneWidth = Math.max(0.55, Math.min(1, p.sx * 0.12));
+  const paneHeight = Math.max(0.7, Math.min(1.2, wallH * 0.28));
+  const panes: RoundedPart[] = [];
+  for (const x of [-p.sx * 0.24, p.sx * 0.24]) {
+    panes.push({ sx: paneWidth, sy: paneHeight, sz: 0.055, x, y: wallH * 0.58, z: p.sz / 2 + 0.055 });
+    trimParts.push(
+      { sx: paneWidth + 0.14, sy: 0.07, sz: 0.08, x, y: wallH * 0.58 - paneHeight / 2, z: p.sz / 2 + 0.08 },
+      { sx: paneWidth + 0.14, sy: 0.07, sz: 0.08, x, y: wallH * 0.58 + paneHeight / 2, z: p.sz / 2 + 0.08 },
+      { sx: 0.07, sy: paneHeight, sz: 0.08, x: x - paneWidth / 2, y: wallH * 0.58, z: p.sz / 2 + 0.08 },
+      { sx: 0.07, sy: paneHeight, sz: 0.08, x: x + paneWidth / 2, y: wallH * 0.58, z: p.sz / 2 + 0.08 },
+    );
+  }
+  const trim = new THREE.Mesh(mergedRoundedParts(trimParts, 0.025), woodDark);
+  const windows = new THREE.Mesh(mergedRoundedParts(panes, 0.02), windowMat);
+  const chimney = new THREE.Mesh(new RoundedBoxGeometry(0.55, 1.4, 0.55, 3, 0.06), stone);
+  chimney.position.set(p.sx * 0.28, wallH + roofH * 0.72, 0);
+  level.add(base, walls, roof, trim, windows, chimney);
+  return level;
 }
 
 /** Build one prop. Buildings get walls + a gabled roof; other kinds get
@@ -30,19 +122,14 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
   g.rotation.y = p.yaw ?? 0;
 
   if (p.kind.startsWith('building')) {
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(p.sx, p.sy * 0.65, p.sz), wood);
-    walls.position.y = p.sy * 0.325;
-    const roofH = p.sy * 0.45;
-    const roof = new THREE.Mesh(coneRoof(p.sx * 1.15, roofH, p.sz * 1.15), roofMat);
-    roof.position.y = p.sy * 0.65 + roofH / 2;
-    // Sink the foundation below the shared pad as well as rising above it;
-    // this avoids a daylight seam even at terrain triangle boundaries.
-    const base = new THREE.Mesh(new THREE.BoxGeometry(p.sx * 1.05, 0.9, p.sz * 1.05), stone);
-    base.position.y = 0.1;
-    g.add(base, walls, roof);
+    const lod = new THREE.LOD();
+    lod.name = 'building-lod';
+    lod.addLevel(buildBuildingLevel(p, true), 0);
+    lod.addLevel(buildBuildingLevel(p, false), 55, 0.15);
+    g.add(lod);
   } else if (p.kind.startsWith('ruin')) {
     if (p.kind === 'ruin_tower') {
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.5, p.sx * 0.6, p.sy, 8, 1, true), ruin);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.5, p.sx * 0.6, p.sy, 18, 1, true), ruin);
       tower.position.y = p.sy / 2;
       // Broken crown: a few crenel blocks.
       for (let i = 0; i < 5; i++) {
@@ -70,10 +157,10 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     tent.position.y = p.sy / 2;
     g.add(tent);
   } else if (p.kind === 'campfire' || p.kind === 'forge' || p.kind === 'hearth') {
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.7, 0.3, 7), stone);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.7, 0.3, 16), stone);
     ring.position.y = 0.15;
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(p.sx * 0.35, 6, 5),
+      new THREE.SphereGeometry(p.sx * 0.35, 16, 10),
       new THREE.MeshBasicMaterial({ color: PALETTE.ember }),
     );
     glow.position.y = 0.35;
@@ -94,33 +181,33 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     dark.position.set(0, (p.sy - 0.8) / 2, -0.3);
     g.add(l, r, lintel, dark);
   } else if (p.kind === 'pillar') {
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.5, p.sx * 0.6, p.sy, 6), stone);
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.5, p.sx * 0.6, p.sy, 16), stone);
     pillar.position.y = p.sy / 2;
     g.add(pillar);
   } else if (p.kind === 'standing_stone') {
-    const monolith = new THREE.Mesh(new THREE.DodecahedronGeometry(0.65, 0), ruin);
+    const monolith = new THREE.Mesh(new THREE.DodecahedronGeometry(0.65, 1), ruin);
     monolith.scale.set(p.sx * 0.65, p.sy * 0.62, p.sz * 0.65);
     monolith.position.y = p.sy * 0.48;
     monolith.rotation.z = 0.05;
     g.add(monolith);
   } else if (p.kind === 'shrine_basin') {
-    const basin = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.55, p.sx * 0.72, p.sy, 8), ruin);
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.55, p.sx * 0.72, p.sy, 18), ruin);
     basin.position.y = p.sy / 2;
     const hollow = new THREE.Mesh(
-      new THREE.CircleGeometry(p.sx * 0.42, 8),
+      new THREE.CircleGeometry(p.sx * 0.42, 24),
       new THREE.MeshBasicMaterial({ color: 0x26333a, side: THREE.DoubleSide }),
     );
     hollow.rotation.x = -Math.PI / 2;
     hollow.position.y = p.sy + 0.01;
     g.add(basin, hollow);
   } else if (p.kind === 'root_column') {
-    const root = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.35, p.sx * 0.58, p.sy, 6), woodDark);
+    const root = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.35, p.sx * 0.58, p.sy, 16), woodDark);
     root.position.y = p.sy / 2;
     root.rotation.z = 0.08;
     g.add(root);
   } else if (p.kind === 'nest') {
     for (let i = 0; i < 9; i++) {
-      const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, p.sx * 0.75, 5), woodDark);
+      const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, p.sx * 0.75, 10), woodDark);
       branch.rotation.set(Math.PI / 2, (i / 9) * Math.PI * 2, (i % 2 ? 1 : -1) * 0.12);
       branch.position.y = 0.18 + (i % 3) * 0.04;
       g.add(branch);
@@ -128,9 +215,9 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
   } else if (p.kind === 'glowcaps') {
     const glowMat = new THREE.MeshBasicMaterial({ color: 0x73d7bd });
     for (let i = 0; i < 5; i++) {
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.35 + i * 0.05, 5), caveFloor);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.35 + i * 0.05, 12), caveFloor);
       stem.position.set((i - 2) * 0.18, 0.18 + i * 0.025, (i % 2 ? 1 : -1) * 0.12);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13 + (i % 2) * 0.04, 6, 4), glowMat);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13 + (i % 2) * 0.04, 14, 8), glowMat);
       cap.scale.y = 0.45;
       cap.position.set(stem.position.x, stem.position.y * 2 + 0.05, stem.position.z);
       g.add(stem, cap);
@@ -139,14 +226,14 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     light.position.y = 1.2;
     g.add(light);
   } else if (p.kind === 'well') {
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.6, 1, 8, 1, true), stone);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(p.sx * 0.6, p.sx * 0.6, 1, 20, 1, true), stone);
     rim.position.y = 0.35;
-    const rimCap = new THREE.Mesh(new THREE.RingGeometry(p.sx * 0.42, p.sx * 0.68, 8), stone);
+    const rimCap = new THREE.Mesh(new THREE.RingGeometry(p.sx * 0.42, p.sx * 0.68, 24), stone);
     rimCap.name = 'well-rim-cap';
     rimCap.rotation.x = -Math.PI / 2;
     rimCap.position.y = 0.85;
     const shaft = new THREE.Mesh(
-      new THREE.CircleGeometry(p.sx * 0.42, 8),
+      new THREE.CircleGeometry(p.sx * 0.42, 24),
       new THREE.MeshBasicMaterial({ color: 0x080a0c, side: THREE.DoubleSide }),
     );
     shaft.name = 'well-shaft';
@@ -162,7 +249,7 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
   } else if (p.kind === 'cart') {
     const bed = new THREE.Mesh(new THREE.BoxGeometry(p.sx, 0.5, p.sz), wood);
     bed.position.y = 0.8;
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8), woodDark);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 18), woodDark);
     wheel.rotation.z = Math.PI / 2;
     wheel.position.set(0, 0.5, p.sz / 2);
     const wheel2 = wheel.clone();
@@ -178,7 +265,7 @@ export function buildProp(p: PropDef, spaceKind: 'exterior' | 'interior', seed: 
     const slab = new THREE.Mesh(new THREE.BoxGeometry(p.sx, p.sy, p.sz), ruin);
     slab.position.y = p.sy / 2;
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.25, 6, 5),
+      new THREE.SphereGeometry(0.25, 16, 10),
       new THREE.MeshBasicMaterial({ color: PALETTE.wightGlow }),
     );
     glow.position.y = p.sy + 0.3;
@@ -204,7 +291,7 @@ export function buildDoorMarker(d: DoorDef, spaceKind: 'exterior' | 'interior', 
   const y = groundY(spaceKind, d.x, d.z, seed);
   g.position.set(d.x, y, d.z);
   g.rotation.y = d.yaw ?? 0;
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 0.3), woodDark);
+  const frame = new THREE.Mesh(new RoundedBoxGeometry(1.6, 2.6, 0.3, 3, 0.06), woodDark);
   frame.position.y = 1.3;
   const panel = new THREE.Mesh(
     new THREE.PlaneGeometry(1.2, 2.2),
@@ -219,11 +306,16 @@ export function buildContainerMesh(c: ContainerDef, spaceKind: 'exterior' | 'int
   const g = new THREE.Group();
   const y = groundY(spaceKind, c.x, c.z, seed);
   g.position.set(c.x, y, c.z);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.7), chestMat);
+  const body = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.7, 0.7, 3, 0.07), chestMat);
   body.position.y = 0.35;
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.7), woodDark);
+  const lid = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.25, 0.7, 3, 0.08), woodDark);
   lid.position.y = 0.82;
-  g.add(body, lid);
+  const bandGeometry = mergedRoundedParts([
+    { sx: 0.08, sy: 0.94, sz: 0.76, x: -0.35, y: 0.47, z: 0 },
+    { sx: 0.08, sy: 0.94, sz: 0.76, x: 0.35, y: 0.47, z: 0 },
+  ], 0.025);
+  const bands = new THREE.Mesh(bandGeometry, stone);
+  g.add(body, lid, bands);
   return g;
 }
 

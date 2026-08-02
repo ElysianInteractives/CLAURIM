@@ -56,9 +56,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   poses (D-039).
 - Current-space exterior/interior maps, authoritative player heading marker,
   and presentation-only landmark bearing/distance guidance (D-040).
-- Stable articulated low-poly humanoid/quadruped rig hierarchy, hand-based
-  equipment attachments, and renderer-only full-body procedural posing
-  (D-041).
+- Stable articulated humanoid/quadruped rig hierarchy, hand-based equipment
+  attachments, and renderer-only full-body procedural posing (D-041).
 - Primer-gated spell learning, four original magic disciplines, safe legacy
   skill normalization, and explicit post-learning spell-slot assignment
   (D-042).
@@ -71,10 +70,14 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Shared-geometry exterior decoration batches, named 25-cell render budgets,
   and per-fixed-step transform observation for adjacent-tick presentation
   smoothing (D-045).
+- Game-ready high/medium model tiers, stable socket parity, hysteretic actor
+  and building LOD, instanced vegetation tiers, populated exterior budgets,
+  and a validated lazy GLB/glTF replacement seam (D-046).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,
-dragons/flight, multi-region streaming, radiant generation, GLB pipeline,
+dragons/flight, multi-region streaming, radiant generation, commissioned model
+library/textures/authored skeletal animation,
 account recovery/MFA/operations, matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading, expanded spell
 kinds/hotbars, trainers/research, loadout presets, and drag-and-drop inventory.

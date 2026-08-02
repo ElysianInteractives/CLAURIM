@@ -55,7 +55,7 @@ PARTIAL / NONE.
 |---|---|---|
 | UI surfaces | PARTIAL | HUD/dialogue/shop/loadout inventory with primer Study actions, discipline-grouped known spells, spell equip, journal/perks, current-space map/navigation, and audio settings exist; missing: full spellbook, broader settings, main menu |
 | Audio | SYSTEM | D-031 browser mixer, persistent controls, combat cues, and procedural interior/day/night beds exist; final assets, spatial sources, and production mix remain KL-5 |
-| Asset pipeline | NONE->PLANNED | palette/code-native style now has articulated humanoid/quadruped exemplars (D-011/D-041); GLB pipeline remains the replacement path behind stable rig nodes |
+| Asset pipeline | SEAM_READY | bounded high/medium code-native humanoid/quadruped exemplars ship live; lazy Meshopt GLB/glTF replacement validates stable rig nodes and triangle budgets (D-011/D-041/D-046); commissioned source assets remain future content production |
 | Accessibility | PARTIAL | semantic resource/audio controls exist; keybind remap, subtitles, colorblind palette, and broader settings remain |
 | Save/persistence | DONE | D-009 |
 | Mod/extensibility | PARTIAL | data-as-code registry IS the mod surface; external pack loading later |

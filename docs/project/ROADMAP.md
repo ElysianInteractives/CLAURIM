@@ -12,7 +12,8 @@
 3. M2 Systems depth: magic initiation/disciplines landed in QA Phase J;
    crafting, weather, followers, crime, radiant templates,
    remaining menus (D-040 map/navigation landed in QA Phase H), final audio
-   asset/spatial pipeline, GLB pipeline.
+   asset/spatial pipeline, commissioned model/texture/animation library behind
+   the D-046 high-fidelity asset seam.
 4. M3 Province: multi-region streaming, main arc, faction line, dragons,
    cities, mounts.
 5. M4 Completeness: shouts/powers, books, housing, accessibility, settings,

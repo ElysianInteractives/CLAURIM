@@ -70,6 +70,14 @@ Run these in order so one clean save covers the whole session.
   should remain smooth; static structures must not shiver against the terrain
   or horizon. If it recurs, record at least ten seconds with the viewport and
   exact location noted.
+- Approach and leave a resident, hart, briarboar, and settlement building.
+  Close silhouettes should be smooth and detailed; distance transitions
+  should not flicker repeatedly, drop equipped gear, break poses, or alter
+  collision. Compare first- and third-person equipment at close range.
+- Sweep the camera across dense vegetation while walking between near and
+  outer terrain cells. Tree/rock density and color should remain continuous;
+  report obvious popping, missing patches, or renewed frame jitter with the
+  exact location and camera direction.
 - In Gloamroot, confirm the arrival faces into a readable cavern, every room is
   traversable, glowcaps light the route, and the matriarch encounter is usable.
 

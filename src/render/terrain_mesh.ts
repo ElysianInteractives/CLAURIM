@@ -21,14 +21,21 @@ function transformMatrix(
   x: number,
   y: number,
   z: number,
-  scale: number,
+  scaleX: number,
+  scaleY = scaleX,
+  scaleZ = scaleX,
   yaw = 0,
 ): THREE.Matrix4 {
   return new THREE.Matrix4().compose(
     new THREE.Vector3(x, y, z),
     new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw),
-    new THREE.Vector3(scale, scale, scale),
+    new THREE.Vector3(scaleX, scaleY, scaleZ),
   );
+}
+
+interface InstancePlacement {
+  matrix: THREE.Matrix4;
+  color?: number;
 }
 
 function addInstances(
@@ -36,14 +43,20 @@ function addInstances(
   name: string,
   geometry: THREE.BufferGeometry,
   material: THREE.Material,
-  matrices: readonly THREE.Matrix4[],
+  placements: readonly InstancePlacement[],
 ): void {
-  if (matrices.length === 0) return;
-  const mesh = new THREE.InstancedMesh(geometry, material, matrices.length);
+  if (placements.length === 0) return;
+  const mesh = new THREE.InstancedMesh(geometry, material, placements.length);
   mesh.name = name;
   mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-  for (let i = 0; i < matrices.length; i++) mesh.setMatrixAt(i, matrices[i]);
+  const color = new THREE.Color();
+  for (let i = 0; i < placements.length; i++) {
+    const placement = placements[i];
+    mesh.setMatrixAt(i, placement.matrix);
+    if (placement.color !== undefined) mesh.setColorAt(i, color.setHex(placement.color));
+  }
   mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.computeBoundingSphere();
   group.add(mesh);
 }
@@ -60,16 +73,17 @@ const BIOME_COLORS: Record<string, number> = {
 export class TerrainStreamer {
   private cells = new Map<string, THREE.Group>();
   private material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  private treeTrunkGeo = sharedGeometry(new THREE.CylinderGeometry(0.18, 0.28, 2.2, 5));
-  private treeTopGeo = sharedGeometry(new THREE.ConeGeometry(1.5, 4.2, 6));
-  private treeTopTallGeo = sharedGeometry(new THREE.ConeGeometry(1.25, 5.2, 7));
-  private treeCrownGeo = sharedGeometry(new THREE.ConeGeometry(1.05, 2.7, 6));
-  private treeCrownTallGeo = sharedGeometry(new THREE.ConeGeometry(0.9, 3.2, 6));
-  private rockGeo = sharedGeometry(new THREE.DodecahedronGeometry(0.8, 0));
+  private treeTrunkGeoHigh = sharedGeometry(new THREE.CylinderGeometry(0.18, 0.28, 2.2, 12));
+  private treeTrunkGeoMedium = sharedGeometry(new THREE.CylinderGeometry(0.18, 0.28, 2.2, 5));
+  private treeTopGeoHigh = sharedGeometry(new THREE.ConeGeometry(1, 1, 14));
+  private treeTopGeoMedium = sharedGeometry(new THREE.ConeGeometry(1, 1, 6));
+  private treeCrownGeoHigh = sharedGeometry(new THREE.ConeGeometry(1, 1, 12));
+  private treeCrownGeoMedium = sharedGeometry(new THREE.ConeGeometry(1, 1, 6));
+  private rockGeoHigh = sharedGeometry(new THREE.DodecahedronGeometry(0.8, 1));
+  private rockGeoMedium = sharedGeometry(new THREE.DodecahedronGeometry(0.8, 0));
   private waterGeo = sharedGeometry(new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE));
   private trunkMat = new THREE.MeshLambertMaterial({ color: PALETTE.trunk });
-  private pineMat = new THREE.MeshLambertMaterial({ color: PALETTE.pine });
-  private pineDarkMat = new THREE.MeshLambertMaterial({ color: PALETTE.pineDark });
+  private foliageMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
   private rockMat = new THREE.MeshLambertMaterial({ color: PALETTE.rock });
   private waterMat = new THREE.MeshLambertMaterial({
     color: PALETTE.water,
@@ -98,6 +112,12 @@ export class TerrainStreamer {
           this.cells.set(key, group);
           this.scene.add(group);
         }
+        const group = this.cells.get(key)!;
+        const high = Math.max(Math.abs(dx), Math.abs(dz)) <= 1;
+        const highGroup = group.getObjectByName('decoration-high');
+        const mediumGroup = group.getObjectByName('decoration-medium');
+        if (highGroup) highGroup.visible = high;
+        if (mediumGroup) mediumGroup.visible = !high;
       }
     }
     for (const [key, group] of [...this.cells]) {
@@ -165,16 +185,10 @@ export class TerrainStreamer {
     }
 
     // Deterministic decoration scatter: pines in forest, rocks on rock biome.
-    const trunks: THREE.Matrix4[] = [];
-    const shortPineTops: THREE.Matrix4[] = [];
-    const shortDarkTops: THREE.Matrix4[] = [];
-    const tallPineTops: THREE.Matrix4[] = [];
-    const tallDarkTops: THREE.Matrix4[] = [];
-    const shortPineCrowns: THREE.Matrix4[] = [];
-    const shortDarkCrowns: THREE.Matrix4[] = [];
-    const tallPineCrowns: THREE.Matrix4[] = [];
-    const tallDarkCrowns: THREE.Matrix4[] = [];
-    const rocks: THREE.Matrix4[] = [];
+    const trunks: InstancePlacement[] = [];
+    const tops: InstancePlacement[] = [];
+    const crowns: InstancePlacement[] = [];
+    const rocks: InstancePlacement[] = [];
     for (let i = 0; i < TREE_TRIES_PER_CELL; i++) {
       const hx = hash2(cx * 131 + i, cz * 197, this.seed + 11);
       const hz = hash2(cx * 131 + i, cz * 197, this.seed + 23);
@@ -184,40 +198,51 @@ export class TerrainStreamer {
       const h = terrainHeight(wx, wz, this.seed);
       if (biome === 'forest' && h > WATER_LEVEL + 1) {
         const scale = 0.8 + hash2(i, cx + cz, this.seed + 31) * 0.8;
-        trunks.push(transformMatrix(wx, h + 1.1 * scale, wz, scale));
+        trunks.push({ matrix: transformMatrix(wx, h + 1.1 * scale, wz, scale) });
         const tall = hash2(i, cx, this.seed + 47) > 0.55;
-        const topMatrix = transformMatrix(
-          wx,
-          h + (2.2 + (tall ? 2.6 : 2.1)) * scale,
-          wz,
-          scale,
-        );
-        const crownMatrix = transformMatrix(wx, h + (tall ? 6.4 : 5.4) * scale, wz, scale);
         const lightTop = hash2(i, cz, this.seed) > 0.5;
         const darkCrown = hash2(i, cz, this.seed + 53) > 0.5;
-        if (tall) {
-          (lightTop ? tallPineTops : tallDarkTops).push(topMatrix);
-          (darkCrown ? tallDarkCrowns : tallPineCrowns).push(crownMatrix);
-        } else {
-          (lightTop ? shortPineTops : shortDarkTops).push(topMatrix);
-          (darkCrown ? shortDarkCrowns : shortPineCrowns).push(crownMatrix);
-        }
+        tops.push({
+          matrix: transformMatrix(
+            wx,
+            h + (2.2 + (tall ? 2.6 : 2.1)) * scale,
+            wz,
+            (tall ? 1.25 : 1.5) * scale,
+            (tall ? 5.2 : 4.2) * scale,
+            (tall ? 1.25 : 1.5) * scale,
+          ),
+          color: lightTop ? PALETTE.pine : PALETTE.pineDark,
+        });
+        crowns.push({
+          matrix: transformMatrix(
+            wx,
+            h + (tall ? 6.4 : 5.4) * scale,
+            wz,
+            (tall ? 0.9 : 1.05) * scale,
+            (tall ? 3.2 : 2.7) * scale,
+            (tall ? 0.9 : 1.05) * scale,
+          ),
+          color: darkCrown ? PALETTE.pineDark : PALETTE.pine,
+        });
       } else if (biome === 'rock' && i % 5 === 0 && h > WATER_LEVEL) {
         const scale = 0.6 + hash2(i, cx - cz, this.seed + 41) * 1.6;
         const yaw = hash2(i, cz - cx, this.seed + 43) * Math.PI;
-        rocks.push(transformMatrix(wx, h + 0.3 * scale, wz, scale, yaw));
+        rocks.push({ matrix: transformMatrix(wx, h + 0.3 * scale, wz, scale, scale, scale, yaw) });
       }
     }
-    addInstances(group, 'tree-trunks', this.treeTrunkGeo, this.trunkMat, trunks);
-    addInstances(group, 'tree-tops-short-pine', this.treeTopGeo, this.pineMat, shortPineTops);
-    addInstances(group, 'tree-tops-short-dark', this.treeTopGeo, this.pineDarkMat, shortDarkTops);
-    addInstances(group, 'tree-tops-tall-pine', this.treeTopTallGeo, this.pineMat, tallPineTops);
-    addInstances(group, 'tree-tops-tall-dark', this.treeTopTallGeo, this.pineDarkMat, tallDarkTops);
-    addInstances(group, 'tree-crowns-short-pine', this.treeCrownGeo, this.pineMat, shortPineCrowns);
-    addInstances(group, 'tree-crowns-short-dark', this.treeCrownGeo, this.pineDarkMat, shortDarkCrowns);
-    addInstances(group, 'tree-crowns-tall-pine', this.treeCrownTallGeo, this.pineMat, tallPineCrowns);
-    addInstances(group, 'tree-crowns-tall-dark', this.treeCrownTallGeo, this.pineDarkMat, tallDarkCrowns);
-    addInstances(group, 'rocks', this.rockGeo, this.rockMat, rocks);
+    const high = new THREE.Group();
+    high.name = 'decoration-high';
+    addInstances(high, 'tree-trunks-high', this.treeTrunkGeoHigh, this.trunkMat, trunks);
+    addInstances(high, 'tree-tops-high', this.treeTopGeoHigh, this.foliageMat, tops);
+    addInstances(high, 'tree-crowns-high', this.treeCrownGeoHigh, this.foliageMat, crowns);
+    addInstances(high, 'rocks-high', this.rockGeoHigh, this.rockMat, rocks);
+    const medium = new THREE.Group();
+    medium.name = 'decoration-medium';
+    addInstances(medium, 'tree-trunks-medium', this.treeTrunkGeoMedium, this.trunkMat, trunks);
+    addInstances(medium, 'tree-tops-medium', this.treeTopGeoMedium, this.foliageMat, tops);
+    addInstances(medium, 'tree-crowns-medium', this.treeCrownGeoMedium, this.foliageMat, crowns);
+    addInstances(medium, 'rocks-medium', this.rockGeoMedium, this.rockMat, rocks);
+    group.add(high, medium);
     return group;
   }
 }

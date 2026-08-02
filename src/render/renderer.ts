@@ -19,6 +19,11 @@ import {
 } from './characters';
 import { thirdPersonCameraPose, unobstructedBoomScale } from './camera';
 import { TransformHistory } from './interpolation';
+import {
+  characterModelDetail,
+  characterWithinRenderDistance,
+  type ModelDetail,
+} from './model_quality';
 
 type TelegraphView = NonNullable<ActorView['telegraph']>;
 
@@ -67,6 +72,18 @@ function buildTelegraphMesh(view: TelegraphView): THREE.Mesh {
 function disposeMesh(mesh: THREE.Mesh): void {
   mesh.geometry.dispose();
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  for (const material of materials) material.dispose();
+}
+
+function disposeActorGroup(group: THREE.Group): void {
+  const materials = new Set<THREE.Material>();
+  group.traverse((part) => {
+    if (!(part instanceof THREE.Mesh)) return;
+    for (const material of Array.isArray(part.material) ? part.material : [part.material]) {
+      if (material.userData.claurimShared !== true) materials.add(material);
+    }
+  });
+  disposeGroup(group);
   for (const material of materials) material.dispose();
 }
 
@@ -161,7 +178,7 @@ export class Renderer {
     }
     for (const [, mesh] of this.actorMeshes) {
       this.scene.remove(mesh);
-      disposeGroup(mesh);
+      disposeActorGroup(mesh);
     }
     this.actorMeshes.clear();
     this.actorTransforms.clear();
@@ -212,6 +229,7 @@ export class Renderer {
 
   private updateActors(space: string, alpha: number): ActorView | null {
     const views = this.world.actorsInSpace();
+    const focus = this.world.player();
     const seen = new Set<number>();
     let displayPlayer: ActorView | null = null;
     for (const v of views) {
@@ -232,8 +250,45 @@ export class Renderer {
       };
       if (v.isPlayer && !v.isRemotePlayer) displayPlayer = displayView;
       let mesh = this.actorMeshes.get(v.id);
+      const localPlayer = v.isPlayer && !v.isRemotePlayer;
+      const distance = Math.hypot(displayView.x - focus.x, displayView.z - focus.z);
+      if (!characterWithinRenderDistance(distance, !!mesh, localPlayer)) {
+        if (mesh) {
+          this.scene.remove(mesh);
+          disposeActorGroup(mesh);
+          this.actorMeshes.delete(v.id);
+        }
+        const distantRing = this.telegraphRings.get(v.id);
+        if (distantRing) {
+          this.scene.remove(distantRing);
+          disposeMesh(distantRing);
+          this.telegraphRings.delete(v.id);
+        }
+        continue;
+      }
+      const desiredDetail = characterModelDetail(
+        distance,
+        mesh?.userData.modelDetail as ModelDetail | undefined,
+        localPlayer,
+      );
+      let presentationState: Record<string, unknown> | null = null;
+      if (mesh && mesh.userData.modelDetail !== desiredDetail) {
+        presentationState = {
+          lastX: mesh.userData.lastX,
+          lastZ: mesh.userData.lastZ,
+          lastPoseTime: mesh.userData.lastPoseTime,
+          locomotionMoving: mesh.userData.locomotionMoving,
+          lastHealth: mesh.userData.lastHealth,
+          hitFlashUntil: mesh.userData.hitFlashUntil,
+        };
+        this.scene.remove(mesh);
+        disposeActorGroup(mesh);
+        this.actorMeshes.delete(v.id);
+        mesh = undefined;
+      }
       if (!mesh) {
-        mesh = buildCharacter(v.archetype);
+        mesh = buildCharacter(v.archetype, desiredDetail);
+        if (presentationState) Object.assign(mesh.userData, presentationState);
         this.actorMeshes.set(v.id, mesh);
         this.scene.add(mesh);
       }
@@ -251,7 +306,7 @@ export class Renderer {
         if (!(part instanceof THREE.Mesh)) return;
         const materials = Array.isArray(part.material) ? part.material : [part.material];
         for (const material of materials) {
-          if (material instanceof THREE.MeshLambertMaterial) {
+          if (material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) {
             material.emissive.setHex(hitFlash > this.clock ? 0x7a1711 : 0x000000);
           }
         }
@@ -291,7 +346,7 @@ export class Renderer {
     for (const [id, mesh] of [...this.actorMeshes]) {
       if (!seen.has(id)) {
         this.scene.remove(mesh);
-        disposeGroup(mesh);
+        disposeActorGroup(mesh);
         this.actorMeshes.delete(id);
       }
     }

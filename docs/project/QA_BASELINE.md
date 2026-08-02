@@ -784,6 +784,34 @@ changing any gameplay/network/save boundary.
 - Direct 1280x720 browser checks cover Fenharrow, moving Thornmere residents,
   and Weeping Stones wildlife/buildings; warning/error logs are empty.
 
+### QA Phase N high-fidelity-rendering exit
+
+QA Phase N resolves AV-007 and locks D-046. It upgrades visible runtime model
+quality inside explicit distance, socket, triangle, and draw-node contracts
+without changing D-045 stability or any gameplay/network/save authority.
+
+- The high player rig is 6,588 triangles versus 156 at medium detail and
+  retains every humanoid rig/equipment node. High wolf/rat, hart, and boar
+  models are 4,620, 4,796, and 4,704 triangles versus 108-188 at medium detail
+  with identical required quadruped nodes.
+- Building shells use 12,732-triangle close levels and 36-triangle distant
+  levels at 55 m with 15 percent hysteresis. Actors use 20/26 m detail bands
+  and 100/120 m presentation-cull bands; the local player remains high and
+  visible at every distance.
+- Near 3x3 terrain cells use high-detail instanced vegetation and the outer 16
+  use medium geometry while all deterministic placements remain present.
+  Terrain-only D-045 limits continue to pass.
+- Complete populated Fenharrow, Thornmere, and Weeping Stones checkpoints
+  measure 242/306/282 visible mesh nodes and 124,746/107,180/120,110 visible
+  triangles, all below the locked 325/175,000 limits.
+- `npm run gate` is green at 30 suites / 241 tests. Vite 8 transforms 67
+  modules and produces 759.01 kB JavaScript / 200.07 kB gzip.
+- `npm run world:tour` still passes all 5 spaces, 31 routes, and 69 placements.
+  `npm run ai:bench` exactly preserves the renderer-independent comparison.
+- Direct browser checks cover third- and first-person gear, near/far
+  Thornmere structures, Thornmere wildlife, and Weeping Stones vegetation at
+  desktop viewports; warning/error logs are empty.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -818,6 +846,7 @@ changing any gameplay/network/save boundary.
 | QA-WORLD-EXPANSION | Original settlement, landmark, den, forest, and wildlife volume | `tests/world_content_expansion.test.ts`, `tests/world_map.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere`, `?qa=thornmere-harts`, `?qa=weeping-stones`, and `?qa=gloamroot` at 1280 plus map at 1920 | shared terrain pads, route-complete locations/schedules, cavern arrival/readability, ambient/hostile wildlife behavior and silhouettes, eight destinations, content/IP validation, layout/overflow/logs |
 | QA-NARRATIVE | Original Thornmere dialogue, Gloamroot/Weeping Stones side quests, and visible turn-ins | `tests/world_narrative_expansion.test.ts`, `tests/quest_playthrough.test.ts`, `tests/content_catalog.test.ts`, `tests/save.test.ts`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere-tamsin` at 1280 and `?qa=thornmere-vael` at 1920 | dialogue acquisition/branches, reach/kill/talk progression, per-character reward, save/load, pre-credit return entry, journal, conditional reactions, originality, responsive layout/logs |
 | QA-EXTERIOR-STABILITY | Dense exterior draw submission and adjacent-tick presentation | `tests/world_content_expansion.test.ts`, `tests/presentation.test.ts`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=weeping-stones` | <=300 terrain draw nodes, <=40 unique geometries, retained decoration density, multi-tick history, visible residents/wildlife/buildings, browser logs |
+| QA-HIGH-FIDELITY | Bounded close detail, stable LOD/socket transitions, and populated exterior cost | `tests/model_fidelity.test.ts`, `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/world_content_expansion.test.ts`, `npm run ai:bench`, `npm run world:tour`, `npm run gate`; development-only `?qa=gear`, `?qa=thornmere-harts`, `?qa=thornmere-tamsin`, and `?qa=weeping-stones` | high/medium triangle ratios and socket parity, LOD/cull hysteresis, asset validation seam, <=325 populated mesh nodes, <=175,000 visible triangles, first-/third-person equipment, close/far buildings, wildlife/vegetation, browser logs |
 
 ## Browser visual-QA procedure
 
