@@ -56,6 +56,7 @@ function runQuest(reloadEachStage: boolean): Sim {
   boss.brain!.state = 'idle';
   const res = sim.interact();
   expect(res).toBe('container');
+  expect(sim.lootTakeAllFor('p1')).toBe(true);
   expect(sim.questLogOf('p1').get('hollow_delve')?.stageId).toBe('warden');
 
   // --- stage warden: slay the Pale Warden ---------------------------------

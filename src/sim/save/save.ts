@@ -9,16 +9,17 @@
 import type {
   Actor,
   CharacterId,
+  ConsumableEquipSlot,
   ContentId,
   EntityId,
   PartyId,
   QuestState,
   SpellEquipSlot,
 } from '../types';
-import { defaultSpellLoadout, type SpellLoadout } from '../player/loadout';
+import { defaultSpellLoadout, type ConsumableLoadout, type SpellLoadout } from '../player/loadout';
 
-/** v4: authoritative per-character spell hotkey loadouts. */
-export const SAVE_SCHEMA_VERSION = 4;
+/** v5: partial personal-container contents and consumable quick slots. */
+export const SAVE_SCHEMA_VERSION = 5;
 
 export interface ActorSave {
   id: EntityId;
@@ -68,8 +69,13 @@ export interface SaveGame {
   knownSpells: { charId: CharacterId; spells: ContentId[] }[];
   /** Per-character equipped spell hotkeys. */
   equippedSpells: { charId: CharacterId; slots: SpellLoadout }[];
+  equippedConsumables: { charId: CharacterId; slots: ConsumableLoadout }[];
   /** Per-character looted-container sets (D-019 personal container loot). */
   containersLootedBy: { charId: CharacterId; ids: string[] }[];
+  containerLootBy: {
+    charId: CharacterId;
+    containers: { id: string; items: { itemId: ContentId; count: number }[]; gold: number }[];
+  }[];
   /** Durable display names for online and offline party members. */
   characterNames: { charId: CharacterId; name: string }[];
   parties: { partyId: PartyId; members: CharacterId[] }[];
@@ -143,6 +149,14 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
     });
     return { ...raw, schemaVersion: 4, equippedSpells };
   },
+  // v4 -> v5: old binary container flags stay complete; no partial rolls or
+  // consumable assignments existed to recover.
+  4: (raw) => ({
+    ...raw,
+    schemaVersion: 5,
+    equippedConsumables: [],
+    containerLootBy: [],
+  }),
 };
 
 export class SaveError extends Error {}
@@ -180,7 +194,7 @@ export function parseSave(json: string): SaveGame {
   for (const [key, type] of required) {
     if (typeof raw[key] !== type) throw new SaveError(`corrupt save: bad ${key}`);
   }
-  for (const key of ['actors', 'players', 'questLogs', 'knownSpells', 'equippedSpells', 'containersLootedBy', 'characterNames', 'parties', 'spawnersSpawned']) {
+  for (const key of ['actors', 'players', 'questLogs', 'knownSpells', 'equippedSpells', 'equippedConsumables', 'containersLootedBy', 'containerLootBy', 'characterNames', 'parties', 'spawnersSpawned']) {
     if (!Array.isArray(raw[key])) throw new SaveError(`corrupt save: bad ${key}`);
   }
   const save = raw as unknown as SaveGame;
@@ -197,6 +211,11 @@ export function parseSave(json: string): SaveGame {
       throw new SaveError('corrupt save: bad equipped spell record');
     }
   }
+  for (const entry of save.equippedConsumables) {
+    if (typeof entry.charId !== 'string' || !validConsumableLoadout(entry.slots)) {
+      throw new SaveError('corrupt save: bad equipped consumable record');
+    }
+  }
   return save;
 }
 
@@ -206,7 +225,7 @@ export function parseSave(json: string): SaveGame {
 // on (re)connect. Versioned separately from the world schema.
 // ---------------------------------------------------------------------------
 
-export const CHARACTER_SCHEMA_VERSION = 2;
+export const CHARACTER_SCHEMA_VERSION = 3;
 
 export interface CharacterSave {
   schemaVersion: number;
@@ -229,8 +248,10 @@ export interface CharacterSave {
   perkPoints: number;
   knownSpells: ContentId[];
   equippedSpells: SpellLoadout;
+  equippedConsumables: ConsumableLoadout;
   quests: QuestState[];
   containersLooted: string[];
+  containerLoot: { id: string; items: { itemId: ContentId; count: number }[]; gold: number }[];
 }
 
 export const CHARACTER_MIGRATIONS: Record<number, MigrationFn> = {
@@ -240,6 +261,12 @@ export const CHARACTER_MIGRATIONS: Record<number, MigrationFn> = {
       : [];
     return { ...raw, schemaVersion: 2, equippedSpells: defaultSpellLoadout(spells) };
   },
+  2: (raw) => ({
+    ...raw,
+    schemaVersion: 3,
+    equippedConsumables: {},
+    containerLoot: [],
+  }),
 };
 
 export function parseCharacterSave(json: string): CharacterSave {
@@ -265,11 +292,14 @@ export function parseCharacterSave(json: string): CharacterSave {
     throw new SaveError('corrupt character save: bad identity');
   }
   if (typeof raw.pos !== 'object' || raw.pos === null) throw new SaveError('corrupt character save: bad pos');
-  for (const key of ['inventory', 'perks', 'quests', 'containersLooted', 'knownSpells']) {
+  for (const key of ['inventory', 'perks', 'quests', 'containersLooted', 'containerLoot', 'knownSpells']) {
     if (!Array.isArray(raw[key])) throw new SaveError(`corrupt character save: bad ${key}`);
   }
   if (!validSpellLoadout(raw.equippedSpells)) {
     throw new SaveError('corrupt character save: bad equippedSpells');
+  }
+  if (!validConsumableLoadout(raw.equippedConsumables)) {
+    throw new SaveError('corrupt character save: bad equippedConsumables');
   }
   return raw as unknown as CharacterSave;
 }
@@ -279,6 +309,15 @@ function validSpellLoadout(value: unknown): value is Partial<Record<SpellEquipSl
   const slots = value as Record<string, unknown>;
   for (const [slot, spellId] of Object.entries(slots)) {
     if ((slot !== 'spell1' && slot !== 'spell2') || typeof spellId !== 'string') return false;
+  }
+  return true;
+}
+
+function validConsumableLoadout(value: unknown): value is Partial<Record<ConsumableEquipSlot, ContentId>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const slots = value as Record<string, unknown>;
+  for (const [slot, itemId] of Object.entries(slots)) {
+    if (!['consumable1', 'consumable2', 'consumable3'].includes(slot) || typeof itemId !== 'string') return false;
   }
   return true;
 }

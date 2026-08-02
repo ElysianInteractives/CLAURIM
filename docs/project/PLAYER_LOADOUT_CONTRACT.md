@@ -4,6 +4,10 @@ This contract locks how carried items, equipped gear, known spells, and the
 two combat spell hotkeys cross simulation, persistence, network, and UI
 boundaries.
 
+D-051 extends this contract with the unified menu presentation and three
+consumable quick slots. Its UI layout rules supersede D-035's original
+four-region panel; the six gear slots and two spell slots remain unchanged.
+
 ## Authority and state
 
 - Gear remains authoritative actor state in the six stable `EquipSlot`
@@ -65,6 +69,6 @@ boundaries.
 
 ## Deliberately separate locks
 
-Spell learning is governed by D-042. More than two hotkeys, drag-and-drop, item comparison,
-stack splitting, loadout presets, cooldown categories, and a full spellbook
+Spell learning is governed by D-042. More than two spell hotkeys, drag-and-drop, item comparison,
+stack splitting, loadout presets, additional cooldown categories, and a full spellbook
 or crafting surface are not part of D-035.

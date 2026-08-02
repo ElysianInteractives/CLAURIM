@@ -17,6 +17,7 @@ import {
   SPRINT_MULT,
   SNEAK_MULT,
   THREAT_PER_HEAL,
+  type ConsumableEquipSlot,
   type Actor,
   type CharacterId,
   type ContentId,
@@ -71,7 +72,6 @@ import {
   buyFromMerchant,
   countItem,
   equipItem,
-  lootActor,
   removeItem,
   rollLoot,
   sellToMerchant,
@@ -79,9 +79,12 @@ import {
   useItem,
 } from './inventory/inventory';
 import {
+  assignConsumable,
   assignSpell,
   defaultSpellLoadout,
+  sanitizeConsumableLoadout,
   sanitizeSpellLoadout,
+  type ConsumableLoadout,
   type SpellLoadout,
 } from './player/loadout';
 import { trainSkill, takePerk, canTakePerk } from './progression/skills';
@@ -157,7 +160,22 @@ interface PlayerTransient {
   airborne: boolean;
   lastYaw: number;
   recoveryAvailableAtTick: number;
+  lastConsumableUseTick: number;
 }
+
+export interface LootContents {
+  items: { itemId: ContentId; count: number }[];
+  gold: number;
+}
+
+interface LootSession {
+  kind: 'container' | 'corpse';
+  id: string;
+  name: string;
+}
+
+/** One shared cooldown protects menu and hotkey item use equally. */
+export const CONSUMABLE_COOLDOWN_TICKS = 22;
 
 export class Sim {
   readonly content: ContentRegistry;
@@ -179,12 +197,15 @@ export class Sim {
   readonly questLogs = new Map<CharacterId, Map<ContentId, QuestState>>();
   readonly knownSpellsBy = new Map<CharacterId, ContentId[]>();
   readonly equippedSpellsBy = new Map<CharacterId, SpellLoadout>();
+  readonly equippedConsumablesBy = new Map<CharacterId, ConsumableLoadout>();
   readonly containersLootedByChar = new Map<CharacterId, Set<string>>();
+  readonly containerLootByChar = new Map<CharacterId, Map<string, LootContents>>();
   readonly parties = new Map<PartyId, CharacterId[]>();
   readonly characterNames = new Map<CharacterId, string>();
   private readonly partyInvites = new Map<CharacterId, CharacterId>();
   readonly dialogueSessions = new Map<CharacterId, DialogueSession>();
   readonly shopMerchantBy = new Map<CharacterId, EntityId>();
+  private readonly lootSessions = new Map<CharacterId, LootSession>();
   private transientBy = new Map<CharacterId, PlayerTransient>();
 
   spawnersSpawned = new Set<string>();
@@ -445,6 +466,7 @@ export class Sim {
       airborne: false,
       lastYaw: restore?.yaw ?? PLAYER_START.yaw,
       recoveryAvailableAtTick: 0,
+      lastConsumableUseTick: -CONSUMABLE_COOLDOWN_TICKS,
     });
     player.yaw = restore?.yaw ?? PLAYER_START.yaw;
 
@@ -465,10 +487,20 @@ export class Sim {
         restore.equippedSpells,
         (spellId) => this.content.spells[spellId] !== undefined,
       ));
+      this.equippedConsumablesBy.set(charId, sanitizeConsumableLoadout(
+        restore.equippedConsumables,
+        (itemId) => this.content.items[itemId]?.kind === 'consumable',
+      ));
       const log = new Map<ContentId, QuestState>();
       for (const q of restore.quests) log.set(q.questId, JSON.parse(JSON.stringify(q)));
       this.questLogs.set(charId, log);
       this.containersLootedByChar.set(charId, new Set(restore.containersLooted));
+      this.containerLootByChar.set(charId, new Map(
+        restore.containerLoot.map((entry) => [entry.id, {
+          items: entry.items.map((item) => ({ ...item })),
+          gold: entry.gold,
+        }]),
+      ));
       recalcActorStats(this.content, player);
       player.health = Math.min(Math.max(1, restore.health), player.stats.maxHealth);
       player.stamina = Math.min(restore.stamina, player.stats.maxStamina);
@@ -483,6 +515,9 @@ export class Sim {
       const knownSpells: ContentId[] = [];
       this.knownSpellsBy.set(charId, knownSpells);
       this.equippedSpellsBy.set(charId, defaultSpellLoadout(knownSpells));
+      this.equippedConsumablesBy.set(charId, {});
+      this.containersLootedByChar.set(charId, new Set());
+      this.containerLootByChar.set(charId, new Map());
       player.health = player.stats.maxHealth;
       player.stamina = player.stats.maxStamina;
       player.magicka = player.stats.maxMagicka;
@@ -500,6 +535,7 @@ export class Sim {
     this.players.delete(charId);
     this.dialogueSessions.delete(charId);
     this.shopMerchantBy.delete(charId);
+    this.lootSessions.delete(charId);
     this.transientBy.delete(charId);
     this.clearInvitesFor(charId);
     if (!opts.preserveParty) this.leaveParty(charId);
@@ -535,8 +571,14 @@ export class Sim {
       perkPoints: a.perkPoints,
       knownSpells: [...(this.knownSpellsBy.get(charId) ?? [])],
       equippedSpells: { ...this.spellLoadoutFor(charId) },
+      equippedConsumables: { ...this.consumableLoadoutFor(charId) },
       quests: JSON.parse(JSON.stringify([...this.questLogOf(charId).values()])),
       containersLooted: [...this.containersLootedOf(charId)],
+      containerLoot: [...this.containerLootOf(charId)].map(([id, contents]) => ({
+        id,
+        items: contents.items.map((item) => ({ ...item })),
+        gold: contents.gold,
+      })),
     };
   }
 
@@ -688,6 +730,15 @@ export class Sim {
       this.containersLootedByChar.set(charId, set);
     }
     return set;
+  }
+
+  containerLootOf(charId: CharacterId): Map<string, LootContents> {
+    let map = this.containerLootByChar.get(charId);
+    if (!map) {
+      map = new Map();
+      this.containerLootByChar.set(charId, map);
+    }
+    return map;
   }
 
   // -------------------------------------------------------------------------
@@ -1103,7 +1154,12 @@ export class Sim {
       if (!this.content.spells[item.teachesSpell] || !removeItem(this.ctx, p.id, itemId, 1)) return false;
       return this.learnSpellFor(charId, item.teachesSpell);
     }
-    return useItem(this.ctx, p.id, itemId);
+    if (item?.kind !== 'consumable') return false;
+    const transient = this.transientBy.get(charId);
+    if (!transient || this.tickCount - transient.lastConsumableUseTick < CONSUMABLE_COOLDOWN_TICKS) return false;
+    const used = useItem(this.ctx, p.id, itemId);
+    if (used) transient.lastConsumableUseTick = this.tickCount;
+    return used;
   }
 
   /** Authoritative learning seam used by primers and development-only QA starts. */
@@ -1150,6 +1206,32 @@ export class Sim {
     return true;
   }
 
+  consumableLoadoutFor(charId: CharacterId): ConsumableLoadout {
+    return this.equippedConsumablesBy.get(charId) ?? {};
+  }
+
+  equipConsumableFor(charId: CharacterId, slot: ConsumableEquipSlot, itemId: ContentId): boolean {
+    const p = this.playerActor(charId);
+    if (!p || p.downed || this.content.items[itemId]?.kind !== 'consumable' || countItem(this.ctx, p.id, itemId) <= 0) {
+      return false;
+    }
+    this.equippedConsumablesBy.set(
+      charId,
+      assignConsumable(this.consumableLoadoutFor(charId), slot, itemId),
+    );
+    return true;
+  }
+
+  unequipConsumableFor(charId: CharacterId, slot: ConsumableEquipSlot): boolean {
+    const p = this.playerActor(charId);
+    const current = this.consumableLoadoutFor(charId);
+    if (!p || p.downed || current[slot] === undefined) return false;
+    const next = { ...current };
+    delete next[slot];
+    this.equippedConsumablesBy.set(charId, next);
+    return true;
+  }
+
   takePerkFor(charId: CharacterId, perkId: ContentId): boolean {
     const p = this.playerActor(charId);
     if (!p) return false;
@@ -1179,6 +1261,90 @@ export class Sim {
     if (!clean) return false;
     this.events.push({ type: 'chat', playerId: p.id, text: clean });
     return true;
+  }
+
+  /** Current authoritative loot source, if it is still within interaction
+   * range. Container contents are personal; corpse contents are shared. */
+  lootSessionFor(charId: CharacterId): { kind: 'container' | 'corpse'; name: string; contents: LootContents } | null {
+    const session = this.lootSessions.get(charId);
+    const player = this.playerActor(charId);
+    if (!session || !player || player.downed) {
+      this.lootSessions.delete(charId);
+      return null;
+    }
+    if (session.kind === 'container') {
+      const source = this.content.containers.find((container) => container.id === session.id);
+      const contents = this.containerLootOf(charId).get(session.id);
+      if (!source || !contents || source.spaceId !== player.pos.spaceId || Math.hypot(source.x - player.pos.x, source.z - player.pos.z) > 3.25) {
+        this.lootSessions.delete(charId);
+        return null;
+      }
+      return { kind: session.kind, name: session.name, contents };
+    }
+    const corpse = this.actors.get(Number(session.id));
+    if (!corpse || !corpse.dead || corpse.pos.spaceId !== player.pos.spaceId || Math.hypot(corpse.pos.x - player.pos.x, corpse.pos.z - player.pos.z) > 3.25) {
+      this.lootSessions.delete(charId);
+      return null;
+    }
+    return { kind: session.kind, name: session.name, contents: { items: corpse.inventory, gold: corpse.gold } };
+  }
+
+  lootTakeFor(charId: CharacterId, itemId: ContentId | '__gold'): boolean {
+    const session = this.lootSessions.get(charId);
+    const view = this.lootSessionFor(charId);
+    const player = this.playerActor(charId);
+    if (!session || !view || !player) return false;
+    if (itemId === '__gold') {
+      if (view.contents.gold <= 0) return false;
+      player.gold += view.contents.gold;
+      if (session.kind === 'container') view.contents.gold = 0;
+      else {
+        const corpse = this.actors.get(Number(session.id));
+        if (corpse) corpse.gold = 0;
+      }
+      this.finalizeLoot(charId, session, view.contents);
+      return true;
+    }
+    const stack = view.contents.items.find((candidate) => candidate.itemId === itemId && candidate.count > 0);
+    if (!stack) return false;
+    const count = stack.count;
+    // addItem is authoritative and currently has no hard capacity rejection.
+    addItem(this.ctx, player.id, itemId, count);
+    stack.count = 0;
+    view.contents.items = view.contents.items.filter((candidate) => candidate.count > 0);
+    if (session.kind === 'container') {
+      const stored = this.containerLootOf(charId).get(session.id);
+      if (stored) stored.items = view.contents.items;
+    } else {
+      const corpse = this.actors.get(Number(session.id));
+      if (corpse) corpse.inventory = view.contents.items;
+    }
+    this.finalizeLoot(charId, session, view.contents);
+    return true;
+  }
+
+  lootTakeAllFor(charId: CharacterId): boolean {
+    const view = this.lootSessionFor(charId);
+    if (!view) return false;
+    const itemIds = view.contents.items.filter((item) => item.count > 0).map((item) => item.itemId);
+    let changed = false;
+    for (const itemId of itemIds) changed = this.lootTakeFor(charId, itemId) || changed;
+    if (this.lootSessionFor(charId)?.contents.gold) changed = this.lootTakeFor(charId, '__gold') || changed;
+    return changed;
+  }
+
+  lootCloseFor(charId: CharacterId): void {
+    this.lootSessions.delete(charId);
+  }
+
+  private finalizeLoot(charId: CharacterId, session: LootSession, contents: LootContents): void {
+    if (contents.gold > 0 || contents.items.some((item) => item.count > 0)) return;
+    if (session.kind === 'container') {
+      this.containersLootedOf(charId).add(session.id);
+      // The open session may still render an Empty state, but no durable
+      // pending record is required once all contents have transferred.
+      this.containerLootOf(charId).set(session.id, { items: [], gold: 0 });
+    }
   }
 
   /** The nearest interactable within reach for one character: door,
@@ -1237,21 +1403,24 @@ export class Sim {
       }
       case 'container': {
         const c = this.content.containers.find((x) => x.id === target.id)!;
-        const table = this.content.lootTables[c.lootTable];
-        if (table) {
+        const pending = this.containerLootOf(charId);
+        if (!pending.has(c.id)) {
+          const table = this.content.lootTables[c.lootTable];
           // Personal container loot (D-019): deterministic per character via a
           // forked stream keyed by container + character.
-          const rolled = rollLoot(this.rng.fork(hashString(c.id + ':' + charId)), table);
-          for (const it of rolled.items) addItem(this.ctx, p.id, it.itemId, it.count);
-          p.gold += rolled.gold;
+          const rolled = table
+            ? rollLoot(this.rng.fork(hashString(c.id + ':' + charId)), table)
+            : { items: [], gold: 0 };
+          pending.set(c.id, { items: rolled.items.map((item) => ({ ...item })), gold: rolled.gold });
         }
-        this.containersLootedOf(charId).add(c.id);
+        this.lootSessions.set(charId, { kind: 'container', id: c.id, name: c.name });
+        this.finalizeLoot(charId, this.lootSessions.get(charId)!, pending.get(c.id)!);
         this.events.push({ type: 'interacted', actorId: p.id, targetKind: 'container', targetId: c.id });
         onQuestEvent(this.ctx, { type: 'interacted', actorId: p.id, targetKind: 'container', targetId: c.id });
         return 'container';
       }
       case 'corpse': {
-        lootActor(this.ctx, p.id, Number(target.id));
+        this.lootSessions.set(charId, { kind: 'corpse', id: target.id, name: target.name });
         return 'loot';
       }
       case 'revive': {
@@ -1459,7 +1628,7 @@ export class Sim {
   }
 
   // -------------------------------------------------------------------------
-  // Save / load (world save, schema v4)
+  // Save / load (world save, schema v5)
   // -------------------------------------------------------------------------
 
   serialize(): SaveGame {
@@ -1515,7 +1684,16 @@ export class Sim {
       })),
       knownSpells: [...this.knownSpellsBy].map(([charId, spells]) => ({ charId, spells: [...spells] })),
       equippedSpells: [...this.equippedSpellsBy].map(([charId, slots]) => ({ charId, slots: { ...slots } })),
+      equippedConsumables: [...this.equippedConsumablesBy].map(([charId, slots]) => ({ charId, slots: { ...slots } })),
       containersLootedBy: [...this.containersLootedByChar].map(([charId, ids]) => ({ charId, ids: [...ids] })),
+      containerLootBy: [...this.containerLootByChar].map(([charId, containers]) => ({
+        charId,
+        containers: [...containers].map(([id, contents]) => ({
+          id,
+          items: contents.items.map((item) => ({ ...item })),
+          gold: contents.gold,
+        })),
+      })),
       characterNames: [...this.characterNames].map(([charId, name]) => ({ charId, name })),
       parties: [...this.parties].map(([partyId, members]) => ({ partyId, members: [...members] })),
       spawnersSpawned: [...this.spawnersSpawned],
@@ -1577,7 +1755,13 @@ export class Sim {
     }
     for (const p of save.players) {
       sim.players.set(p.charId, p.entityId);
-      sim.transientBy.set(p.charId, { vy: 0, airborne: false, lastYaw: 0, recoveryAvailableAtTick: 0 });
+      sim.transientBy.set(p.charId, {
+        vy: 0,
+        airborne: false,
+        lastYaw: 0,
+        recoveryAvailableAtTick: 0,
+        lastConsumableUseTick: -CONSUMABLE_COOLDOWN_TICKS,
+      });
     }
     for (const entry of save.questLogs) {
       const log = new Map<ContentId, QuestState>();
@@ -1595,8 +1779,22 @@ export class Sim {
         (spellId) => content.spells[spellId] !== undefined,
       ));
     }
+    for (const entry of save.equippedConsumables) {
+      sim.equippedConsumablesBy.set(entry.charId, sanitizeConsumableLoadout(
+        entry.slots,
+        (itemId) => content.items[itemId]?.kind === 'consumable',
+      ));
+    }
     for (const entry of save.containersLootedBy) {
       sim.containersLootedByChar.set(entry.charId, new Set(entry.ids));
+    }
+    for (const entry of save.containerLootBy) {
+      sim.containerLootByChar.set(entry.charId, new Map(
+        entry.containers.map((container) => [container.id, {
+          items: container.items.map((item) => ({ ...item })),
+          gold: container.gold,
+        }]),
+      ));
     }
     for (const entry of save.characterNames) {
       sim.characterNames.set(entry.charId, entry.name);

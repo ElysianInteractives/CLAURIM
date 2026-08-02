@@ -23,6 +23,22 @@ export interface JournalView {
   objectives: { text: string; progress: number; required: number; done: boolean; optional: boolean }[];
 }
 
+export interface LootItemView {
+  itemId: ContentId | '__gold';
+  name: string;
+  count: number;
+  kind: string;
+  value: number;
+  weight: number;
+  detail: string;
+}
+
+export interface LootView {
+  sourceKind: 'container' | 'corpse';
+  sourceName: string;
+  items: LootItemView[];
+}
+
 export interface PerkView {
   id: ContentId;
   name: string;
@@ -35,6 +51,10 @@ export interface PerkView {
 }
 
 export interface MenuFacet {
+  lootView(): LootView | null;
+  lootTake(itemId: ContentId | '__gold'): boolean;
+  lootTakeAll(): boolean;
+  lootClose(): void;
   dialogueView(): DialogueView | null;
   dialogueChoose(index: number): void;
   dialogueEnd(): void;

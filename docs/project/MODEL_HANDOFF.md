@@ -224,8 +224,8 @@ session added and TESTED:
 - Multiplayer sim core (D-013): many characters in one Sim; per-character
   journals/spells/sessions/container-loot; explicit durable parties and
   nearby chat (D-029); downed/revive/release;
-  world save schema v4 with tested v1->v2->v3->v4 migrations; per-character
-  persistence records (schema v2 with v1->v2 migration).
+  world save schema v5 with tested v1->v2->v3->v4->v5 migrations; per-character
+  persistence records (schema v3 with v1->v2->v3 migration).
 - MMO combat (D-017/D-018): threat tables with hysteresis, group aggro,
   locked encounter scaling through the modifier system, data-driven
   abilities (telegraphed cones, ground pools, summons, support heals),
@@ -233,7 +233,7 @@ session added and TESTED:
   boss; Duskhollow into a group dungeon (gate reaver, healer matron, thrall
   pulls); personal loot for elite/boss tiers (D-019).
 - Authoritative server (D-014/D-028): transport-agnostic ServerCore + ws host
-  on :8787; protocol v7 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
+  on :8787; protocol v8 with an authenticated pre-hello boundary and full inbound validation; 10 Hz interest-scoped
   snapshots over the cell system; per-client event filtering; reconnect
   takeover; StorageProvider persistence (FileStorage, atomic writes).
 - Online client (D-015): ClientWorld implements IWorld over snapshots with

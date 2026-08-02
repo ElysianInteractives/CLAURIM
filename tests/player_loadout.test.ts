@@ -41,7 +41,7 @@ describe('authoritative player loadout', () => {
     ]);
   });
 
-  it('renders equipment, spell hotkeys, known spells, and carried items as separate sections', () => {
+  it('renders categories, separate equipment slots, item details, and spell equip actions', () => {
     const sim = new Sim(83);
     sim.learnSpellFor('p1', 'flamebolt');
     sim.equipSpellFor('p1', 'spell1', 'flamebolt');
@@ -54,14 +54,12 @@ describe('authoritative player loadout', () => {
       world.playerInventory(),
     );
 
-    expect(html).toContain('aria-labelledby="equipment-heading"');
-    expect(html).toContain('aria-labelledby="spell-loadout-heading"');
-    expect(html).toContain('aria-labelledby="known-spells-heading"');
-    expect(html).toContain('aria-labelledby="carried-heading"');
+    expect(html).toContain('data-act="inventory-category"');
+    expect(html).toContain('aria-label="Carried items"');
+    expect(html).toContain('detail-stats');
     expect(html).toContain('data-act="unequip-item" data-slot="mainHand"');
-    expect(html).toContain('data-act="equip-spell" data-slot="spell1"');
 
-    const carried = html.slice(html.indexOf('aria-labelledby="carried-heading"'));
+    const carried = html.slice(html.indexOf('aria-label="Carried items"'));
     expect(carried).toContain('Bread');
     expect(carried).not.toContain('Worn Dagger');
   });

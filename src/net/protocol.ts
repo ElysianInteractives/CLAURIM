@@ -1,4 +1,4 @@
-// Wire protocol v7 (D-014/D-028/D-033/D-034/D-035/D-039/D-042). Explicit versioned JSON message schemas with
+// Wire protocol v8 (D-014/D-028/D-033/D-034/D-035/D-039/D-042/D-051). Explicit versioned JSON message schemas with
 // inbound validation on BOTH ends; nothing serializes runtime objects
 // directly. The server rejects any message that fails validation.
 // See docs/project/NETWORK_ARCHITECTURE.md.
@@ -8,6 +8,7 @@ import type {
   ActorView,
   DialogueView,
   EquipmentSlotView,
+  EquippedConsumableView,
   EquippedSpellView,
   GroundAoeView,
   JournalView,
@@ -17,9 +18,9 @@ import type {
   ProjectileView,
   ShopView,
 } from '../world_api';
-import type { PerkView } from '../world_api/menus';
+import type { LootView, PerkView } from '../world_api/menus';
 
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 
 /** One tick of movement intent. Position is NEVER sent by clients (D-015). */
 export interface WireInput {
@@ -43,8 +44,13 @@ export type CommandKind =
   | 'unequipItem'
   | 'equipSpell'
   | 'unequipSpell'
+  | 'equipConsumable'
+  | 'unequipConsumable'
   | 'perk'
   | 'interact'
+  | 'lootTake'
+  | 'lootTakeAll'
+  | 'lootClose'
   | 'dialogueChoose'
   | 'dialogueEnd'
   | 'shopBuy'
@@ -116,11 +122,12 @@ export interface SelfState {
     perkPoints: number;
     gold: number;
   };
-  inventory: { itemId: string; name: string; count: number; equipped: boolean; kind: string; value: number }[];
+  inventory: { itemId: string; name: string; count: number; equipped: boolean; kind: string; value: number; weight: number; detail: string }[];
   equipment: EquipmentSlotView[];
   skills: { id: string; level: number; xp: number; xpForNext: number }[];
   knownSpells: KnownSpellView[];
   equippedSpells: EquippedSpellView[];
+  equippedConsumables: EquippedConsumableView[];
   journal: JournalView[];
   perks: PerkView[];
   partyId: string | null;
@@ -128,6 +135,7 @@ export interface SelfState {
   partyInvites: PartyInviteView[];
   dialogue: DialogueView | null;
   shop: ShopView | null;
+  loot: LootView | null;
   prompt: string | null;
 }
 
@@ -187,8 +195,13 @@ const COMMAND_KINDS: ReadonlySet<string> = new Set([
   'unequipItem',
   'equipSpell',
   'unequipSpell',
+  'equipConsumable',
+  'unequipConsumable',
   'perk',
   'interact',
+  'lootTake',
+  'lootTakeAll',
+  'lootClose',
   'dialogueChoose',
   'dialogueEnd',
   'shopBuy',
@@ -352,6 +365,15 @@ export function parseClientMessage(json: string): ClientMessage | null {
       if (m.kind === 'unequipItem' && (
         m.arg !== undefined || typeof m.index !== 'number' || m.index < 0 || m.index > 5
       )) return null;
+      if (m.kind === 'equipConsumable' && (
+        typeof m.arg !== 'string' || m.arg.length === 0 ||
+        (m.index !== 0 && m.index !== 1 && m.index !== 2)
+      )) return null;
+      if (m.kind === 'unequipConsumable' && (
+        m.arg !== undefined || (m.index !== 0 && m.index !== 1 && m.index !== 2)
+      )) return null;
+      if (m.kind === 'lootTake' && (typeof m.arg !== 'string' || m.arg.length === 0)) return null;
+      if ((m.kind === 'lootTakeAll' || m.kind === 'lootClose') && (m.arg !== undefined || m.index !== undefined)) return null;
       return {
         t: 'cmd',
         kind: m.kind as CommandKind,

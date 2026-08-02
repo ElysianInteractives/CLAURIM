@@ -1,10 +1,13 @@
 import {
+  CONSUMABLE_EQUIP_SLOTS,
   SPELL_EQUIP_SLOTS,
+  type ConsumableEquipSlot,
   type ContentId,
   type SpellEquipSlot,
 } from '../types';
 
 export type SpellLoadout = Partial<Record<SpellEquipSlot, ContentId>>;
+export type ConsumableLoadout = Partial<Record<ConsumableEquipSlot, ContentId>>;
 
 const PREFERRED_STARTER_SPELLS: readonly ContentId[] = ['flamebolt', 'mend_wounds'];
 
@@ -49,5 +52,35 @@ export function assignSpell(
     if (next[candidate] === spellId) delete next[candidate];
   }
   next[slot] = spellId;
+  return next;
+}
+
+/** Reject stale, non-consumable, or duplicated saved quick-slot assignments. */
+export function sanitizeConsumableLoadout(
+  raw: ConsumableLoadout,
+  isConsumable: (itemId: ContentId) => boolean,
+): ConsumableLoadout {
+  const clean: ConsumableLoadout = {};
+  const assigned = new Set<ContentId>();
+  for (const slot of CONSUMABLE_EQUIP_SLOTS) {
+    const itemId = raw[slot];
+    if (!itemId || assigned.has(itemId) || !isConsumable(itemId)) continue;
+    clean[slot] = itemId;
+    assigned.add(itemId);
+  }
+  return clean;
+}
+
+/** Assign one consumable exactly once, moving it from a previous hotkey. */
+export function assignConsumable(
+  current: ConsumableLoadout,
+  slot: ConsumableEquipSlot,
+  itemId: ContentId,
+): ConsumableLoadout {
+  const next: ConsumableLoadout = { ...current };
+  for (const candidate of CONSUMABLE_EQUIP_SLOTS) {
+    if (next[candidate] === itemId) delete next[candidate];
+  }
+  next[slot] = itemId;
   return next;
 }

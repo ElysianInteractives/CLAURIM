@@ -12,6 +12,7 @@ export type {
   ActorView,
   EquipmentSlotView,
   EquippedSpellView,
+  EquippedConsumableView,
   GroundAoeView,
   InventoryItemView,
   KnownSpellView,
@@ -21,6 +22,6 @@ export type {
   WorldReadFacet,
 } from './world_read';
 export type { PlayerIntentFacet } from './player_intent';
-export type { MenuFacet, DialogueView, ShopView, JournalView } from './menus';
+export type { MenuFacet, DialogueView, ShopView, JournalView, LootItemView, LootView } from './menus';
 
 export interface IWorld extends WorldReadFacet, PlayerIntentFacet, MenuFacet {}

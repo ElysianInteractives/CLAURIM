@@ -486,3 +486,13 @@ geometry, bounds, materials, textures, and extras during every build. The
 assets are not registered in the renderer yet; current TypeScript visuals,
 placement, collision, terrain, simulation, networking, and saves remain
 unchanged. Exact rules: `BLENDER_ASSET_AUTHORING_CONTRACT.md`.
+
+## D-051: Unified menu shell, selective loot, and battle consumables - LOCKED
+Inventory, Magic, Journal, Map, Character, Social, and System now share an
+original category/list/detail menu language. Chest and standard-corpse
+interaction opens an authoritative contents session rather than transferring
+automatically; partial personal containers persist and shared corpse takes are
+atomic. Three unique consumable references map to keys 3/4/5, retain their
+assignment at zero count, and share a server cooldown. World save schema v5,
+character schema v3, and protocol v8 carry the new state and validated intent.
+Exact rules: `UI_LOOT_QUICK_ACCESS_CONTRACT.md`.

@@ -1,7 +1,7 @@
 // Intent facet: everything a host may submit on the player's behalf.
 // The renderer/UI observe and submit intent; they never resolve outcomes.
 
-import type { ContentId, EntityId, EquipSlot, SpellEquipSlot } from '../sim/types';
+import type { ConsumableEquipSlot, ContentId, EntityId, EquipSlot, SpellEquipSlot } from '../sim/types';
 
 export interface PlayerIntentFacet {
   /** Called once per fixed tick by the host loop. */
@@ -24,6 +24,8 @@ export interface PlayerIntentFacet {
   unequipItem(slot: EquipSlot): boolean;
   equipSpell(slot: SpellEquipSlot, spellId: ContentId): boolean;
   unequipSpell(slot: SpellEquipSlot): boolean;
+  equipConsumable(slot: ConsumableEquipSlot, itemId: ContentId): boolean;
+  unequipConsumable(slot: ConsumableEquipSlot): boolean;
   takePerk(perkId: ContentId): boolean;
   respawn(): void;
   /** Request a cooldown-protected return to the space recovery point. */

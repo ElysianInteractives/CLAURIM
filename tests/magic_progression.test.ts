@@ -4,7 +4,7 @@ import { CONTENT } from '../src/sim/content';
 import { MAGIC_SCHOOL_IDS } from '../src/sim/content/schema';
 import { SPELL_WINDUP_TICKS } from '../src/sim/types';
 import { SimWorld } from '../src/game/sim_world';
-import { renderLoadoutPanel } from '../src/ui/loadout';
+import { renderLoadoutPanel, renderMagicPanel } from '../src/ui/loadout';
 
 describe('QA Phase J magic initiation and disciplines', () => {
   it('starts new characters without magic and learns a spell by consuming its primer', () => {
@@ -74,17 +74,27 @@ describe('QA Phase J magic initiation and disciplines', () => {
     sim.learnSpellFor('p1', 'flamebolt');
     sim.context().addItem(sim.player().id, 'primer_stoneward', 1);
     const world = new SimWorld(sim);
-    const html = renderLoadoutPanel(
+    const inventoryHtml = renderLoadoutPanel(
       world.playerResources().gold,
       world.playerEquipment(),
       world.equippedSpells(),
       world.knownSpells(),
       world.playerInventory(),
     );
+    const magicHtml = renderMagicPanel(world.equippedSpells(), world.knownSpells());
 
-    expect(html).toContain('Ruinweaving');
-    expect(html).toContain('Veilcraft');
-    expect(html).toContain("Stonebinder&#039;s Primer: Stoneward");
-    expect(html).toContain('Study');
+    expect(magicHtml).toContain('Ruinweaving');
+    expect(magicHtml).toContain('Veilcraft');
+    expect(inventoryHtml).toContain("Stonebinder&#039;s Primer: Stoneward");
+    expect(renderLoadoutPanel(
+      world.playerResources().gold,
+      world.playerEquipment(),
+      world.equippedSpells(),
+      world.knownSpells(),
+      world.playerInventory(),
+      [],
+      'all',
+      'primer_stoneward',
+    )).toContain('Study');
   });
 });

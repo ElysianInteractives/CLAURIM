@@ -8,7 +8,7 @@
 2. Use a viewport of at least 1280x720. Record the browser, viewport, date, and
    operating system at the top of the session notes.
 3. Confirm the game opens at Falkmoor Ruin with Health, Stamina, Magicka, two
-   empty spell slots, and the controls card visible. Press `M` and confirm all
+   spell slots, three consumable slots, and the controls card visible. Press `M` and confirm all
    eight destinations appear.
 4. If the page is stale or blank, hard-refresh it with `Ctrl+Shift+R`. Check
    the [deployment workflow](https://github.com/ElysianInteractives/CLAURIM/actions/workflows/qa-pages.yml)
@@ -16,6 +16,8 @@
 
 The public Pages build is intentionally single-player. Do not append a `ws=`
 address or treat unavailable multiplayer as a defect in this session.
+For a local development build, `?qa=loot` starts beside the Weathered Chest
+for repeatable selective-loot checks; named QA starts are ignored in production.
 
 ## Controls
 
@@ -27,8 +29,10 @@ address or treat unavailable multiplayer as a defect in this session.
 | Mouse / `V` | Look / switch first- and third-person camera |
 | Left / right mouse | Attack / block |
 | `1` / `2` | Cast equipped spells along the center reticle |
-| `E` | Interact, talk, enter, or loot |
-| `Tab` | Inventory, equipment, known spells, and spell slots |
+| `3` / `4` / `5` | Use equipped battle consumables |
+| `E` | Interact; in loot, take the selected stack |
+| `R` | Take all while looting |
+| `Tab` | Unified inventory and equipment menu |
 | `M` | Map and destination guidance |
 | `J` / `P` | Journal / perks |
 | `F5` / `F9` | Save / load |
@@ -51,10 +55,19 @@ Run these in order so one clean save covers the whole session.
 - Fight a hostile near Falkmoor or the Redclaw road camp. Check attack
   buffering, frontal blocking, target health, hit feedback, and death/recovery.
 - Open `Tab`. Equipped items must occupy the six fixed equipment slots and not
-  also appear in the carried-item list.
+  also appear in the carried-item list. Check categories, item selection, and
+  the count/weight/value/detail pane. Use the top navigation to visit Magic,
+  Journal, Map, Character, Social, and System; `Esc` must close consistently.
 - After obtaining a spell primer, use its **Study** action, assign the learned
   spell to slot 1 or 2, and cast it. Projectile spells must follow the reticle's
   horizontal and vertical trajectory.
+- Assign Bread or a Draught to slots 3, 4, and 5 from the item detail pane.
+  Use it without opening a menu; exactly one item must be consumed. Empty
+  assignments must remain visible at count 0 and become usable after restock.
+- Open a chest and a defeated standard enemy. Interaction must transfer
+  nothing automatically. Take one selected stack with `E`, leave the rest,
+  close, reopen, and verify the remaining contents. Repeat across `F5`/`F9`.
+  `R` must take all remaining entries, including visible gold.
 
 ### 3. World and wildlife
 
@@ -116,8 +129,8 @@ Run these in order so one clean save covers the whole session.
 
 - Press `F5`, refresh the page, and verify the saved world resumes. Then make a
   small change and use `F9` to confirm manual load behavior.
-- Recheck `Tab`, `J`, `P`, `M`, and `Esc` at 1280x720. Panels must remain
-  readable without overlapping the resource display or spell quickbar.
+- Recheck `Tab`, `J`, `P`, `M`, and `Esc` at 1280x720. The shared menu shell
+  must remain readable, scroll internally, and preserve a usable close path.
 - Repeat one combat scene and one dialogue at a larger desktop viewport when
   possible.
 

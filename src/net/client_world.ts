@@ -9,11 +9,13 @@ import { CollisionIndex, resolveMove } from '../sim/world/collision';
 import { groundHeight } from '../sim/world/spaces';
 import {
   DT,
+  CONSUMABLE_EQUIP_SLOTS,
   EQUIP_SLOTS,
   SNEAK_MULT,
   SPELL_EQUIP_SLOTS,
   SPRINT_MULT,
   type EquipSlot,
+  type ConsumableEquipSlot,
   type SimEvent,
   type SpellEquipSlot,
 } from '../sim/types';
@@ -369,6 +371,16 @@ export class ClientWorld implements IWorld {
     return index >= 0 && this.ready() && this.sendMsg({ t: 'cmd', kind: 'unequipSpell', index });
   }
 
+  equipConsumable(slot: ConsumableEquipSlot, itemId: string): boolean {
+    const index = CONSUMABLE_EQUIP_SLOTS.indexOf(slot);
+    return index >= 0 && this.ready() && this.sendMsg({ t: 'cmd', kind: 'equipConsumable', arg: itemId, index });
+  }
+
+  unequipConsumable(slot: ConsumableEquipSlot): boolean {
+    const index = CONSUMABLE_EQUIP_SLOTS.indexOf(slot);
+    return index >= 0 && this.ready() && this.sendMsg({ t: 'cmd', kind: 'unequipConsumable', index });
+  }
+
   takePerk(perkId: string): boolean {
     return this.ready() && this.sendMsg({ t: 'cmd', kind: 'perk', arg: perkId });
   }
@@ -600,6 +612,10 @@ export class ClientWorld implements IWorld {
     return this.snapshot?.self.equippedSpells ?? [];
   }
 
+  equippedConsumables() {
+    return this.snapshot?.self.equippedConsumables ?? [];
+  }
+
   drainEvents(): SimEvent[] {
     const events = this.eventBuffer;
     this.eventBuffer = [];
@@ -624,6 +640,22 @@ export class ClientWorld implements IWorld {
 
   dialogueView(): DialogueView | null {
     return this.snapshot?.self.dialogue ?? null;
+  }
+
+  lootView() {
+    return this.snapshot?.self.loot ?? null;
+  }
+
+  lootTake(itemId: string): boolean {
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'lootTake', arg: itemId });
+  }
+
+  lootTakeAll(): boolean {
+    return this.ready() && this.sendMsg({ t: 'cmd', kind: 'lootTakeAll' });
+  }
+
+  lootClose(): void {
+    if (this.ready()) this.sendMsg({ t: 'cmd', kind: 'lootClose' });
   }
 
   shopView(): ShopView | null {

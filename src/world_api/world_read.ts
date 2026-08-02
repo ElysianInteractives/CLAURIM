@@ -2,6 +2,7 @@
 
 import type {
   ContentId,
+  ConsumableEquipSlot,
   EntityId,
   EquipSlot,
   SimEvent,
@@ -18,6 +19,16 @@ export interface InventoryItemView {
   equipped: boolean;
   kind: string;
   value: number;
+  weight: number;
+  detail: string;
+}
+
+export interface EquippedConsumableView {
+  slot: ConsumableEquipSlot;
+  hotkey: '3' | '4' | '5';
+  itemId: ContentId | null;
+  name: string | null;
+  count: number;
 }
 
 export interface EquipmentSlotView {
@@ -159,6 +170,7 @@ export interface WorldReadFacet {
   playerEquipment(): EquipmentSlotView[];
   knownSpells(): KnownSpellView[];
   equippedSpells(): EquippedSpellView[];
+  equippedConsumables(): EquippedConsumableView[];
   /** Events from the most recent tick, already filtered to what this player
    * should see (own progression, local combat, world messages). */
   drainEvents(): SimEvent[];

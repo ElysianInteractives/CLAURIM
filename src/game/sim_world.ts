@@ -12,6 +12,7 @@ import type {
   GroundAoeView,
   IWorld,
   JournalView,
+  LootItemView,
   PartyMemberView,
   ProjectileView,
   ShopView,
@@ -21,7 +22,9 @@ import { buyPrice, sellPrice } from '../sim/inventory/inventory';
 import {
   equipmentView,
   equippedSpellView,
+  equippedConsumableView,
   inventoryView,
+  itemDetail,
   knownSpellView,
 } from './loadout_view';
 
@@ -217,6 +220,10 @@ export class SimWorld implements IWorld {
     return equippedSpellView(this.sim.spellLoadoutFor(this.charId), this.sim.content);
   }
 
+  equippedConsumables() {
+    return equippedConsumableView(this.sim.consumableLoadoutFor(this.charId), this.actor(), this.sim.content);
+  }
+
   /** Filter tick events to this player's view: own progression/quests, plus
    * shared local happenings (combat, chat, boss events). */
   private eventVisible(e: SimEvent): boolean {
@@ -331,6 +338,14 @@ export class SimWorld implements IWorld {
     return this.sim.unequipSpellFor(this.charId, slot);
   }
 
+  equipConsumable(slot: Parameters<IWorld['equipConsumable']>[0], itemId: ContentId): boolean {
+    return this.sim.equipConsumableFor(this.charId, slot, itemId);
+  }
+
+  unequipConsumable(slot: Parameters<IWorld['unequipConsumable']>[0]): boolean {
+    return this.sim.unequipConsumableFor(this.charId, slot);
+  }
+
   takePerk(perkId: ContentId): boolean {
     return this.sim.takePerkFor(this.charId, perkId);
   }
@@ -368,6 +383,39 @@ export class SimWorld implements IWorld {
   }
 
   // --- menus --------------------------------------------------------------
+
+  lootView() {
+    const session = this.sim.lootSessionFor(this.charId);
+    if (!session) return null;
+    const items: LootItemView[] = session.contents.items.filter((stack) => stack.count > 0).map((stack) => {
+      const item = this.sim.content.items[stack.itemId];
+      return {
+        itemId: stack.itemId,
+        name: item?.name ?? stack.itemId,
+        count: stack.count,
+        kind: item?.kind ?? 'misc',
+        value: item?.value ?? 0,
+        weight: item?.weight ?? 0,
+        detail: itemDetail(item),
+      };
+    });
+    if (session.contents.gold > 0) {
+      items.push({ itemId: '__gold', name: 'Gold', count: session.contents.gold, kind: 'currency', value: 1, weight: 0, detail: 'Common coin' });
+    }
+    return { sourceKind: session.kind, sourceName: session.name, items } as const;
+  }
+
+  lootTake(itemId: ContentId | '__gold'): boolean {
+    return this.sim.lootTakeFor(this.charId, itemId);
+  }
+
+  lootTakeAll(): boolean {
+    return this.sim.lootTakeAllFor(this.charId);
+  }
+
+  lootClose(): void {
+    this.sim.lootCloseFor(this.charId);
+  }
 
   dialogueView(): DialogueView | null {
     const node = this.sim.dialogueNodeFor(this.charId);

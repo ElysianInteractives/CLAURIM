@@ -137,6 +137,26 @@ describe('migrations', () => {
     });
   });
 
+  it('migrates v4 worlds and v2 characters to partial loot and consumable slots', () => {
+    const sim = new Sim(14);
+    const world = sim.serialize() as unknown as Record<string, unknown>;
+    world.schemaVersion = 4;
+    delete world.equippedConsumables;
+    delete world.containerLootBy;
+    const migratedWorld = parseSave(JSON.stringify(world));
+    expect(migratedWorld.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
+    expect(migratedWorld.equippedConsumables).toEqual([]);
+    expect(migratedWorld.containerLootBy).toEqual([]);
+
+    const character = sim.extractCharacter('p1') as unknown as Record<string, unknown>;
+    character.schemaVersion = 2;
+    delete character.equippedConsumables;
+    delete character.containerLoot;
+    const migratedCharacter = parseCharacterSave(JSON.stringify(character));
+    expect(migratedCharacter.equippedConsumables).toEqual({});
+    expect(migratedCharacter.containerLoot).toEqual([]);
+  });
+
   it('a v0 save (no bookkeeping at all) migrates through the whole chain', () => {
     const sim = new Sim(3);
     const v1 = makeV1Save(sim);

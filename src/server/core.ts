@@ -9,7 +9,7 @@ import { Sim, IDLE_INPUT, type PlayerInput } from '../sim/sim';
 import { clampAimPitch } from '../sim/player/aim';
 import { SimWorld } from '../game/sim_world';
 import { isActiveAt } from '../sim/world/cells';
-import { EQUIP_SLOTS, SPELL_EQUIP_SLOTS, type SimEvent } from '../sim/types';
+import { CONSUMABLE_EQUIP_SLOTS, EQUIP_SLOTS, SPELL_EQUIP_SLOTS, type SimEvent } from '../sim/types';
 import { parseCharacterSave } from '../sim/save/save';
 import {
   PROTOCOL_VERSION,
@@ -260,11 +260,26 @@ export class ServerCore {
       case 'unequipSpell':
         if (msg.index !== undefined) sim.unequipSpellFor(charId, SPELL_EQUIP_SLOTS[msg.index]);
         break;
+      case 'equipConsumable':
+        if (msg.arg && msg.index !== undefined) sim.equipConsumableFor(charId, CONSUMABLE_EQUIP_SLOTS[msg.index], msg.arg);
+        break;
+      case 'unequipConsumable':
+        if (msg.index !== undefined) sim.unequipConsumableFor(charId, CONSUMABLE_EQUIP_SLOTS[msg.index]);
+        break;
       case 'perk':
         if (msg.arg) sim.takePerkFor(charId, msg.arg);
         break;
       case 'interact':
         sim.interactFor(charId);
+        break;
+      case 'lootTake':
+        if (msg.arg) sim.lootTakeFor(charId, msg.arg);
+        break;
+      case 'lootTakeAll':
+        sim.lootTakeAllFor(charId);
+        break;
+      case 'lootClose':
+        sim.lootCloseFor(charId);
         break;
       case 'dialogueChoose':
         if (msg.index !== undefined) sim.dialogueChooseFor(charId, msg.index);
@@ -446,6 +461,7 @@ export class ServerCore {
         skills: view.playerSkills(),
         knownSpells: view.knownSpells(),
         equippedSpells: view.equippedSpells(),
+        equippedConsumables: view.equippedConsumables(),
         journal: view.journal(),
         perks: view.perks(),
         partyId: view.partyId(),
@@ -453,6 +469,7 @@ export class ServerCore {
         partyInvites: view.partyInvites(),
         dialogue: view.dialogueView(),
         shop: view.shopView(),
+        loot: view.lootView(),
         prompt: view.nearestInteractablePrompt(),
       };
       client.send({

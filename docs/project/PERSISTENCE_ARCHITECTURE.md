@@ -14,21 +14,22 @@
   owned-character IDs/names, and a salted scrypt derivation. Plain passwords
   and raw/hashed sessions do not persist. The file requests mode `0600` where
   supported; sessions are memory-only and a restart signs everyone out.
-- Character records (`CharacterSave`, schema v2, `src/sim/save/save.ts`):
+- Character records (`CharacterSave`, schema v3, `src/sim/save/save.ts`):
   identity, position/space, resources, inventory/equipment/gold, effects,
-  skills/perks/level/xp, known spells and equipped spell hotkeys, quest
-  journal, container-loot set.
+  skills/perks/level/xp, known spells, spell and consumable hotkeys, quest
+  journal, completed containers, and partial personal-container contents.
   Written on: join-create, disconnect, every 30 s (PERSIST_EVERY), shutdown.
-- World save (`SaveGame`, schema v4): world deltas (dead never-respawn
+- World save (`SaveGame`, schema v5): world deltas (dead never-respawn
   actors, spawner bookkeeping, explicit parties, known character names,
-  resident characters), including per-character spell hotkeys. Written every
+  resident characters), including per-character spell/consumable hotkeys and
+  partial personal-container contents. Written every
   30 s + shutdown. On server start the
   world save loads and resident characters are removed (they rejoin from
   their own records) while durable party membership remains.
 
 ## Migration + corruption
 Both schemas carry versions and linear migration registries with tests
-(world v0->v1->v2->v3->v4 and character v1->v2 chains pinned). Corrupt payloads REJECT: a bad character
+(world v0->v1->v2->v3->v4->v5 and character v1->v2->v3 chains pinned). Corrupt payloads REJECT: a bad character
 record falls back to a fresh character (logged); a bad world save starts a
 fresh world and leaves the bad file for the operator. Nothing half-loads.
 An invalid account store fails server startup rather than silently replacing

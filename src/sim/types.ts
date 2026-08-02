@@ -150,6 +150,17 @@ export type SpellEquipSlot = 'spell1' | 'spell2';
 
 export const SPELL_EQUIP_SLOTS: readonly SpellEquipSlot[] = ['spell1', 'spell2'];
 
+/** Three player-selected consumable hotkeys. Assignments reference carried
+ * stacks and intentionally survive a zero count so future pickups refill the
+ * quick slot without another menu visit. */
+export type ConsumableEquipSlot = 'consumable1' | 'consumable2' | 'consumable3';
+
+export const CONSUMABLE_EQUIP_SLOTS: readonly ConsumableEquipSlot[] = [
+  'consumable1',
+  'consumable2',
+  'consumable3',
+];
+
 export type AttackKind = 'melee' | 'ranged' | 'spell';
 export type AttackPhase = 'windup' | 'active' | 'recover';
 

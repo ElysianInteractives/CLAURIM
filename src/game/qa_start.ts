@@ -16,6 +16,7 @@ export interface QaStartPoint {
 
 export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
   falkmoor: { spaceId: 'kaldwyn', x: 40, z: -410, yaw: 0 },
+  loot: { spaceId: 'kaldwyn', x: 44, z: -424, yaw: Math.PI / 2 },
   gear: {
     spaceId: 'kaldwyn', x: 42, z: 158, yaw: Math.PI,
     items: ['iron_sword', 'hunting_bow', 'wooden_shield', 'fur_cuirass', 'fur_hood', 'fur_boots', 'fur_mantle'],

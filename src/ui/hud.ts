@@ -5,7 +5,15 @@
 import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
 import { DEFAULT_AUDIO_SETTINGS, type AudioBus, type AudioSettings } from '../game/combat_audio';
 import { reticleDirection } from '../sim/player/aim';
-import { LOADOUT_CSS, renderLoadoutPanel, renderSpellQuickbar } from './loadout';
+import {
+  LOADOUT_CSS,
+  renderLoadoutPanel,
+  renderLootPanel,
+  renderMagicPanel,
+  renderQuickbar,
+  type InventoryCategory,
+} from './loadout';
+import { MENU_SHELL_CSS, renderMenuShell, type MenuDestination } from './menu_shell';
 import {
   WORLD_MAP_CSS,
   mapDefinition,
@@ -122,10 +130,11 @@ const CSS = `
     #hud .control-row { min-height: 21px; }
   }
   ${LOADOUT_CSS}
+  ${MENU_SHELL_CSS}
   ${WORLD_MAP_CSS}
 `;
 
-type Panel = 'none' | 'dialogue' | 'shop' | 'inventory' | 'journal' | 'perks' | 'social' | 'map' | 'settings';
+type Panel = 'none' | 'dialogue' | 'shop' | 'loot' | MenuDestination;
 type ResourceKind = 'health' | 'stamina' | 'magicka';
 type ResourceReadout = Pick<
   ReturnType<IWorld['playerResources']>,
@@ -148,6 +157,9 @@ export class Hud {
   private chatOpen = false;
   private chatDraft = '';
   private waypoint: MapWaypoint | null = null;
+  private inventoryCategory: InventoryCategory = 'all';
+  private selectedInventoryItem = '';
+  private selectedLootItem = '';
   private renderedHtml = '';
   private renderedInteraction = '';
   panel: Panel = 'none';
@@ -181,6 +193,7 @@ export class Hud {
   togglePanel(p: Panel): void {
     this.chatOpen = false;
     this.panel = this.panel === p ? 'none' : p;
+    if (this.panel !== 'none') void document.exitPointerLock?.();
   }
 
   toggleControls(): void {
@@ -304,9 +317,10 @@ export class Hud {
     // Dialogue/shop panels follow authoritative state, not local history:
     // an open shop view forces the shop panel even if the dialogue frame was
     // never rendered (frame skips, online snapshot gaps).
-    if (this.world.dialogueView()) this.panel = 'dialogue';
+    if (this.world.lootView()) this.panel = 'loot';
+    else if (this.world.dialogueView()) this.panel = 'dialogue';
     else if (this.world.shopView()) this.panel = 'shop';
-    else if (this.panel === 'dialogue' || this.panel === 'shop') this.panel = 'none';
+    else if (this.panel === 'dialogue' || this.panel === 'shop' || this.panel === 'loot') this.panel = 'none';
 
     const html = this.renderHtml();
     const interaction = this.interactionSignature();
@@ -367,7 +381,7 @@ export class Hud {
       <div class="clockrow">${esc(spaceName)} - ${hh}:${mm} - Level ${r.level} - ${r.gold} gold</div>
       ${this.connectionStatus ? `<div class="connection-status connection-status--${this.connectionStatus.tone}" role="status">${esc(this.connectionStatus.text)}</div>` : ''}
       ${renderResourceMeters(r)}
-      ${renderSpellQuickbar(this.world.equippedSpells())}
+      ${renderQuickbar(this.world.equippedSpells(), this.world.equippedConsumables())}
       <div class="crosshair${pulseClass}" aria-hidden="true"></div>
       ${target ? renderCombatTarget(target) : ''}
       ${this.combatPulse === 'hurt' ? '<div class="damage-vignette" aria-hidden="true"></div>' : ''}
@@ -405,71 +419,87 @@ export class Hud {
       case 'shop': {
         const s = this.world.shopView();
         if (s) {
-          html += `<div class="panel"><h2>${esc(s.merchantName)} - Trade</h2>`;
-          html += `<div class="row static dim">Buy:</div>`;
-          html += s.stock
+          let trade = `<div class="section-panel"><h2>${esc(s.merchantName)} - Trade</h2>`;
+          trade += `<div class="row static dim">Buy:</div>`;
+          trade += s.stock
             .map((it) => `<div class="row" data-act="buy" data-id="${it.itemId}"><span>${esc(it.name)} x${it.count}</span><span>${it.price}g</span></div>`)
             .join('');
-          html += `<div class="row static dim">Sell:</div>`;
-          html += s.sellable
+          trade += `<div class="row static dim">Sell:</div>`;
+          trade += s.sellable
             .map((it) => `<div class="row" data-act="sell" data-id="${it.itemId}"><span>${esc(it.name)} x${it.count}</span><span>${it.price}g</span></div>`)
             .join('');
-          html += `<div class="hint">Click to trade - [Esc] close</div></div>`;
+          trade += `</div>`;
+          html += renderMenuShell('inventory', 'Trade', trade, `${r.gold} gold`, '<kbd>Esc</kbd> close trade');
         }
         break;
       }
+      case 'loot': {
+        const loot = this.world.lootView();
+        if (loot) html += renderLootPanel(loot, this.selectedLootItem);
+        break;
+      }
       case 'inventory': {
-        html += renderLoadoutPanel(
+        const content = renderLoadoutPanel(
           this.world.playerResources().gold,
           this.world.playerEquipment(),
           this.world.equippedSpells(),
           this.world.knownSpells(),
           this.world.playerInventory(),
+          this.world.equippedConsumables(),
+          this.inventoryCategory,
+          this.selectedInventoryItem,
         );
+        html += renderMenuShell('inventory', 'Inventory', content, `${r.gold} gold`);
+        break;
+      }
+      case 'magic': {
+        html += renderMenuShell('magic', 'Magic', renderMagicPanel(this.world.equippedSpells(), this.world.knownSpells()), `${r.magicka.toFixed(0)} magicka`);
         break;
       }
       case 'journal': {
         const quests = this.world.journal();
-        html += `<div class="panel"><h2>Journal</h2>`;
-        if (quests.length === 0) html += `<div class="row static dim">No quests yet. Someone in Fenharrow may need help.</div>`;
+        let journal = `<div class="section-panel"><h2>Journal</h2>`;
+        if (quests.length === 0) journal += `<div class="row static dim">No quests yet. Someone in Fenharrow may need help.</div>`;
         for (const q of quests) {
-          html += `<div class="row static"><b>${esc(q.name)}${q.completed ? ' (done)' : ''}</b></div>`;
-          html += `<div class="row static text">${esc(q.stageJournal)}</div>`;
+          journal += `<div class="row static"><b>${esc(q.name)}${q.completed ? ' (done)' : ''}</b></div>`;
+          journal += `<div class="row static text">${esc(q.stageJournal)}</div>`;
           for (const o of q.objectives) {
-            html += `<div class="row static ${o.done ? 'done' : ''}">${o.done ? '[x]' : '[ ]'} ${esc(o.text)} (${o.progress}/${o.required})${o.optional ? ' *' : ''}</div>`;
+            journal += `<div class="row static ${o.done ? 'done' : ''}">${o.done ? '[x]' : '[ ]'} ${esc(o.text)} (${o.progress}/${o.required})${o.optional ? ' *' : ''}</div>`;
           }
         }
-        html += `<div class="hint">[J] close</div></div>`;
+        journal += `</div>`;
+        html += renderMenuShell('journal', 'Journal', journal, `${quests.filter((q) => !q.completed).length} active`);
         break;
       }
       case 'perks': {
         const r2 = this.world.playerResources();
-        html += `<div class="panel"><h2>Perks (${r2.perkPoints} point${r2.perkPoints === 1 ? '' : 's'})</h2>`;
+        let character = `<div class="section-panel"><h2>Character Development</h2>`;
         for (const p of this.world.perks()) {
           const cls = p.owned ? 'done' : p.available ? '' : 'dim';
-          html += `<div class="row ${cls}" data-act="perk" data-id="${p.id}"><span>${esc(p.name)} (${p.skill} ${p.requiredSkillLevel})</span><span>${p.owned ? 'owned' : p.available ? 'take' : esc(p.reason)}</span></div>`;
-          html += `<div class="row static dim">${esc(p.description)}</div>`;
+          character += `<div class="row ${cls}" data-act="perk" data-id="${p.id}"><span>${esc(p.name)} (${p.skill} ${p.requiredSkillLevel})</span><span>${p.owned ? 'owned' : p.available ? 'take' : esc(p.reason)}</span></div>`;
+          character += `<div class="row static dim">${esc(p.description)}</div>`;
         }
-        html += `<div class="hint">[P] close</div></div>`;
+        character += `</div>`;
+        html += renderMenuShell('perks', 'Character', character, `${r2.perkPoints} perk point${r2.perkPoints === 1 ? '' : 's'}`);
         break;
       }
       case 'social':
-        html += renderSocialPanel(
+        html += renderMenuShell('social', 'Social', renderSocialPanel(
           this.world.partyId(),
           this.world.party(),
           this.world.partyInvites(),
           this.world.actorsInSpace(),
-        );
+        ), this.world.partyId() ? `${this.world.party().length} party members` : 'Travelling solo');
         break;
       case 'map':
-        html += renderWorldMap(
+        html += renderMenuShell('map', 'World Map', renderWorldMap(
           mapDefinition(this.world.currentSpace()),
           player,
           this.waypoint?.spaceId === this.world.currentSpace() ? this.waypoint : null,
-        );
+        ), this.world.spaceName(this.world.currentSpace()));
         break;
       case 'settings':
-        html += renderSettings(this.audio?.settings() ?? DEFAULT_AUDIO_SETTINGS, this.audio?.state() ?? 'locked');
+        html += renderMenuShell('settings', 'System', renderSettings(this.audio?.settings() ?? DEFAULT_AUDIO_SETTINGS, this.audio?.state() ?? 'locked'));
         break;
       case 'none':
         break;
@@ -507,9 +537,23 @@ export class Hud {
           }
         }
         else if (act === 'map-clear') this.waypoint = null;
+        else if (act === 'menu-nav') {
+          if (this.panel === 'shop') this.world.shopClose();
+          this.panel = el.dataset.panel as MenuDestination;
+          void document.exitPointerLock?.();
+        }
+        else if (act === 'inventory-category') {
+          this.inventoryCategory = el.dataset.category as InventoryCategory;
+          this.selectedInventoryItem = '';
+        }
+        else if (act === 'select-item') this.selectedInventoryItem = id;
+        else if (act === 'select-loot') this.selectedLootItem = id;
+        else if (act === 'loot-take') this.world.lootTake(id);
+        else if (act === 'loot-all') this.world.lootTakeAll();
         else if (act === 'unequip-item') this.world.unequipItem(el.dataset.slot as Parameters<IWorld['unequipItem']>[0]);
         else if (act === 'equip-spell') this.world.equipSpell(el.dataset.slot as Parameters<IWorld['equipSpell']>[0], id);
         else if (act === 'unequip-spell') this.world.unequipSpell(el.dataset.slot as Parameters<IWorld['unequipSpell']>[0]);
+        else if (act === 'equip-consumable') this.world.equipConsumable(el.dataset.slot as Parameters<IWorld['equipConsumable']>[0], id);
         else if (act === 'item') {
           const it = this.world.playerInventory().find((x) => x.itemId === id);
           if (!it) return;
@@ -568,9 +612,25 @@ export class Hud {
   closeAll(): void {
     if (this.panel === 'dialogue') this.world.dialogueEnd();
     if (this.panel === 'shop') this.world.shopClose();
+    if (this.panel === 'loot') this.world.lootClose();
     this.panel = 'none';
     this.chatOpen = false;
     this.chatDraft = '';
+  }
+
+  /** Keyboard E takes the selected loot stack while a loot surface is open. */
+  handleInteractCommand(): boolean {
+    if (this.panel !== 'loot') return false;
+    const loot = this.world.lootView();
+    const selected = loot?.items.find((item) => item.itemId === this.selectedLootItem) ?? loot?.items[0];
+    if (selected) this.world.lootTake(selected.itemId);
+    return true;
+  }
+
+  handleLootAllCommand(): boolean {
+    if (this.panel !== 'loot') return false;
+    this.world.lootTakeAll();
+    return true;
   }
 }
 
@@ -780,6 +840,7 @@ export function renderControlsHelp(expanded: boolean): string {
         <div class="control-row"><kbd>LMB</kbd><span>Attack</span></div>
         <div class="control-row"><kbd>RMB</kbd><span>Block</span></div>
         <div class="control-row"><kbd>1 / 2</kbd><span>Aim / cast spells</span></div>
+        <div class="control-row"><kbd>3 / 4 / 5</kbd><span>Use consumables</span></div>
       </section>
       <section class="control-group"><h3>World</h3>
         <div class="control-row"><kbd>E</kbd><span>Interact</span></div>

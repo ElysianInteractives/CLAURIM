@@ -1,19 +1,34 @@
 import type { ContentRegistry } from '../sim/content/schema';
 import {
+  CONSUMABLE_EQUIP_SLOTS,
   EQUIP_SLOTS,
   SPELL_EQUIP_SLOTS,
   type Actor,
   type ContentId,
   type EquipSlot,
 } from '../sim/types';
-import type { SpellLoadout } from '../sim/player/loadout';
+import type { ConsumableLoadout, SpellLoadout } from '../sim/player/loadout';
 import { MAGIC_SCHOOL_NAMES } from '../sim/content/magic';
 import type {
   EquipmentSlotView,
+  EquippedConsumableView,
   EquippedSpellView,
   InventoryItemView,
   KnownSpellView,
 } from '../world_api';
+
+export function itemDetail(item: ContentRegistry['items'][string] | undefined): string {
+  if (!item) return 'Unknown item';
+  if (item.kind === 'weapon') return `${item.damage ?? 0} damage · ${item.weaponType ?? 'weapon'}`;
+  if (item.kind === 'armor') return `${item.armor ?? 0} armor · ${item.slot ?? 'apparel'}`;
+  if (item.kind === 'consumable') {
+    const effects = (item.useEffects ?? []).map((id) => id.replace(/_/g, ' ')).join(', ');
+    return effects || 'Consumed for an immediate effect';
+  }
+  if (item.kind === 'tome') return item.teachesSpell ? `Teaches ${item.teachesSpell.replace(/_/g, ' ')}` : 'Readable tome';
+  if (item.kind === 'quest') return 'Quest item';
+  return item.kind.charAt(0).toUpperCase() + item.kind.slice(1);
+}
 
 const EQUIPMENT_LABELS: Record<EquipSlot, string> = {
   mainHand: 'Main hand',
@@ -42,11 +57,34 @@ export function inventoryView(actor: Actor, content: ContentRegistry): Inventory
       equipped,
       kind: item?.kind ?? 'misc',
       value: item?.value ?? 0,
+      weight: item?.weight ?? 0,
+      detail: itemDetail(item),
     });
     if (equippedCount > 0) view.push(makeEntry(equippedCount, true));
     if (total > equippedCount) view.push(makeEntry(total - equippedCount, false));
   }
   return view;
+}
+
+export function equippedConsumableView(
+  loadout: ConsumableLoadout,
+  actor: Actor,
+  content: ContentRegistry,
+): EquippedConsumableView[] {
+  return CONSUMABLE_EQUIP_SLOTS.map((slot, index) => {
+    const itemId = loadout[slot] ?? null;
+    const item = itemId ? content.items[itemId] : undefined;
+    const count = itemId
+      ? actor.inventory.reduce((total, stack) => total + (stack.itemId === itemId ? stack.count : 0), 0)
+      : 0;
+    return {
+      slot,
+      hotkey: String(index + 3) as '3' | '4' | '5',
+      itemId,
+      name: itemId ? (item?.name ?? itemId) : null,
+      count,
+    };
+  });
 }
 
 export function equipmentView(actor: Actor, content: ContentRegistry): EquipmentSlotView[] {

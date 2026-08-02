@@ -72,5 +72,5 @@ extractCharacter policy). Server restart: world save restores world deltas
 and party/name records; characters rejoin individually.
 
 ## Saves
-World schema v4 (explicit spell hotkeys), migrations v1->v2->v3->v4 + tests.
-Character schema v2 (spell hotkeys), migration v1->v2 + tests.
+World schema v5 (explicit spell/consumable hotkeys and partial personal containers), migrations v1->v2->v3->v4->v5 + tests.
+Character schema v3 (spell/consumable hotkeys and partial personal containers), migrations v1->v2->v3 + tests.

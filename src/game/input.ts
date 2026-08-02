@@ -1,6 +1,7 @@
 // Keyboard/mouse input -> per-tick PlayerInput + one-shot commands.
 // Keybinds: WASD move, mouse look (pointer lock), Shift sprint, C sneak,
 // Space jump, RMB block, LMB attack (weapon-appropriate), 1/2 aimed spells,
+// 3/4/5 consumables,
 // E interact, Tab inventory, M map, J journal, P perks, O party, Enter chat,
 // H controls, V camera toggle,
 // F5/F9 save/load.
@@ -12,6 +13,10 @@ export interface FrameCommands {
   ranged: boolean;
   spell1: boolean;
   spell2: boolean;
+  consumable1: boolean;
+  consumable2: boolean;
+  consumable3: boolean;
+  lootAll: boolean;
   interact: boolean;
   toggleInventory: boolean;
   toggleMap: boolean;
@@ -76,6 +81,18 @@ export class Input {
           break;
         case 'Digit2':
           this.commands.spell2 = true;
+          break;
+        case 'Digit3':
+          this.commands.consumable1 = true;
+          break;
+        case 'Digit4':
+          this.commands.consumable2 = true;
+          break;
+        case 'Digit5':
+          this.commands.consumable3 = true;
+          break;
+        case 'KeyR':
+          this.commands.lootAll = true;
           break;
         case 'F5':
           this.commands.save = true;
@@ -171,6 +188,10 @@ function emptyCommands(): FrameCommands {
     ranged: false,
     spell1: false,
     spell2: false,
+    consumable1: false,
+    consumable2: false,
+    consumable3: false,
+    lootAll: false,
     interact: false,
     toggleInventory: false,
     toggleMap: false,

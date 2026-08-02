@@ -210,7 +210,7 @@ describe('server-authoritative movement (D-015)', () => {
     expect(actor.equipment.mainHand).not.toBe('steel_sword');
   });
 
-  it('replicates and mutates item and spell loadouts through validated intent', () => {
+  it('replicates and mutates item, spell, and consumable loadouts through validated intent', () => {
     const { core } = makeServer();
     const client = new TestClient(core, 'conn1');
     client.hello('alva');
@@ -237,6 +237,7 @@ describe('server-authoritative movement (D-015)', () => {
     ))).toBe(false);
 
     client.send({ t: 'cmd', kind: 'equipSpell', arg: 'mend_wounds', index: 0 });
+    client.send({ t: 'cmd', kind: 'equipConsumable', arg: 'bread', index: 0 });
     client.send({ t: 'cmd', kind: 'unequipItem', index: 0 });
     ticks(core, SNAPSHOT_EVERY);
 
@@ -249,6 +250,11 @@ describe('server-authoritative movement (D-015)', () => {
       expect.objectContaining({ slot: 'spell1', spellId: 'mend_wounds' }),
       expect.objectContaining({ slot: 'spell2', spellId: null }),
     ]);
+    expect(snapshot.self.equippedConsumables).toEqual([
+      expect.objectContaining({ slot: 'consumable1', itemId: 'bread', count: 2, hotkey: '3' }),
+      expect.objectContaining({ slot: 'consumable2', itemId: null, count: 0, hotkey: '4' }),
+      expect.objectContaining({ slot: 'consumable3', itemId: null, count: 0, hotkey: '5' }),
+    ]);
 
     core.disconnect('conn1');
     const reconnect = new TestClient(core, 'conn2', 'account_conn1');
@@ -258,6 +264,42 @@ describe('server-authoritative movement (D-015)', () => {
       expect.objectContaining({ slot: 'spell1', spellId: 'mend_wounds' }),
       expect.objectContaining({ slot: 'spell2', spellId: null }),
     ]);
+    expect(reconnect.last('snapshot')!.self.equippedConsumables).toContainEqual(
+      expect.objectContaining({ slot: 'consumable1', itemId: 'bread', count: 2 }),
+    );
+  });
+
+  it('opens and partially transfers container loot through authoritative commands', () => {
+    const { core } = makeServer();
+    const client = new TestClient(core, 'conn1');
+    client.hello('alva');
+    const player = core.sim.playerActor('alva')!;
+    player.pos.spaceId = 'kaldwyn';
+    player.pos.x = 44;
+    player.pos.z = -424;
+    const breadBefore = player.inventory.find((stack) => stack.itemId === 'bread')!.count;
+
+    client.send({ t: 'cmd', kind: 'interact' });
+    core.sim.containerLootOf('alva').set('ruin_chest', {
+      items: [{ itemId: 'bread', count: 2 }, { itemId: 'healing_draught', count: 1 }],
+      gold: 7,
+    });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(client.last('snapshot')!.self.loot).toEqual(expect.objectContaining({
+      sourceKind: 'container',
+      sourceName: 'Weathered Chest',
+      items: expect.arrayContaining([
+        expect.objectContaining({ itemId: 'bread', count: 2 }),
+        expect.objectContaining({ itemId: '__gold', count: 7 }),
+      ]),
+    }));
+    expect(player.inventory.find((stack) => stack.itemId === 'bread')!.count).toBe(breadBefore);
+
+    client.send({ t: 'cmd', kind: 'lootTake', arg: 'bread' });
+    ticks(core, SNAPSHOT_EVERY);
+    expect(player.inventory.find((stack) => stack.itemId === 'bread')!.count).toBe(breadBefore + 2);
+    expect(client.last('snapshot')!.self.loot?.items.some((item) => item.itemId === 'bread')).toBe(false);
+    expect(client.last('snapshot')!.self.loot?.items.some((item) => item.itemId === 'healing_draught')).toBe(true);
   });
 });
 

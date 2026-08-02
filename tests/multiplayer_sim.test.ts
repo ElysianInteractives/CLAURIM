@@ -59,9 +59,13 @@ describe('per-character state', () => {
     put(sim, 'p1', 'kaldwyn', 44, -424); // ruin_chest
     put(sim, 'p2', 'kaldwyn', 44, -424);
     expect(sim.interactFor('p1')).toBe('container');
+    expect(sim.lootSessionFor('p1')?.name).toBe('Weathered Chest');
+    expect(sim.containersLootedOf('p1').has('ruin_chest')).toBe(false);
+    expect(sim.lootTakeAllFor('p1')).toBe(true);
     expect(sim.containersLootedOf('p1').has('ruin_chest')).toBe(true);
     expect(sim.containersLootedOf('p2').has('ruin_chest')).toBe(false);
     expect(sim.interactFor('p2')).toBe('container');
+    expect(sim.lootTakeAllFor('p2')).toBe(true);
     expect(sim.containersLootedOf('p2').has('ruin_chest')).toBe(true);
   });
 });

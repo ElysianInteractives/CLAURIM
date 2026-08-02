@@ -183,7 +183,8 @@ function frame(now: number): void {
   if (cmd.toggleChat) hud.openChat();
   if (cmd.toggleHelp) hud.toggleControls();
   if (cmd.toggleCamera) renderer.firstPerson = !renderer.firstPerson;
-  if (cmd.interact) world.interact();
+  if (cmd.interact && !hud.handleInteractCommand()) world.interact();
+  if (cmd.lootAll) hud.handleLootAllCommand();
   const menuOpen = hud.isInputCaptured();
   if (!menuOpen) {
     if (cmd.melee) {
@@ -198,6 +199,16 @@ function frame(now: number): void {
     if (cmd.spell2) {
       const spellId = spellForHotkey(world.equippedSpells(), 'spell2');
       if (spellId) world.castSpell(spellId);
+    }
+    for (const [pressed, slot] of [
+      [cmd.consumable1, 'consumable1'],
+      [cmd.consumable2, 'consumable2'],
+      [cmd.consumable3, 'consumable3'],
+    ] as const) {
+      if (!pressed) continue;
+      const assigned = world.equippedConsumables().find((entry) => entry.slot === slot);
+      if (!assigned?.itemId || assigned.count <= 0) hud.notify(assigned?.name ? `${assigned.name}: none remaining` : 'No consumable assigned');
+      else if (!world.useItem(assigned.itemId)) hud.notify(`${assigned.name}: not ready`);
     }
   }
   if (cmd.save) {
