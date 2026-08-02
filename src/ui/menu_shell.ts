@@ -75,7 +75,7 @@ export function renderMenuShell(
   title: string,
   content: string,
   meta = '',
-  footer = '<kbd>Esc</kbd> close',
+  footer = '<kbd>W/S</kbd> select · <kbd>Enter</kbd> accept · <kbd>Esc</kbd> close',
 ): string {
   return `<div class="menu-overlay"><section class="menu-frame" aria-label="${escapeHtml(title)} menu">` +
     `<header class="menu-titlebar"><h1>${escapeHtml(title)}</h1><span class="menu-meta">${escapeHtml(meta)}</span></header>` +

@@ -2,7 +2,7 @@
 // feed, dialogue panel, shop, inventory, journal, perks, and the death screen.
 // Observes IWorld and submits intent through it; never resolves outcomes.
 
-import type { ActorView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
+import type { ActorView, DialogueView, IWorld, PartyInviteView, PartyMemberView } from '../world_api';
 import { DEFAULT_AUDIO_SETTINGS, type AudioBus, type AudioSettings } from '../game/combat_audio';
 import { reticleDirection } from '../sim/player/aim';
 import {
@@ -72,6 +72,10 @@ const CSS = `
   #hud .panel .row { padding: 5px 8px; margin: 2px 0; border-radius: 3px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
   #hud .panel button.row { width: 100%; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; }
   #hud .panel .row:hover { background: rgba(200,180,120,.15); }
+  #hud .is-ui-selected { outline: 1px solid rgba(234,211,150,.72); outline-offset: 2px; }
+  #hud [data-act].is-ui-selected { color: #fff6de; background: linear-gradient(90deg, rgba(214,184,112,.24), rgba(214,184,112,.06));
+    outline-offset: -1px; }
+  #hud [data-act]:focus { outline: none; }
   #hud .panel .row.static { cursor: default; }
   #hud .panel .dim { opacity: .55; }
   #hud .panel .speaker { font-style: italic; color: #c9b880; margin-bottom: 8px; }
@@ -149,6 +153,8 @@ export interface AudioSettingsController {
 
 export class Hud {
   private root: HTMLDivElement;
+  private passiveRoot: HTMLDivElement;
+  private interactionRoot: HTMLDivElement;
   private feedLines: { text: string; until: number }[] = [];
   private controlsOpen = true;
   private combatPulse: 'hit' | 'blocked' | 'hurt' | null = null;
@@ -160,8 +166,10 @@ export class Hud {
   private inventoryCategory: InventoryCategory = 'all';
   private selectedInventoryItem = '';
   private selectedLootItem = '';
-  private renderedHtml = '';
-  private renderedInteraction = '';
+  private renderedPassiveHtml = '';
+  private renderedInteractionSignature = '';
+  private selectedUiKey = '';
+  private keyboardUiFocus = false;
   panel: Panel = 'none';
   private time = 0;
 
@@ -175,6 +183,11 @@ export class Hud {
     document.head.appendChild(style);
     this.root = document.createElement('div');
     this.root.id = 'hud';
+    this.passiveRoot = document.createElement('div');
+    this.passiveRoot.dataset.hudLayer = 'passive';
+    this.interactionRoot = document.createElement('div');
+    this.interactionRoot.dataset.hudLayer = 'interaction';
+    this.root.append(this.passiveRoot, this.interactionRoot);
     document.body.appendChild(this.root);
   }
 
@@ -193,6 +206,8 @@ export class Hud {
   togglePanel(p: Panel): void {
     this.chatOpen = false;
     this.panel = this.panel === p ? 'none' : p;
+    this.selectedUiKey = '';
+    this.keyboardUiFocus = false;
     if (this.panel !== 'none') void document.exitPointerLock?.();
   }
 
@@ -215,7 +230,7 @@ export class Hud {
   }
 
   isInputCaptured(): boolean {
-    return this.panel !== 'none' || this.chatOpen;
+    return this.panel !== 'none' || this.chatOpen || this.world.playerDowned();
   }
 
   openChat(): void {
@@ -317,29 +332,47 @@ export class Hud {
     // Dialogue/shop panels follow authoritative state, not local history:
     // an open shop view forces the shop panel even if the dialogue frame was
     // never rendered (frame skips, online snapshot gaps).
-    if (this.world.lootView()) this.panel = 'loot';
-    else if (this.world.dialogueView()) this.panel = 'dialogue';
-    else if (this.world.shopView()) this.panel = 'shop';
-    else if (this.panel === 'dialogue' || this.panel === 'shop' || this.panel === 'loot') this.panel = 'none';
+    const authoritativePanel = this.world.lootView()
+      ? 'loot'
+      : this.world.dialogueView()
+        ? 'dialogue'
+        : this.world.shopView()
+          ? 'shop'
+          : null;
+    if (authoritativePanel && this.panel !== authoritativePanel) {
+      this.panel = authoritativePanel;
+      this.selectedUiKey = '';
+    } else if (!authoritativePanel && (this.panel === 'dialogue' || this.panel === 'shop' || this.panel === 'loot')) {
+      this.panel = 'none';
+      this.selectedUiKey = '';
+    }
 
-    const html = this.renderHtml();
+    const passiveHtml = this.renderPassiveHtml();
+    if (passiveHtml !== this.renderedPassiveHtml) {
+      this.renderedPassiveHtml = passiveHtml;
+      this.passiveRoot.innerHTML = passiveHtml;
+    }
     const interaction = this.interactionSignature();
-    const stableInteraction = this.chatOpen || this.panel === 'social' || this.panel === 'settings';
-    if (html !== this.renderedHtml && (!stableInteraction || interaction !== this.renderedInteraction)) {
-      this.renderedHtml = html;
-      this.renderedInteraction = interaction;
-      this.root.innerHTML = html;
+    if (interaction !== this.renderedInteractionSignature) {
+      const dialogueNodeChanged = this.panel === 'dialogue'
+        && this.renderedInteractionSignature.startsWith('{"panel":"dialogue"');
+      if (dialogueNodeChanged) this.selectedUiKey = '';
+      this.renderedInteractionSignature = interaction;
+      this.interactionRoot.innerHTML = this.renderInteractionHtml();
       this.bindPanelClicks();
+      this.restoreUiSelection();
       if (this.chatOpen) {
-        const input = this.root.querySelector<HTMLInputElement>('[data-chat-input]');
+        const input = this.interactionRoot.querySelector<HTMLInputElement>('[data-chat-input]');
         input?.focus({ preventScroll: true });
         input?.setSelectionRange(input.value.length, input.value.length);
       }
     }
     if (this.panel === 'settings') {
-      const state = this.root.querySelector<HTMLElement>('[data-audio-state]');
+      const state = this.interactionRoot.querySelector<HTMLElement>('[data-audio-state]');
       if (state) state.textContent = audioStateText(this.audio?.state() ?? 'locked');
     }
+    const downedCountdown = this.interactionRoot.querySelector<HTMLElement>('[data-downed-countdown]');
+    if (downedCountdown) downedCountdown.textContent = String(Math.ceil(this.world.downedTicksLeft() / 30));
   }
 
   private questName(id: string): string {
@@ -348,26 +381,45 @@ export class Hud {
 
   private interactionSignature(): string {
     if (this.chatOpen) return 'chat';
-    if (this.panel === 'settings') return 'settings';
-    if (this.panel !== 'social') return this.panel;
-    const party = this.world.party().map((member) => ({
-      id: member.charId,
-      entity: member.entityId,
-      name: member.name,
-      online: member.online,
-      downed: member.downed,
-      health: member.health,
-      maxHealth: member.maxHealth,
-      space: member.spaceId,
-    }));
-    const invites = this.world.partyInvites();
-    const nearby = this.world.actorsInSpace()
-      .filter((actor) => actor.isRemotePlayer)
-      .map((actor) => ({ id: actor.id, name: actor.name }));
-    return JSON.stringify({ panel: 'social', partyId: this.world.partyId(), party, invites, nearby });
+    if (this.world.playerDowned()) return 'downed';
+    switch (this.panel) {
+      case 'dialogue':
+        return JSON.stringify({ panel: 'dialogue', view: this.world.dialogueView() });
+      case 'shop':
+        return JSON.stringify({ panel: 'shop', view: this.world.shopView(), gold: this.world.playerResources().gold });
+      case 'loot':
+        return JSON.stringify({ panel: 'loot', view: this.world.lootView(), selected: this.selectedLootItem });
+      case 'inventory':
+        return JSON.stringify({
+          panel: 'inventory', category: this.inventoryCategory, selected: this.selectedInventoryItem,
+          equipment: this.world.playerEquipment(), inventory: this.world.playerInventory(),
+          consumables: this.world.equippedConsumables(), spells: this.world.equippedSpells(),
+        });
+      case 'magic':
+        return JSON.stringify({ panel: 'magic', equipped: this.world.equippedSpells(), known: this.world.knownSpells() });
+      case 'journal':
+        return JSON.stringify({ panel: 'journal', quests: this.world.journal() });
+      case 'perks':
+        return JSON.stringify({ panel: 'perks', perks: this.world.perks(), points: this.world.playerResources().perkPoints });
+      case 'social': {
+        const nearby = this.world.actorsInSpace()
+          .filter((actor) => actor.isRemotePlayer)
+          .map((actor) => ({ id: actor.id, name: actor.name }));
+        return JSON.stringify({
+          panel: 'social', partyId: this.world.partyId(), party: this.world.party(),
+          invites: this.world.partyInvites(), nearby,
+        });
+      }
+      case 'map':
+        return JSON.stringify({ panel: 'map', space: this.world.currentSpace(), waypoint: this.waypoint });
+      case 'settings':
+        return 'settings';
+      case 'none':
+        return 'none';
+    }
   }
 
-  private renderHtml(): string {
+  private renderPassiveHtml(): string {
     const r = this.world.playerResources();
     const player = this.world.player();
     const spaceName = this.world.spaceName(this.world.currentSpace());
@@ -400,20 +452,22 @@ export class Hud {
       }
       html += `</div>`;
     }
+    return html;
+  }
+
+  private renderInteractionHtml(): string {
+    const r = this.world.playerResources();
+    const player = this.world.player();
+    let html = '';
     if (this.chatOpen) html += renderChatComposer(this.chatDraft, 400);
     if (this.world.playerDowned()) {
-      const secs = Math.ceil(this.world.downedTicksLeft() / 30);
-      html += `<div class="death"><h1>You are down.</h1><div class="row static">A party member can revive you. Auto-release in ${secs}s.</div><div class="row" data-act="respawn">Release now</div></div>`;
+      html += `<div class="death"><h1>You are down.</h1><div class="row static">A party member can revive you. Auto-release in <span data-downed-countdown></span>s.</div><button type="button" class="row" data-act="respawn">Release now</button></div>`;
       return html;
     }
     switch (this.panel) {
       case 'dialogue': {
         const d = this.world.dialogueView();
-        if (d) {
-          html += `<div class="panel"><div class="speaker">${esc(d.speakerName)}</div><div class="text">${esc(d.text)}</div>` +
-            d.choices.map((c, i) => `<div class="row" data-act="dlg" data-i="${i}">${esc(c)}</div>`).join('') +
-            `</div>`;
-        }
+        if (d) html += renderDialoguePanel(d);
         break;
       }
       case 'shop': {
@@ -422,11 +476,11 @@ export class Hud {
           let trade = `<div class="section-panel"><h2>${esc(s.merchantName)} - Trade</h2>`;
           trade += `<div class="row static dim">Buy:</div>`;
           trade += s.stock
-            .map((it) => `<div class="row" data-act="buy" data-id="${it.itemId}"><span>${esc(it.name)} x${it.count}</span><span>${it.price}g</span></div>`)
+            .map((it) => `<button type="button" class="row" data-act="buy" data-id="${it.itemId}"><span>${esc(it.name)} x${it.count}</span><span>${it.price}g</span></button>`)
             .join('');
           trade += `<div class="row static dim">Sell:</div>`;
           trade += s.sellable
-            .map((it) => `<div class="row" data-act="sell" data-id="${it.itemId}"><span>${esc(it.name)} x${it.count}</span><span>${it.price}g</span></div>`)
+            .map((it) => `<button type="button" class="row" data-act="sell" data-id="${it.itemId}"><span>${esc(it.name)} x${it.count}</span><span>${it.price}g</span></button>`)
             .join('');
           trade += `</div>`;
           html += renderMenuShell('inventory', 'Trade', trade, `${r.gold} gold`, '<kbd>Esc</kbd> close trade');
@@ -476,7 +530,7 @@ export class Hud {
         let character = `<div class="section-panel"><h2>Character Development</h2>`;
         for (const p of this.world.perks()) {
           const cls = p.owned ? 'done' : p.available ? '' : 'dim';
-          character += `<div class="row ${cls}" data-act="perk" data-id="${p.id}"><span>${esc(p.name)} (${p.skill} ${p.requiredSkillLevel})</span><span>${p.owned ? 'owned' : p.available ? 'take' : esc(p.reason)}</span></div>`;
+          character += `<button type="button" class="row ${cls}" data-act="perk" data-id="${p.id}"${p.available && !p.owned ? '' : ' disabled'}><span>${esc(p.name)} (${p.skill} ${p.requiredSkillLevel})</span><span>${p.owned ? 'owned' : p.available ? 'take' : esc(p.reason)}</span></button>`;
           character += `<div class="row static dim">${esc(p.description)}</div>`;
         }
         character += `</div>`;
@@ -508,7 +562,8 @@ export class Hud {
   }
 
   private bindPanelClicks(): void {
-    this.root.querySelectorAll<HTMLElement>('[data-act]').forEach((el) => {
+    this.interactionRoot.querySelectorAll<HTMLElement>('[data-act]').forEach((el, index) => {
+      el.dataset.uiKey = uiElementKey(el, index);
       el.onclick = () => {
         const act = el.dataset.act;
         const id = el.dataset.id ?? '';
@@ -555,22 +610,21 @@ export class Hud {
         else if (act === 'unequip-spell') this.world.unequipSpell(el.dataset.slot as Parameters<IWorld['unequipSpell']>[0]);
         else if (act === 'equip-consumable') this.world.equipConsumable(el.dataset.slot as Parameters<IWorld['equipConsumable']>[0], id);
         else if (act === 'item') {
-          const it = this.world.playerInventory().find((x) => x.itemId === id);
-          if (!it) return;
-          if (it.kind === 'weapon' || it.kind === 'armor') this.world.equipItem(id);
-          else if (it.kind === 'consumable' || it.kind === 'tome') this.world.useItem(id);
+          this.activateInventoryItem(id);
         }
       };
     });
-    const input = this.root.querySelector<HTMLInputElement>('[data-chat-input]');
-    const form = this.root.querySelector<HTMLFormElement>('[data-chat-form]');
+    this.interactionRoot.querySelectorAll<HTMLElement>('[data-act], [data-audio], [data-audio-mute]').forEach((element, index) => {
+      element.dataset.uiKey ||= uiElementKey(element, index);
+      element.tabIndex = -1;
+      element.onpointerenter = () => this.selectUiElement(element, false, true);
+    });
+    const input = this.interactionRoot.querySelector<HTMLInputElement>('[data-chat-input]');
+    const form = this.interactionRoot.querySelector<HTMLFormElement>('[data-chat-form]');
     if (input) input.oninput = () => {
       const bounded = [...input.value].slice(0, 200).join('');
       if (bounded !== input.value) input.value = bounded;
       this.chatDraft = bounded;
-      // The input's live value already changed; keep the HTML cache aligned
-      // so a stable HUD does not tear down focus on the following frame.
-      this.renderedHtml = this.renderHtml();
     };
     if (form) {
       const submitChat = () => {
@@ -596,17 +650,100 @@ export class Hud {
         }
       };
     }
-    this.root.querySelectorAll<HTMLInputElement>('[data-audio]').forEach((input) => {
+    this.interactionRoot.querySelectorAll<HTMLInputElement>('[data-audio]').forEach((input) => {
       input.oninput = () => {
         const bus = input.dataset.audio as AudioBus | 'master';
         const value = Math.max(0, Math.min(1, Number(input.value) / 100));
         this.audio?.setSettings({ [bus]: value });
-        const output = this.root.querySelector<HTMLOutputElement>(`[data-audio-value="${bus}"]`);
+        const output = this.interactionRoot.querySelector<HTMLOutputElement>(`[data-audio-value="${bus}"]`);
         if (output) output.value = `${Math.round(value * 100)}%`;
       };
     });
-    const mute = this.root.querySelector<HTMLInputElement>('[data-audio-mute]');
+    const mute = this.interactionRoot.querySelector<HTMLInputElement>('[data-audio-mute]');
     if (mute) mute.onchange = () => this.audio?.setSettings({ muted: mute.checked });
+  }
+
+  private activateInventoryItem(id: string): void {
+    const item = this.world.playerInventory().find((candidate) => candidate.itemId === id);
+    if (!item) return;
+    if (item.kind === 'weapon' || item.kind === 'armor') this.world.equipItem(id);
+    else if (item.kind === 'consumable' || item.kind === 'tome') this.world.useItem(id);
+  }
+
+  private navigableElements(): HTMLElement[] {
+    return [...this.interactionRoot.querySelectorAll<HTMLElement>('[data-act], [data-audio], [data-audio-mute]')]
+      .filter((element) => !(element instanceof HTMLButtonElement && element.disabled))
+      .filter((element) => element.getClientRects().length > 0);
+  }
+
+  private preferredUiElement(elements = this.navigableElements()): HTMLElement | null {
+    const retained = elements.find((element) => element.dataset.uiKey === this.selectedUiKey);
+    if (retained) return retained;
+    const preferredAction = this.panel === 'dialogue'
+      ? 'dlg'
+      : this.panel === 'loot'
+        ? 'select-loot'
+        : this.panel === 'inventory'
+          ? 'select-item'
+          : this.panel === 'shop'
+            ? 'buy'
+            : null;
+    return (preferredAction ? elements.find((element) => element.dataset.act === preferredAction) : null)
+      ?? elements.find((element) => element.closest('.menu-content'))
+      ?? elements[0]
+      ?? null;
+  }
+
+  private selectUiElement(element: HTMLElement, focus: boolean, pointer = false): void {
+    for (const candidate of this.interactionRoot.querySelectorAll<HTMLElement>('.is-ui-selected')) {
+      if (candidate !== element) candidate.classList.remove('is-ui-selected');
+    }
+    this.selectedUiKey = element.dataset.uiKey ?? '';
+    if (focus) this.keyboardUiFocus = true;
+    else if (pointer) this.keyboardUiFocus = false;
+    element.classList.add('is-ui-selected');
+    const id = element.dataset.id ?? '';
+    if (element.dataset.act === 'select-item' && id !== this.selectedInventoryItem) this.selectedInventoryItem = id;
+    if (element.dataset.act === 'select-loot' && id !== this.selectedLootItem) this.selectedLootItem = id;
+    if (focus) {
+      element.focus({ preventScroll: true });
+      element.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  private restoreUiSelection(): void {
+    const preferred = this.preferredUiElement();
+    if (preferred) this.selectUiElement(preferred, this.keyboardUiFocus);
+  }
+
+  /** W/S or arrow-key navigation for the currently captured interaction. */
+  handleUiMoveCommand(delta: -1 | 1): boolean {
+    if (!this.isInputCaptured() || this.chatOpen) return false;
+    const elements = this.navigableElements();
+    if (elements.length === 0) return false;
+    let current = elements.findIndex((element) => element.dataset.uiKey === this.selectedUiKey);
+    if (current < 0) {
+      const preferred = this.preferredUiElement(elements);
+      current = preferred ? elements.indexOf(preferred) : 0;
+    }
+    const next = boundedUiSelectionIndex(current, elements.length, delta);
+    this.selectUiElement(elements[next], true);
+    return true;
+  }
+
+  /** Enter activates the logical selection without depending on a live mouse
+   * click target. Inventory and loot rows use their contextual primary action. */
+  handleUiAcceptCommand(): boolean {
+    if (!this.isInputCaptured() || this.chatOpen) return false;
+    const elements = this.navigableElements();
+    const selected = this.preferredUiElement(elements);
+    if (!selected) return false;
+    this.selectUiElement(selected, true);
+    const id = selected.dataset.id ?? '';
+    if (selected.dataset.act === 'select-item') this.activateInventoryItem(id);
+    else if (selected.dataset.act === 'select-loot') this.world.lootTake(id);
+    else selected.click();
+    return true;
   }
 
   closeAll(): void {
@@ -616,6 +753,8 @@ export class Hud {
     this.panel = 'none';
     this.chatOpen = false;
     this.chatDraft = '';
+    this.selectedUiKey = '';
+    this.keyboardUiFocus = false;
   }
 
   /** Keyboard E takes the selected loot stack while a loot surface is open. */
@@ -632,6 +771,27 @@ export class Hud {
     this.world.lootTakeAll();
     return true;
   }
+}
+
+export function boundedUiSelectionIndex(current: number, count: number, delta: -1 | 1): number {
+  if (!Number.isFinite(count) || count <= 0) return -1;
+  const boundedCurrent = Number.isFinite(current) ? Math.max(0, Math.min(count - 1, Math.trunc(current))) : 0;
+  return Math.max(0, Math.min(count - 1, boundedCurrent + delta));
+}
+
+function uiElementKey(element: HTMLElement, index: number): string {
+  const data = element.dataset;
+  const identity = data.id ?? data.i ?? data.slot ?? data.category ?? data.panel ?? data.target ?? String(index);
+  return `${data.act ?? 'control'}:${identity}`;
+}
+
+export function renderDialoguePanel(dialogue: DialogueView): string {
+  const choices = dialogue.choices.map((choice, index) =>
+    `<button type="button" class="row" data-act="dlg" data-i="${index}">${esc(choice)}</button>`
+  ).join('');
+  return `<section class="panel" role="dialog" aria-label="Dialogue with ${esc(dialogue.speakerName)}">` +
+    `<div class="speaker">${esc(dialogue.speakerName)}</div><div class="text">${esc(dialogue.text)}</div>${choices}` +
+    `<div class="hint"><kbd>W</kbd>/<kbd>S</kbd> select · <kbd>Enter</kbd> choose · <kbd>Esc</kbd> leave</div></section>`;
 }
 
 function esc(s: string): string {
@@ -849,7 +1009,8 @@ export function renderControlsHelp(expanded: boolean): string {
         <div class="control-row"><kbd>J / P / O</kbd><span>Journal / perks / party</span></div>
       </section>
       <section class="control-group"><h3>Utility</h3>
-        <div class="control-row"><kbd>Enter</kbd><span>Nearby chat</span></div>
+        <div class="control-row"><kbd>W/S + Enter</kbd><span>Navigate / accept menus</span></div>
+        <div class="control-row"><kbd>Enter</kbd><span>Nearby chat in the world</span></div>
         <div class="control-row"><kbd>V</kbd><span>Camera</span></div>
         <div class="control-row"><kbd>F5 / F9</kbd><span>Save / load</span></div>
         <div class="control-row"><kbd>Esc</kbd><span>Settings / close</span></div>

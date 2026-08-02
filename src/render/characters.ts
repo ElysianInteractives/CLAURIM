@@ -515,7 +515,7 @@ export function syncCharacterEquipment(group: THREE.Group, view: ActorView, mode
       const attachment = group.getObjectByName(`hand${side}`) ?? group.getObjectByName(`arm${side}`);
       if (!attachment) continue;
       node.position.set(0, mode === 'viewmodel' ? -0.04 : -0.06, mode === 'viewmodel' ? 0.1 : 0.08);
-      if (mode === 'viewmodel') node.scale.setScalar(0.44);
+      if (mode === 'viewmodel') node.scale.setScalar(0.62);
       if (mode === 'world' && slot === 'mainHand' && CONTENT.items[itemId]?.weaponType !== 'bow') node.rotation.z = Math.PI;
       if (slot === 'offHand') node.rotation.y = Math.PI;
       attachment.add(node);
@@ -532,7 +532,7 @@ export function syncCharacterEquipment(group: THREE.Group, view: ActorView, mode
 export function buildFirstPersonRig(): THREE.Group {
   const rig = new THREE.Group();
   rig.name = 'first-person-rig';
-  rig.position.set(0, -0.4, -0.95);
+  rig.position.set(0, -0.14, -0.8);
   for (const [name, x] of [['armL', -0.27], ['armR', 0.27]] as const) {
     const arm = new THREE.Group();
     arm.name = name;
@@ -549,6 +549,54 @@ export function buildFirstPersonRig(): THREE.Group {
     rig.add(arm);
   }
   return rig;
+}
+
+export interface FirstPersonCombatPose {
+  rootX: number;
+  rootY: number;
+  rootZ: number;
+  rightX: number;
+  rightZ: number;
+  leftX: number;
+  leftZ: number;
+}
+
+/** Camera-local combat composition. World-model shoulder rotations are not
+ * suitable viewmodel coordinates: their wide active arcs crossed the lens
+ * and inherited assumptions from the former inside-head camera origin. */
+export function firstPersonCombatPose(view: ActorView): FirstPersonCombatPose {
+  const base = {
+    rootX: 0,
+    rootY: -0.14,
+    rootZ: -0.8,
+    rightX: 0.08,
+    rightZ: 0.16,
+    leftX: 0.02,
+    leftZ: -0.16,
+  };
+  if (view.blocking) return { ...base, rootZ: -0.74, rightX: -0.34, rightZ: 0.24, leftX: -1.02, leftZ: -0.5 };
+  if (!view.attackPhase) return base;
+
+  if (view.attackKind === 'spell') {
+    if (view.attackPhase === 'windup') return { ...base, rightX: -0.4, rightZ: 0.24, leftX: -0.28, leftZ: -0.24 };
+    if (view.attackPhase === 'active') return { ...base, rootZ: -0.74, rightX: -1.02, rightZ: 0.08, leftX: -0.82, leftZ: -0.08 };
+    return { ...base, rightX: -0.22, rightZ: 0.12, leftX: -0.18, leftZ: -0.12 };
+  }
+
+  if (weaponType(view) === 'bow') {
+    if (view.attackPhase === 'windup') return { ...base, rootX: 0.03, rightX: -0.72, rightZ: 0.42, leftX: -1.08, leftZ: -0.42 };
+    if (view.attackPhase === 'active') return { ...base, rootZ: -0.74, rightX: -1.12, rightZ: 0.2, leftX: -1.2, leftZ: -0.34 };
+    return { ...base, rightX: -0.35, rightZ: 0.2, leftX: -0.42, leftZ: -0.2 };
+  }
+
+  if (view.attackPhase === 'windup') {
+    const axe = weaponType(view) === 'axe';
+    return { ...base, rootX: 0.02, rightX: axe ? 0.72 : 0.56, rightZ: axe ? 0.38 : 0.28, leftX: -0.06, leftZ: -0.12 };
+  }
+  if (view.attackPhase === 'active') {
+    return { ...base, rootX: -0.025, rootY: -0.18, rootZ: -0.72, rightX: -1.18, rightZ: -0.24, leftX: -0.08, leftZ: -0.12 };
+  }
+  return { ...base, rightX: -0.28, rightZ: -0.08, leftX: -0.04, leftZ: -0.14 };
 }
 
 const LOCOMOTION_START_SPEED = 0.18;
@@ -739,11 +787,10 @@ export function poseCharacter(group: THREE.Group, view: ActorView, timeSec: numb
 
 /** Pose camera-local arms from the same combat state as the world model. */
 export function poseFirstPersonRig(rig: THREE.Group, view: ActorView, timeSec: number): void {
-  const pose = characterCombatPose(view, false, timeSec);
+  const pose = firstPersonCombatPose(view);
   const armR = rig.getObjectByName('armR');
   const armL = rig.getObjectByName('armL');
-  if (armR) armR.rotation.set(pose.rightX * 0.72, 0, 0.18 + pose.rightZ * 0.72);
-  if (armL) armL.rotation.set(pose.leftX * 0.72, 0, -0.18 + pose.leftZ * 0.72);
-  const activeKick = view.attackPhase === 'active' ? 0.06 : 0;
-  rig.position.y = -0.4 - activeKick + Math.sin(timeSec * 2.4) * 0.005;
+  if (armR) armR.rotation.set(pose.rightX, 0, pose.rightZ);
+  if (armL) armL.rotation.set(pose.leftX, 0, pose.leftZ);
+  rig.position.set(pose.rootX, pose.rootY + Math.sin(timeSec * 2.4) * 0.004, pose.rootZ);
 }

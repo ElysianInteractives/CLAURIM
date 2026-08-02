@@ -133,7 +133,7 @@ export function renderLootPanel(loot: LootView, selectedItemId = ''): string {
   return `<div class="menu-overlay"><section class="menu-frame loot-frame" aria-label="Loot ${escapeHtml(loot.sourceName)}">` +
     `<header class="menu-titlebar"><div><span class="loot-source-kind">${loot.sourceKind}</span><h1>${escapeHtml(loot.sourceName)}</h1></div><span class="menu-meta">Choose what to take</span></header>` +
     `<div class="menu-content"><div class="menu-columns"><section class="menu-column"><h2 class="menu-heading">Contents</h2><div class="inventory-list">${rows || '<div class="menu-empty">Empty</div>'}</div></section><aside class="menu-column">${detail}</aside></div></div>` +
-    `<footer class="menu-footer"><span><kbd>E</kbd> take · <kbd>R</kbd> take all · <kbd>Esc</kbd> close</span><button type="button" data-act="loot-all"${loot.items.length ? '' : ' disabled'}>Take All</button></footer></section></div>`;
+    `<footer class="menu-footer"><span><kbd>W/S</kbd> select · <kbd>Enter/E</kbd> take · <kbd>R</kbd> take all · <kbd>Esc</kbd> close</span><button type="button" data-act="loot-all"${loot.items.length ? '' : ' disabled'}>Take All</button></footer></section></div>`;
 }
 
 export function renderQuickbar(spells: readonly EquippedSpellView[], consumables: readonly EquippedConsumableView[] = []): string {

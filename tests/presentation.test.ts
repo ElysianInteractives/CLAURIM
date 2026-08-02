@@ -8,7 +8,7 @@ import {
 import { TransformHistory, interpolateYaw } from '../src/render/interpolation';
 import { renderAudioSettings, renderSettings } from '../src/ui/hud';
 import { equippedAttackKind, spellForHotkey } from '../src/game/host_actions';
-import { capturesEditableTargetKey } from '../src/game/input';
+import { capturesEditableTargetKey, uiNavigationDeltaForKey } from '../src/game/input';
 import { qaStartFromSearch, qaTickForHour } from '../src/game/qa_start';
 
 describe('host-side transform interpolation', () => {
@@ -136,6 +136,14 @@ describe('presentation input capture', () => {
   it('keeps Escape available while an audio control has focus', () => {
     expect(capturesEditableTargetKey('Escape')).toBe(true);
     expect(capturesEditableTargetKey('KeyW')).toBe(false);
+  });
+
+  it('maps W/S and arrow aliases onto vertical UI navigation', () => {
+    expect(uiNavigationDeltaForKey('KeyW')).toBe(-1);
+    expect(uiNavigationDeltaForKey('ArrowUp')).toBe(-1);
+    expect(uiNavigationDeltaForKey('KeyS')).toBe(1);
+    expect(uiNavigationDeltaForKey('ArrowDown')).toBe(1);
+    expect(uiNavigationDeltaForKey('KeyA')).toBe(0);
   });
 });
 

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FIRST_PERSON_EYE_HEIGHT,
+  FIRST_PERSON_FACE_OFFSET,
   CAMERA_RELEASE_MAX_METERS_PER_SECOND,
   CameraBoomSmoother,
+  firstPersonCameraPose,
   THIRD_PERSON_SHOULDER_OFFSET,
   thirdPersonCameraPose,
   unobstructedBoomScale,
@@ -9,6 +12,16 @@ import {
 import { reticleDirection } from '../src/sim/player/aim';
 
 describe('QA Phase D third-person reticle visibility reproduction', () => {
+  it('places the first-person lens at the face while retaining the reticle ray', () => {
+    const feet = { x: 4, y: 2, z: -3 };
+    const yaw = Math.PI / 2;
+    const pitch = 0.35;
+    const pose = firstPersonCameraPose(feet, yaw, pitch);
+    expect(pose.position.x).toBeCloseTo(feet.x + FIRST_PERSON_FACE_OFFSET);
+    expect(pose.position.y).toBeCloseTo(feet.y + FIRST_PERSON_EYE_HEIGHT);
+    expect(pose.position.z).toBeCloseTo(feet.z);
+    expect(pose.forward).toEqual(reticleDirection(yaw, pitch));
+  });
   it('keeps the player model off the center reticle while preserving aim direction', () => {
     const eye = { x: 12, y: 4.2, z: -7 };
     const yaw = 0.73;

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  boundedUiSelectionIndex,
   renderControlsHelp,
   renderChatComposer,
   renderSocialPanel,
   renderCombatTarget,
   renderResourceMeter,
   renderResourceMeters,
+  renderDialoguePanel,
   resourcePercent,
   selectCombatTarget,
 } from '../src/ui/hud';
@@ -97,6 +99,27 @@ describe('HUD controls onboarding', () => {
     expect(html).toContain('aria-label="Press H to show game controls"');
     expect(html).toContain('<kbd>H</kbd> Controls');
     expect(html).not.toContain('control-grid');
+  });
+});
+
+describe('HUD keyboard interaction', () => {
+  it('renders dialogue choices as stable semantic actions with keyboard guidance', () => {
+    const html = renderDialoguePanel({
+      speakerName: 'Corren Pike',
+      text: 'The ridge road has become dangerous.',
+      choices: ['What happened?', 'Farewell.'],
+    });
+    expect(html).toContain('role="dialog"');
+    expect(html.match(/<button type="button" class="row" data-act="dlg"/g)).toHaveLength(2);
+    expect(html).toContain('<kbd>W</kbd>/<kbd>S</kbd> select');
+    expect(html).toContain('<kbd>Enter</kbd> choose');
+  });
+
+  it('keeps vertical selection within the available actions', () => {
+    expect(boundedUiSelectionIndex(0, 3, -1)).toBe(0);
+    expect(boundedUiSelectionIndex(0, 3, 1)).toBe(1);
+    expect(boundedUiSelectionIndex(2, 3, 1)).toBe(2);
+    expect(boundedUiSelectionIndex(0, 0, 1)).toBe(-1);
   });
 });
 

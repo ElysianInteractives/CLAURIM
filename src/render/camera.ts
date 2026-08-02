@@ -7,6 +7,8 @@ import { reticleDirection } from '../sim/player/aim';
 
 export const THIRD_PERSON_SHOULDER_OFFSET = 0.9;
 export const THIRD_PERSON_BODY_HIDE_DISTANCE = 1.1;
+export const FIRST_PERSON_EYE_HEIGHT = 1.72;
+export const FIRST_PERSON_FACE_OFFSET = 0.22;
 export const CAMERA_RELEASE_HOLD_SECONDS = 0.06;
 export const CAMERA_RELEASE_MAX_METERS_PER_SECOND = 5;
 
@@ -54,6 +56,27 @@ export interface ThirdPersonCameraPose {
   screenRight: Vec3;
   boomScale: number;
   bodyVisible: boolean;
+}
+
+export interface FirstPersonCameraPose {
+  position: Vec3;
+  forward: Vec3;
+}
+
+/** Place the first-person lens at the face instead of the character root's
+ * head volume. The facial offset follows yaw only so looking up/down rotates
+ * around a stable eye point rather than translating the player camera. */
+export function firstPersonCameraPose(feet: Vec3, yaw: number, pitch: number): FirstPersonCameraPose {
+  const safeYaw = Number.isFinite(yaw) ? yaw : 0;
+  const forward = reticleDirection(safeYaw, pitch);
+  return {
+    position: {
+      x: feet.x + Math.sin(safeYaw) * FIRST_PERSON_FACE_OFFSET,
+      y: feet.y + FIRST_PERSON_EYE_HEIGHT,
+      z: feet.z + Math.cos(safeYaw) * FIRST_PERSON_FACE_OFFSET,
+    },
+    forward,
+  };
 }
 
 /** Build a right-shoulder camera pose whose center ray remains parallel to

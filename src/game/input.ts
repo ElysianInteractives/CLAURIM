@@ -26,6 +26,9 @@ export interface FrameCommands {
   toggleChat: boolean;
   toggleHelp: boolean;
   toggleCamera: boolean;
+  uiPrevious: boolean;
+  uiNext: boolean;
+  uiAccept: boolean;
   save: boolean;
   load: boolean;
   escape: boolean;
@@ -42,11 +45,23 @@ export class Input {
 
   constructor(private canvas: HTMLCanvasElement) {
     addEventListener('keydown', (e) => {
-      const editableTarget = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      const editableTarget = e.target instanceof HTMLTextAreaElement
+        || (e.target instanceof HTMLInputElement && isTextEntryInput(e.target));
       if (editableTarget && !capturesEditableTargetKey(e.code)) return;
-      if (e.repeat) return;
-      this.keys.add(e.code);
+      const navigationRepeat = uiNavigationDeltaForKey(e.code) !== 0;
+      if (e.repeat && !navigationRepeat) return;
+      if (!e.repeat) this.keys.add(e.code);
       switch (e.code) {
+        case 'KeyW':
+        case 'ArrowUp':
+          this.commands.uiPrevious = true;
+          if (e.code === 'ArrowUp') e.preventDefault();
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          this.commands.uiNext = true;
+          if (e.code === 'ArrowDown') e.preventDefault();
+          break;
         case 'KeyE':
           this.commands.interact = true;
           break;
@@ -68,6 +83,7 @@ export class Input {
           break;
         case 'Enter':
           this.commands.toggleChat = true;
+          this.commands.uiAccept = true;
           e.preventDefault();
           break;
         case 'KeyH':
@@ -164,6 +180,17 @@ export class Input {
     return this.keys.has('Space');
   }
 
+  /** Interactive surfaces consume movement keys. Clearing their held state
+   * prevents a navigation press from moving the player as the surface closes. */
+  releaseGameplayKeys(): void {
+    for (const code of [
+      'KeyW', 'KeyA', 'KeyS', 'KeyD',
+      'ShiftLeft', 'ShiftRight', 'KeyC', 'Space',
+    ]) this.keys.delete(code);
+    this.attackHeld = false;
+    this.blockHeld = false;
+  }
+
   /** One-shot commands accumulated since the last drain. */
   drainCommands(): FrameCommands {
     const out = this.commands;
@@ -180,6 +207,16 @@ export class Input {
 
 export function capturesEditableTargetKey(code: string): boolean {
   return code === 'Escape';
+}
+
+function isTextEntryInput(input: HTMLInputElement): boolean {
+  return !['range', 'checkbox', 'radio', 'button', 'submit', 'reset', 'color', 'file'].includes(input.type);
+}
+
+export function uiNavigationDeltaForKey(code: string): -1 | 0 | 1 {
+  if (code === 'KeyW' || code === 'ArrowUp') return -1;
+  if (code === 'KeyS' || code === 'ArrowDown') return 1;
+  return 0;
 }
 
 function emptyCommands(): FrameCommands {
@@ -201,6 +238,9 @@ function emptyCommands(): FrameCommands {
     toggleChat: false,
     toggleHelp: false,
     toggleCamera: false,
+    uiPrevious: false,
+    uiNext: false,
+    uiAccept: false,
     save: false,
     load: false,
     escape: false,

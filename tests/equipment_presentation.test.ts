@@ -3,6 +3,7 @@ import {
   buildCharacter,
   buildFirstPersonRig,
   characterCombatPose,
+  firstPersonCombatPose,
   syncCharacterEquipment,
 } from '../src/render/characters';
 import { SimWorld } from '../src/game/sim_world';
@@ -101,5 +102,19 @@ describe('QA Phase G authoritative equipment presentation reproduction', () => {
     expect(rig.getObjectByName('gear-mainHand')).toBeDefined();
     expect(rig.getObjectByName('gear-offHand')).toBeDefined();
     expect(rig.getObjectByName('gear-body')).toBeUndefined();
+  });
+
+  it('uses camera-local first-person attack poses that remain in front of the lens', () => {
+    const idle = firstPersonCombatPose(playerView({ equipment: { mainHand: 'iron_sword' } }));
+    const active = firstPersonCombatPose(playerView({
+      attacking: true,
+      attackKind: 'melee',
+      attackPhase: 'active',
+      equipment: { mainHand: 'iron_sword' },
+    }));
+    expect(idle.rootZ).toBeLessThan(-0.1);
+    expect(active.rootZ).toBeLessThan(-0.1);
+    expect(active.rightX).not.toBe(idle.rightX);
+    expect(Math.abs(active.rightX)).toBeLessThan(Math.PI / 2);
   });
 });

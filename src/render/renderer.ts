@@ -23,7 +23,7 @@ import {
   poseFirstPersonRig,
   syncCharacterEquipment,
 } from './characters';
-import { CameraBoomSmoother, thirdPersonCameraPose, unobstructedBoomScale } from './camera';
+import { CameraBoomSmoother, firstPersonCameraPose, thirdPersonCameraPose, unobstructedBoomScale } from './camera';
 import { TransformHistory } from './interpolation';
 import { AdaptiveGeometryDetail, AdaptivePixelRatio } from './frame_pacing';
 import {
@@ -520,12 +520,13 @@ export class Renderer {
     const eyePosition = { x: player.x, y: player.y + eye, z: player.z };
     const playerMesh = this.actorMeshes.get(player.id);
     if (this.firstPerson) {
+      const pose = firstPersonCameraPose(player, this.cameraYaw, this.cameraPitch);
       this.cameraBoom.reset();
       if (playerMesh) playerMesh.visible = false;
       this.firstPersonRig.visible = true;
       syncCharacterEquipment(this.firstPersonRig, player, 'viewmodel');
       poseFirstPersonRig(this.firstPersonRig, player, this.clock);
-      this.camera.position.set(eyePosition.x, eyePosition.y, eyePosition.z);
+      this.camera.position.set(pose.position.x, pose.position.y, pose.position.z);
       this.camera.rotation.set(this.cameraPitch, this.cameraYaw + Math.PI, 0, 'YXZ');
       return;
     }

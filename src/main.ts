@@ -171,6 +171,7 @@ function frame(now: number): void {
 
   // One-shot commands.
   const cmd = input.drainCommands();
+  const inputCapturedAtFrameStart = hud.isInputCaptured();
   if (cmd.escape) {
     if (hud.isInputCaptured()) hud.closeAll();
     else hud.toggleSettings();
@@ -180,12 +181,17 @@ function frame(now: number): void {
   if (cmd.toggleJournal) hud.togglePanel('journal');
   if (cmd.togglePerks) hud.togglePanel('perks');
   if (cmd.toggleSocial) hud.togglePanel('social');
-  if (cmd.toggleChat) hud.openChat();
+  if (cmd.uiPrevious) hud.handleUiMoveCommand(-1);
+  if (cmd.uiNext) hud.handleUiMoveCommand(1);
+  if (cmd.uiAccept) {
+    if (!hud.handleUiAcceptCommand() && cmd.toggleChat) hud.openChat();
+  } else if (cmd.toggleChat) hud.openChat();
   if (cmd.toggleHelp) hud.toggleControls();
   if (cmd.toggleCamera) renderer.firstPerson = !renderer.firstPerson;
   if (cmd.interact && !hud.handleInteractCommand()) world.interact();
   if (cmd.lootAll) hud.handleLootAllCommand();
   const menuOpen = hud.isInputCaptured();
+  if (inputCapturedAtFrameStart || menuOpen) input.releaseGameplayKeys();
   if (!menuOpen) {
     if (cmd.melee) {
       // Weapon-appropriate: bow fires, otherwise melee swing.
