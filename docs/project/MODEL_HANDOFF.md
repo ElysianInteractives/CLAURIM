@@ -190,8 +190,9 @@ interpolation; projectiles gain fixed-step history; adaptive raster density
 protects sustained frame pacing without changing geometry or gameplay. Exact
 boundaries are in `FRAME_PRESENTATION_STABILITY_CONTRACT.md`.
 
-QA Phase P implements D-048 for AV-009 from the native Find7 recording;
-reporting-device replay remains the final visual verification.
+QA Phase P implements D-048 for AV-009 from the native Find7 recording, but its
+reporting-device replay did not clear the whole symptom; D-049 supplies the
+accepted fix below.
 The captured cadence is missed presentation rather than collision pushback.
 Close building shells retain their rounded silhouette at 2,172 triangles
 instead of 12,732, repeated rig/flash hierarchy work is cached, and devices
@@ -202,8 +203,10 @@ tiers while the local player remains high. Exact boundaries are in
 QA Phase Q implements D-049 after Find8 isolated the remaining AV-009 condition
 to actors that stop but keep their locomotion pose. Equal authoritative fixed
 ticks now settle adjacent history instead of replaying the final moving pair;
-render reads remain non-mutating and gameplay authority is unchanged. Exact
-boundaries are in `STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
+render reads remain non-mutating and gameplay authority is unchanged. The user
+replayed deployed build `e7263a5` on the reporting device and confirmed that
+the jitter is fixed, advancing AV-009 to `VERIFIED`. Exact boundaries are in
+`STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
 
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.

@@ -906,6 +906,9 @@ D-048 as the whole AV-009 fix.
   comparison, all four network profiles, and two-client WebSocket smoke remain
   green; movement acknowledges 30 inputs over 4.4 m with mutual visibility,
   session rotation, replay rejection, and ownership preservation.
+- The user replayed the deployed `e7263a5` build on the reporting device and
+  confirmed that the stopped-actor/static-building jitter is fixed. AV-009 is
+  therefore `VERIFIED` and the Blender/asset workflow is unblocked.
 
 ## Repeatable scenario matrix
 

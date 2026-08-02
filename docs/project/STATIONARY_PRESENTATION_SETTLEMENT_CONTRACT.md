@@ -54,5 +54,7 @@ or replicated.
   contact despite held input.
 - Adjacent moving ticks, multiple steps per frame, teleport/space snapping,
   timestamped remote motion, and the existing camera smoother remain green.
-- `npm run gate`, world/network/AI gates, direct browser arrival/wall-contact
-  checks, and a reporting-device replay pass before AV-009 becomes `VERIFIED`.
+- `npm run gate`, world/network/AI gates, and direct browser
+  arrival/wall-contact checks remain required. The user replayed deployed build
+  `e7263a5` on the reporting device and confirmed that the jitter is fixed;
+  AV-009 is `VERIFIED`.
