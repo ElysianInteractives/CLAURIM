@@ -77,3 +77,7 @@
   conversations, but it does not add branching world consequences, faction
   reputation, escort/defend/crafting objectives, quest markers, cinematics,
   voiced dialogue, shared party conversation choices, or radiant generation.
+- KL-23 D-045 restores stable exterior presentation without changing D-041's
+  code-native low-poly model fidelity. A production GLB/glTF pipeline,
+  optimized higher-fidelity source assets, mesh/texture compression, LODs,
+  impostors, and asset-specific performance budgets remain a separate lock.

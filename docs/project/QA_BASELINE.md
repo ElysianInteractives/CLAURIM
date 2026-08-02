@@ -763,6 +763,27 @@ system or changing multiplayer ownership.
   `qa-phase-l-vael-dialogue-1920x1080.png`, and
   `qa-phase-l-stone-toll-accepted-1920x1080.png`.
 
+### QA Phase M exterior-stability exit
+
+QA Phase M resolves AV-006 and locks D-045. It removes the exterior
+presentation regression without lowering D-043's authored world density or
+changing any gameplay/network/save boundary.
+
+- Before the repair, Falkmoor, Thornmere, Fenharrow, and Weeping Stones built
+  380/1,162/2,038/1,751 mesh draw nodes and 81/409/699/586 unique geometries
+  across their active 25 cells. Each conifer was three separate meshes and
+  each crown owned a new geometry.
+- The same checkpoints now build 56/128/189/163 draw nodes and 31/31/30/31
+  unique geometries while retaining 355/1,134/2,013/1,726 decoration
+  instances. All 90 deterministic placement attempts per cell remain.
+- Fixed-step actor transforms are captured after every successful world step.
+  A regression with two extra ticks before one rendered frame proves sampling
+  uses tick 2 -> 3 rather than collapsing tick 1 -> 3.
+- `npm run gate` is green at 29 suites / 234 tests. Vite 8 transforms 59
+  modules and produces 727.31 kB JavaScript / 192.00 kB gzip.
+- Direct 1280x720 browser checks cover Fenharrow, moving Thornmere residents,
+  and Weeping Stones wildlife/buildings; warning/error logs are empty.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -796,6 +817,7 @@ system or changing multiplayer ownership.
 | QA-MAGIC | Magic initiation, disciplines, and persistent loadout | `tests/magic_progression.test.ts`, `tests/player_loadout.test.ts`, `tests/save.test.ts`, `tests/server_net.test.ts`, `npm run combat:bench`, `npm run net:bench`, `npm run qa:ws`, `npm run gate`; development-only `?qa=magic` at 1280/1920 | empty fresh state, atomic primer study/duplicate safety, four schools, ward/veil effects and skill XP, legacy save normalization, private protocol state, manual equip/cast, responsive layout/logs |
 | QA-WORLD-EXPANSION | Original settlement, landmark, den, forest, and wildlife volume | `tests/world_content_expansion.test.ts`, `tests/world_map.test.ts`, `tests/world_traversal.test.ts`, `npm run world:tour`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere`, `?qa=thornmere-harts`, `?qa=weeping-stones`, and `?qa=gloamroot` at 1280 plus map at 1920 | shared terrain pads, route-complete locations/schedules, cavern arrival/readability, ambient/hostile wildlife behavior and silhouettes, eight destinations, content/IP validation, layout/overflow/logs |
 | QA-NARRATIVE | Original Thornmere dialogue, Gloamroot/Weeping Stones side quests, and visible turn-ins | `tests/world_narrative_expansion.test.ts`, `tests/quest_playthrough.test.ts`, `tests/content_catalog.test.ts`, `tests/save.test.ts`, all benchmarks, `npm run qa:ws`, `npm run gate`; development-only `?qa=thornmere-tamsin` at 1280 and `?qa=thornmere-vael` at 1920 | dialogue acquisition/branches, reach/kill/talk progression, per-character reward, save/load, pre-credit return entry, journal, conditional reactions, originality, responsive layout/logs |
+| QA-EXTERIOR-STABILITY | Dense exterior draw submission and adjacent-tick presentation | `tests/world_content_expansion.test.ts`, `tests/presentation.test.ts`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=weeping-stones` | <=300 terrain draw nodes, <=40 unique geometries, retained decoration density, multi-tick history, visible residents/wildlife/buildings, browser logs |
 
 ## Browser visual-QA procedure
 

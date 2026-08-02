@@ -245,6 +245,7 @@ function frame(now: number): void {
       block: !menuOpen && input.blockHeld,
       jump: !menuOpen && input.jump(),
     });
+    renderer.observeWorldStep();
   }
 
   hud.update(dtSec);

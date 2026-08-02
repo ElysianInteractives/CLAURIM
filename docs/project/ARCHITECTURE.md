@@ -81,3 +81,5 @@ Loads validate, migrate linearly, and reject rather than half-load.
 - Representative four-player mine snapshots: 8,077 bytes maximum against the
   32,000-byte tripwire.
 - Terrain cell build: 33x33 vertex grid + scatter; 25 cells live worst case.
+- D-045 batches repeated terrain decoration per cell and locks the four named
+  25-cell checkpoints to <=300 mesh draw nodes and <=40 unique geometries.

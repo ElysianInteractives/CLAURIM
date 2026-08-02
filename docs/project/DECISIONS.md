@@ -406,3 +406,14 @@ dialogue captures its entry node before emitting `talkedTo`, ensuring a return
 objective can complete without skipping the authored turn-in scene; later
 conversations select the completed entry normally. Content v0.5 contains three
 quests and six dialogues. Exact rules: `WORLD_NARRATIVE_EXPANSION_CONTRACT.md`.
+
+## D-045: Batched exterior rendering and per-tick presentation history - LOCKED
+Deterministic terrain decoration retains D-043's 90 placement attempts but
+submits repeated trunks, tops, crowns, and rocks through shared-geometry
+instance batches. The 25-cell named exterior checkpoints are guarded at no
+more than 300 mesh draw nodes and 40 unique geometries. The browser host also
+captures actor transforms after every successful fixed simulation step, so a
+slow animation frame interpolates only the final adjacent tick pair. All state
+remains renderer/host-only; simulation, protocol, saves, collision, content
+density, and code-native model fidelity are unchanged. Exact rules:
+`EXTERIOR_RENDER_STABILITY_CONTRACT.md`.

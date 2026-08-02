@@ -37,13 +37,14 @@ export class TransformHistory {
 
   constructor(private readonly snapDistance = 4) {}
 
-  sample(id: number, observed: RenderTransform, alpha: number): RenderTransform {
+  /** Capture every authoritative simulation step, including steps between frames. */
+  observe(id: number, observed: RenderTransform): void {
     let pair = this.history.get(id);
     if (!pair) {
       const initial = copyTransform(observed);
       pair = { previous: initial, current: copyTransform(observed) };
       this.history.set(id, pair);
-      return copyTransform(observed);
+      return;
     }
 
     if (!sameTransform(pair.current, observed)) {
@@ -60,6 +61,11 @@ export class TransformHistory {
         pair.current = copyTransform(observed);
       }
     }
+  }
+
+  sample(id: number, observed: RenderTransform, alpha: number): RenderTransform {
+    this.observe(id, observed);
+    const pair = this.history.get(id)!;
 
     const t = clamp01(alpha);
     return {

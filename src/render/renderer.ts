@@ -120,6 +120,23 @@ export class Renderer {
     void h;
   }
 
+  /** Preserve the last two simulation states even when several ticks occur before one render. */
+  observeWorldStep(): void {
+    const space = this.world.currentSpace();
+    const seen = new Set<number>();
+    for (const actor of this.world.actorsInSpace()) {
+      seen.add(actor.id);
+      this.actorTransforms.observe(actor.id, {
+        spaceId: space,
+        x: actor.x,
+        y: actor.y,
+        z: actor.z,
+        yaw: actor.yaw,
+      });
+    }
+    this.actorTransforms.retain(seen);
+  }
+
   /** Full render pass for the current frame. */
   render(dtSec: number, alpha = 1): void {
     this.clock += dtSec;

@@ -68,6 +68,9 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Original Thornmere/Gloamroot/Weeping Stones side quests over the existing
   per-character runtime, state-aware resident dialogue, and pre-credit entry
   capture that preserves visible return scenes (D-044).
+- Shared-geometry exterior decoration batches, named 25-cell render budgets,
+  and per-fixed-step transform observation for adjacent-tick presentation
+  smoothing (D-045).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

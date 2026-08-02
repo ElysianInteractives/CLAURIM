@@ -5,7 +5,8 @@ import { CROSSING_CENTER, CROSSING_PLATEAU_H, terrainHeight } from '../src/sim/w
 import { findPath } from '../src/sim/navigation/navgrid';
 import { buildCharacter } from '../src/render/characters';
 import { buildProp } from '../src/render/structures';
-import { TREE_TRIES_PER_CELL } from '../src/render/terrain_mesh';
+import { TerrainStreamer, TREE_TRIES_PER_CELL } from '../src/render/terrain_mesh';
+import * as THREE from 'three';
 
 describe('QA Phase K original world and wildlife expansion', () => {
   it('adds a second settlement, original landmark, and third enterable wildlife site', () => {
@@ -88,6 +89,33 @@ describe('QA Phase K original world and wildlife expansion', () => {
       expect(actor.kind, id).toBe('npc');
       expect(actor.schedule?.length, id).toBeGreaterThanOrEqual(3);
       expect(actor.schedule?.every((entry) => entry.spaceId === 'kaldwyn'), id).toBe(true);
+    }
+  });
+
+  it('batches dense exterior decoration within a stable draw-node budget', () => {
+    const checkpoints = [
+      { x: 40, z: -410 },
+      { x: -10, z: -180 },
+      { x: 42, z: 158 },
+      { x: 80, z: 270 },
+    ];
+    for (const checkpoint of checkpoints) {
+      const scene = new THREE.Scene();
+      const terrain = new TerrainStreamer(scene, 42);
+      terrain.update(checkpoint.x, checkpoint.z, 2);
+      const meshes: THREE.Mesh[] = [];
+      scene.traverse((node) => {
+        if (node instanceof THREE.Mesh) meshes.push(node);
+      });
+      const geometries = new Set(meshes.map((mesh) => mesh.geometry));
+      const decorationInstances = meshes
+        .filter((mesh): mesh is THREE.InstancedMesh => mesh instanceof THREE.InstancedMesh)
+        .reduce((total, mesh) => total + mesh.count, 0);
+
+      expect(meshes.length, `${checkpoint.x},${checkpoint.z} draw nodes`).toBeLessThanOrEqual(300);
+      expect(geometries.size, `${checkpoint.x},${checkpoint.z} geometries`).toBeLessThanOrEqual(40);
+      expect(decorationInstances, `${checkpoint.x},${checkpoint.z} decoration`).toBeGreaterThan(100);
+      terrain.clear();
     }
   });
 });

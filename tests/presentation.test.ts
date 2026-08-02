@@ -36,6 +36,22 @@ describe('host-side transform interpolation', () => {
     expect(history.sample(7, door, 0.25)).toEqual(door);
     expect(history.sample(7, teleport, 0.25)).toEqual(teleport);
   });
+
+  it('retains the latest two ticks when multiple simulation steps occur before a frame', () => {
+    const history = new TransformHistory();
+    const at = (x: number) => ({ spaceId: 'kaldwyn', x, y: 0, z: 0, yaw: x * 0.1 });
+
+    history.observe(1, at(0));
+    history.observe(1, at(1));
+    expect(history.sample(1, at(1), 0.25).x).toBeCloseTo(0.25);
+
+    // A slow rendered frame contains two more fixed ticks. Interpolation must
+    // use tick 2 -> 3, not collapse the frame into tick 1 -> 3.
+    history.observe(1, at(2));
+    history.observe(1, at(3));
+    expect(history.sample(1, at(3), 0.5).x).toBeCloseTo(2.5);
+    expect(history.sample(1, at(3), 0.9).x).toBeCloseTo(2.9);
+  });
 });
 
 describe('browser audio presentation contract', () => {

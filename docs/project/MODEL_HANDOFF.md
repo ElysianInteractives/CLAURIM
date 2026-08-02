@@ -167,6 +167,13 @@ now occurs before `talkedTo` quest credit so an authored return scene remains
 visible even when that conversation completes the objective. Exact boundaries
 are in `WORLD_NARRATIVE_EXPANSION_CONTRACT.md`.
 
+QA Phase M verifies AV-006 through D-045: all D-043 terrain decoration remains
+deterministic and equally dense but renders through shared-geometry instance
+batches, and the host captures every fixed-step actor transform before rAF
+interpolation. Named 25-cell budgets and multi-tick frame tests prevent the
+open-terrain jitter regression. Exact boundaries are in
+`EXTERIOR_RENDER_STABILITY_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -238,6 +245,10 @@ session added and TESTED:
   residents have conditional dialogue; pre-credit entry capture preserves the
   visible return scene while rewards, personal state, saves, and party kill
   credit remain authoritative.
+- QA Phase M exterior stability (D-045): repeated terrain decoration is
+  instance-batched with shared geometry, the named 25-cell checkpoints fall
+  to 56-189 draw nodes, and every successful fixed step advances renderer-only
+  transform history before the next animation frame.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -260,7 +271,7 @@ session added and TESTED:
   envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 232 tests / 29 suites green (multiplayer sim, server/net,
+- `npm test`: 234 tests / 29 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -274,7 +285,8 @@ session added and TESTED:
   spell learning, discipline grouping, effects, legacy skill defaults,
   expanded original geography, wildlife behavior/presentation, cavern
   arrival/readability, complete Thornmere quest playthroughs, save/load,
-  rewards, conditional reactions, and visible return scenes).
+  rewards, conditional reactions, visible return scenes, dense-exterior draw
+  budgets, and multi-step adjacent-tick presentation history).
 - Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
   replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
@@ -287,7 +299,7 @@ session added and TESTED:
 - `npm run world:tour`: all 5 spaces, 31 routes, and 69 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 722.80 kB / 190.72 kB gzip.
+  build); Vite 8 production JavaScript is 727.31 kB / 192.00 kB gzip.
 - `npm run audit:deps` and `npm run audit:prod`: zero vulnerabilities after a
   clean `npm ci`; `npm run standalone` produces the 649 kB single-file build.
 
@@ -305,7 +317,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-044), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-045), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

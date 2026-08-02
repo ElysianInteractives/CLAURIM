@@ -65,6 +65,11 @@ Run these in order so one clean save covers the whole session.
 - At Thornmere, confirm scheduled residents move without pressing into walls.
   Ridge harts should wander without becoming hostile; briarboars should be
   hostile and visually distinct.
+- At Fenharrow, Thornmere, and Weeping Stones, walk and rotate the camera with
+  buildings plus moving residents or wildlife visible at mid-distance. Motion
+  should remain smooth; static structures must not shiver against the terrain
+  or horizon. If it recurs, record at least ten seconds with the viewport and
+  exact location noted.
 - In Gloamroot, confirm the arrival faces into a readable cavern, every room is
   traversable, glowcaps light the route, and the matriarch encounter is usable.
 
