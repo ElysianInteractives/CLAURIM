@@ -199,6 +199,12 @@ that remain below 45 fps at the raster floor use bounded surrounding medium
 tiers while the local player remains high. Exact boundaries are in
 `FIND7_RENDER_HEADROOM_CONTRACT.md`.
 
+QA Phase Q implements D-049 after Find8 isolated the remaining AV-009 condition
+to actors that stop but keep their locomotion pose. Equal authoritative fixed
+ticks now settle adjacent history instead of replaying the final moving pair;
+render reads remain non-mutating and gameplay authority is unchanged. Exact
+boundaries are in `STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
+
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
 On top of the 2026-07-30 single-player foundation (still green), this
@@ -287,6 +293,9 @@ session added and TESTED:
   2,172 triangles without losing their visible forms; character rig/flash
   lookups are cached; raster-first geometry fallback protects devices that
   remain slow while the local player stays high detail.
+- QA Phase Q stationary settlement (D-049): an unchanged arrival/collision
+  tick collapses the final moving presentation pair; NPC gait/bob returns to
+  idle and the stopped local camera anchor no longer replays that step.
 - Third-person primary camera with terrain collision (D-023); telegraph
   shapes, ground-pool rendering, downed poses, party frames HUD.
 - Plan 2 combat feedback (D-024): target frame, phase-aware poses,
@@ -309,7 +318,7 @@ session added and TESTED:
   envelopes remain stable.
 
 ## Verification evidence (this session)
-- `npm test`: 253 tests / 33 suites green (multiplayer sim, server/net,
+- `npm test`: 256 tests / 33 suites green (multiplayer sim, server/net,
   saves+migrations, quest e2e, combat, traversal, nav, determinism,
   architecture guards incl. I-14..I-25, browser lifecycle, impairment, and
   the generic content catalog, host presentation/audio rules, and shared
@@ -329,10 +338,11 @@ session added and TESTED:
   validation, populated exterior triangle/draw limits, sub-step camera
   contact, bounded collider release, timestamped remote presentation,
   projectile history, adaptive frame-pacing protection, Find7 structure
-  headroom, and raster-first surrounding-geometry fallback).
+  headroom, raster-first surrounding-geometry fallback, equal-tick stationary
+  settlement, idle-pose return, and collision-stopped camera anchoring).
 - Live ws smoke under protocol v7: server + 2 real WebSocket clients: ack 30, 4.4 m
   authoritative movement, mutual visibility, session rotation, consumed-token
-  replay rejection, preserved ownership, and current 6,743 / 6,730-byte snapshots.
+  replay rejection, preserved ownership, and current 6,742 / 6,729-byte snapshots.
 - `npm run net:bench`: every standard profile connects with zero disconnects,
   drains pending input to zero, and preserves 19.95-21.56 m of remote motion;
   p95 authority delay ranges from 34.3 ms Local to 311.1 ms Severe.
@@ -342,7 +352,7 @@ session added and TESTED:
 - `npm run world:tour`: all 5 spaces, 31 routes, and 69 placements pass;
   headless seed 42 completes 9,000 ticks in 198 ms with a 13,372-byte save.
 - `npm run gate` green at handoff (validate incl. IP gate, typecheck, tests,
-  build); Vite 8 production JavaScript is 764.48 kB / 201.83 kB gzip.
+  build); Vite 8 production JavaScript is 764.57 kB / 201.85 kB gzip.
 - D-048 matrix-correct populated exterior metrics are 260/321/282 visible
   mesh nodes and 137,562/117,860/120,110 triangles at Fenharrow, Thornmere,
   and Weeping Stones. High player/building models are 6,588/2,172 triangles;
@@ -365,7 +375,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-048), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-049), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

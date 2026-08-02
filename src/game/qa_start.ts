@@ -23,6 +23,7 @@ export const QA_START_POINTS: Readonly<Record<string, QaStartPoint>> = {
   },
   rig: { spaceId: 'kaldwyn', x: 0, z: 38, yaw: 0 },
   thornmere: { spaceId: 'kaldwyn', x: -10, z: -180, yaw: 0 },
+  'thornmere-wall': { spaceId: 'kaldwyn', x: -8, z: -207, yaw: Math.PI },
   'thornmere-harts': { spaceId: 'kaldwyn', x: 10, z: -220, yaw: Math.PI / 2 },
   'thornmere-tamsin': { spaceId: 'kaldwyn', x: -19.5, z: -176, yaw: -Math.PI / 2 },
   'thornmere-vael': { spaceId: 'kaldwyn', x: -5, z: -202.5, yaw: Math.PI },

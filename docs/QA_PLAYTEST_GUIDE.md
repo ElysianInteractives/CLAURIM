@@ -65,6 +65,10 @@ Run these in order so one clean save covers the whole session.
 - At Thornmere, confirm scheduled residents move without pressing into walls.
   Ridge harts should wander without becoming hostile; briarboars should be
   hostile and visually distinct.
+- Follow a resident until they reach a schedule destination. Within one
+  visible frame of stopping, their legs, torso sway, and vertical walk bob must
+  settle to idle. Then hold the player against a building in both viewpoints;
+  the player and camera must remain still rather than replaying a final step.
 - At Fenharrow, Thornmere, and Weeping Stones, walk and rotate the camera with
   buildings plus moving residents or wildlife visible at mid-distance. Motion
   should remain smooth; static structures must not shiver against the terrain
@@ -81,7 +85,9 @@ Run these in order so one clean save covers the whole session.
   ten-second recording.
 - For a development performance capture, add `?qaPerf=1` to log five-second
   FPS/draw/triangle/tier windows. `?qa=thornmere&qaPerf=1&qaWalk=1` supplies a
-  repeatable Find7-style route; `qaWalk` is ignored in production.
+  repeatable Find7-style route. `?qa=thornmere-wall&qaPerf=1&qaWalk=1`
+  continuously presses the player into the stable for D-049 stop settlement;
+  `qaWalk` and named starts are ignored in production.
 - Approach and leave a resident, hart, briarboar, and settlement building.
   Close silhouettes should be smooth and detailed; distance transitions
   should not flicker repeatedly, drop equipped gear, break poses, or alter

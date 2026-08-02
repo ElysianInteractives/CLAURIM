@@ -7,6 +7,7 @@ import {
   thirdPersonCameraPose,
   unobstructedBoomScale,
 } from '../src/render/camera';
+import { TransformHistory } from '../src/render/interpolation';
 
 describe('QA camera-wide jitter reproduction', () => {
   it('turns Fenharrow collider release into continuous frame motion', () => {
@@ -59,5 +60,23 @@ describe('QA camera-wide jitter reproduction', () => {
 
     expect(maximumRawStep).toBeGreaterThan(5);
     expect(maximumStableStep).toBeLessThan(0.1);
+  });
+
+  it('keeps the camera anchor fixed after collision produces an unchanged tick', () => {
+    const history = new TransformHistory();
+    const at = (z: number) => ({ spaceId: 'kaldwyn', x: 42, y: 1.62, z, yaw: 0 });
+    history.observe(1, at(158));
+    history.observe(1, at(158.1));
+    history.observe(1, at(158.1));
+
+    const positions = [0, 0.25, 0.5, 0.75, 1].map((alpha) => {
+      const eye = history.sample(1, at(158.1), alpha);
+      return thirdPersonCameraPose(eye, 0, -0.25, 6).position;
+    });
+    for (const position of positions.slice(1)) {
+      expect(position.x).toBeCloseTo(positions[0].x);
+      expect(position.y).toBeCloseTo(positions[0].y);
+      expect(position.z).toBeCloseTo(positions[0].z);
+    }
   });
 });

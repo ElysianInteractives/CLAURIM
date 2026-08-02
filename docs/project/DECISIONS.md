@@ -463,3 +463,15 @@ building distance bands, and outer vegetation use existing medium tiers while
 the local player stays high. Six stable seconds above 57 fps restore normal
 detail. Simulation, colliders, camera authority, content, protocols, and saves
 remain unchanged. Exact rules: `FIND7_RENDER_HEADROOM_CONTRACT.md`.
+
+## D-049: Equal-tick stationary presentation settlement - LOCKED
+Find8 and direct user observation isolate the remaining defect: actors move
+normally between locations but can continue their gait after arrival. The
+fixed-tick transform history discarded unchanged ticks, so its final moving
+pair was resampled forever; the local player's stale pair could likewise move
+the camera after collision stopped authority. Every explicit fixed-tick
+observation now advances history, including equal transforms, while render
+sampling remains read-only for an already-current transform. Simulation,
+movement, schedules, navigation, colliders, camera obstruction, protocols,
+saves, and content remain unchanged. Exact rules:
+`STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.

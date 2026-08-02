@@ -13,6 +13,11 @@ so changing collider dimensions or movement authority would not address the
 captured cadence. D-048 instead restores graphics headroom lost in D-046 and
 adds a geometry fallback after D-047's raster fallback is exhausted.
 
+The later Find8 replay confirmed that this headroom work did not clear the
+stationary-gait symptom. D-049 addresses the independent stale final-tick
+presentation cause in `STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`; D-048's
+bounded model budgets and load protection remain valid.
+
 ## Close structure headroom
 
 - A high-detail building retains rounded walls, foundation, pitched roof

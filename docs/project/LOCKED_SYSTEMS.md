@@ -79,6 +79,8 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
 - Find7 close-structure triangle headroom, cached character presentation work,
   query-gated frame telemetry, and raster-first surrounding-geometry fallback
   with a permanently high-detail local player (D-048).
+- Equal fixed-tick settlement that collapses a final moving pair on unchanged
+  arrival/collision ticks while keeping render sampling read-only (D-049).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,

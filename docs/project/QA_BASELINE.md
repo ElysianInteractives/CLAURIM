@@ -877,6 +877,36 @@ clean replay on that device.
   four network profiles, and two-client WebSocket smoke remain green. Direct
   browser logs contain no warnings or errors.
 
+### QA Phase Q stationary-presentation-settlement exit
+
+QA Phase Q implements D-049 after the reporting-device Find8 replay rejected
+D-048 as the whole AV-009 fix.
+
+- User observation supplies the decisive reproduction: residents animate
+  normally while traveling, then retain their walk cycle only after reaching
+  a destination. The same failure can replay the local camera anchor when a
+  solid stops authoritative movement.
+- Adjacent fixed-tick history previously advanced only for changed transforms.
+  The first unchanged arrival/collision tick was discarded, so render alpha
+  repeatedly swept the final moving pair. D-049 records that equal tick and
+  collapses the pair to `current -> current`.
+- Render samples no longer advance an already-current pair. First observation,
+  out-of-band change capture, multi-step frames, large/space snaps, and
+  timestamped online non-local presentation retain their prior behavior.
+- Focused regressions pin equal-tick settlement, humanoid locomotion/bob return
+  to idle, and an invariant local camera anchor across the alpha range.
+- Simulation movement, schedules, navigation, collision authority, camera
+  obstruction, protocols, saves, content, and D-048 geometry remain unchanged.
+- `npm run gate` is green at 33 suites / 256 tests. Vite 8 transforms 68
+  modules and produces 764.57 kB JavaScript / 201.85 kB gzip. The automated
+  Thornmere stable route reaches authoritative contact, then holds a visibly
+  idle third-person pose and fixed first-/third-person camera at steady 60 fps;
+  browser warning/error logs are empty.
+- The 5-space / 31-route / 69-placement world tour, deterministic AI
+  comparison, all four network profiles, and two-client WebSocket smoke remain
+  green; movement acknowledges 30 inputs over 4.4 m with mutual visibility,
+  session rotation, replay rejection, and ownership preservation.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -914,6 +944,7 @@ clean replay on that device.
 | QA-HIGH-FIDELITY | Bounded close detail, stable LOD/socket transitions, and populated exterior cost | `tests/model_fidelity.test.ts`, `tests/character_rig.test.ts`, `tests/equipment_presentation.test.ts`, `tests/world_content_expansion.test.ts`, `npm run ai:bench`, `npm run world:tour`, `npm run gate`; development-only `?qa=gear`, `?qa=thornmere-harts`, `?qa=thornmere-tamsin`, and `?qa=weeping-stones` | high/medium triangle ratios and socket parity, LOD/cull hysteresis, asset validation seam, <=325 populated mesh nodes, <=175,000 visible triangles, first-/third-person equipment, close/far buildings, wildlife/vegetation, browser logs |
 | QA-FRAME-STABILITY | Whole-scene camera continuity, frame-rate-neutral online motion, projectile history, and sustained-load protection | `tests/camera_stability.test.ts`, `tests/camera_reticle.test.ts`, `tests/world_traversal.test.ts`, `tests/remote_presentation.test.ts`, `tests/frame_pacing.test.ts`, `tests/presentation.test.ts`, `npm run net:bench`, `npm run qa:ws`, `npm run world:tour`, `npm run gate`; development-only `?qa=fenharrow`, `?qa=thornmere`, and `?qa=inn-shift-change` | <0.1 m Fenharrow camera frame step, refined contact, obstruction flicker/release bounds, read-independent remote interpolation, projectile adjacent-tick motion, adaptive raster thresholds, exterior/interior/first-person browser logs |
 | QA-FIND7 | Recorded-frame cadence and close-model headroom | Decode Find7 at native timing; `tests/model_fidelity.test.ts`, `tests/frame_pacing.test.ts`, `npm run gate`; development-only `?qa=thornmere&qaPerf=1&qaWalk=1` | repeated/near-identical frame count, 2,000-3,000 triangles per close shell, 10,000-12,000 for five Thornmere shells, matrix-correct populated budgets, raster-first tier thresholds, local player high, telemetry at steady 60 fps with zero missed frames |
+| QA-STATIONARY-SETTLEMENT | Stop gait and camera-anchor replay | `tests/presentation.test.ts`, `tests/character_rig.test.ts`, `tests/camera_stability.test.ts`; development-only `?qa=thornmere-wall&qaPerf=1&qaWalk=1`; follow a scheduled resident to arrival | equal tick produces `current -> current`; gait/bob settles; camera anchor stays fixed across alpha; held wall input and moving interpolation retain authority |
 
 ## Browser visual-QA procedure
 

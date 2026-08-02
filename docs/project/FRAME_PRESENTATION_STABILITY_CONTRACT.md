@@ -31,6 +31,10 @@ rule, save, protocol, or world placement changes.
 - A render-facing `presentationInterpolated` marker prevents online snapshot
   interpolation from being passed through the fixed-tick interpolator again.
   Large corrections retain the existing 3 m snap boundary.
+- D-049 closes fixed-tick motion on an unchanged arrival/collision tick instead
+  of discarding that tick and replaying the final moving pair. Render sampling
+  does not mutate an already-current pair. Exact settlement rules are in
+  `STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
 
 ## Sustained render load
 

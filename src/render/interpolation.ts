@@ -37,7 +37,8 @@ export class TransformHistory {
 
   constructor(private readonly snapDistance = 4) {}
 
-  /** Capture every authoritative simulation step, including steps between frames. */
+  /** Capture one authoritative simulation step, including unchanged arrival /
+   * collision-stop ticks and steps that occur between rendered frames. */
   observe(id: number, observed: RenderTransform): void {
     let pair = this.history.get(id);
     if (!pair) {
@@ -47,25 +48,32 @@ export class TransformHistory {
       return;
     }
 
-    if (!sameTransform(pair.current, observed)) {
-      const distance = Math.hypot(
-        observed.x - pair.current.x,
-        observed.y - pair.current.y,
-        observed.z - pair.current.z,
-      );
-      if (observed.spaceId !== pair.current.spaceId || distance > this.snapDistance) {
-        pair.previous = copyTransform(observed);
-        pair.current = copyTransform(observed);
-      } else {
-        pair.previous = copyTransform(pair.current);
-        pair.current = copyTransform(observed);
-      }
+    const distance = Math.hypot(
+      observed.x - pair.current.x,
+      observed.y - pair.current.y,
+      observed.z - pair.current.z,
+    );
+    if (observed.spaceId !== pair.current.spaceId || distance > this.snapDistance) {
+      pair.previous = copyTransform(observed);
+      pair.current = copyTransform(observed);
+    } else {
+      // Advancing an equal tick is essential: it collapses the final moving
+      // pair to current -> current when an actor arrives or collision stops
+      // the local player. Otherwise that last step is replayed forever.
+      pair.previous = copyTransform(pair.current);
+      pair.current = copyTransform(observed);
     }
   }
 
   sample(id: number, observed: RenderTransform, alpha: number): RenderTransform {
-    this.observe(id, observed);
-    const pair = this.history.get(id)!;
+    let pair = this.history.get(id);
+    if (!pair || !sameTransform(pair.current, observed)) {
+      // Normal fixed-step hosts call observe() explicitly. This fallback only
+      // initializes the first frame or captures an out-of-band transform; an
+      // ordinary render read must not advance/collapse the tick pair.
+      this.observe(id, observed);
+      pair = this.history.get(id)!;
+    }
 
     const t = clamp01(alpha);
     return {

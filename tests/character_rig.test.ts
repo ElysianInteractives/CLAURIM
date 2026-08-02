@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCharacter, poseCharacter } from '../src/render/characters';
+import { TransformHistory } from '../src/render/interpolation';
 import type { ActorView } from '../src/world_api';
 
 function view(overrides: Partial<ActorView> = {}): ActorView {
@@ -57,6 +58,33 @@ describe('QA Phase I articulated character reproduction', () => {
     expect(legR.rotation.x).toBeCloseTo(-legL.rotation.x, 5);
     expect(character.getObjectByName('kneeL')!.rotation.x).toBeGreaterThanOrEqual(0);
     expect(character.getObjectByName('torso')!.rotation.z).not.toBe(0);
+  });
+
+  it('returns the gait and vertical bob to idle after an unchanged arrival tick', () => {
+    const character = buildCharacter('player');
+    const history = new TransformHistory();
+    const at = (x: number) => ({ spaceId: 'kaldwyn', x, y: 0, z: 0, yaw: 0 });
+
+    history.observe(1, at(0));
+    poseCharacter(character, view({ x: 0 }), 0);
+    history.observe(1, at(0.1));
+    const moving = history.sample(1, at(0.1), 0.75);
+    poseCharacter(character, view({ x: moving.x }), 0.1);
+    expect(character.userData.locomotionMoving).toBe(true);
+
+    // The first stationary sample finishes the fractional visual step; the
+    // next rendered sample has zero displacement and must settle the pose.
+    history.observe(1, at(0.1));
+    const arrival = history.sample(1, at(0.1), 0);
+    poseCharacter(character, view({ x: arrival.x }), 0.116);
+    const settled = history.sample(1, at(0.1), 0.5);
+    poseCharacter(character, view({ x: settled.x }), 0.133);
+
+    expect(character.userData.locomotionMoving).toBe(false);
+    expect(character.position.y).toBe(0);
+    expect(character.getObjectByName('legL')!.rotation.x).toBeCloseTo(0);
+    expect(character.getObjectByName('legR')!.rotation.x).toBeCloseTo(0);
+    expect(character.getObjectByName('torso')!.rotation.z).toBeCloseTo(0);
   });
 
   it('adds secondary-joint intent to bow and block poses', () => {

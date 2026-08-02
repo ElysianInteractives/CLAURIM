@@ -52,6 +52,22 @@ describe('host-side transform interpolation', () => {
     expect(history.sample(1, at(3), 0.5).x).toBeCloseTo(2.5);
     expect(history.sample(1, at(3), 0.9).x).toBeCloseTo(2.9);
   });
+
+  it('settles the final movement pair when the next fixed tick is stationary', () => {
+    const history = new TransformHistory();
+    const at = (x: number) => ({ spaceId: 'kaldwyn', x, y: 0, z: 0, yaw: 0 });
+
+    history.observe(1, at(0));
+    history.observe(1, at(1));
+    expect(history.sample(1, at(1), 0.75).x).toBeCloseTo(0.75);
+
+    // Arrival and collision stops produce an unchanged authoritative tick.
+    // That tick must collapse the pair instead of replaying 0 -> 1 forever.
+    history.observe(1, at(1));
+    for (const alpha of [0, 0.25, 0.5, 0.75, 1]) {
+      expect(history.sample(1, at(1), alpha).x).toBe(1);
+    }
+  });
 });
 
 describe('browser audio presentation contract', () => {
@@ -126,6 +142,7 @@ describe('presentation input capture', () => {
 describe('development browser QA start points', () => {
   it('resolves only known explicit points when development support is enabled', () => {
     expect(qaStartFromSearch('?qa=fenharrow', true)).toMatchObject({ spaceId: 'kaldwyn', x: 42, z: 158 });
+    expect(qaStartFromSearch('?qa=thornmere-wall', true)).toMatchObject({ x: -8, z: -207, yaw: Math.PI });
     expect(qaStartFromSearch('?qa=unknown', true)).toBeNull();
     expect(qaStartFromSearch('?qa=fenharrow', false)).toBeNull();
     expect(qaStartFromSearch('?qa=inn-shift-change', true)).toMatchObject({ hour: 20.99 });

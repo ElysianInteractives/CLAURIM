@@ -84,6 +84,13 @@ the tier never enters IWorld, collision, protocol, or saves. Query-gated
 `qaPerf` telemetry observes this boundary without writing gameplay state. See
 `FIND7_RENDER_HEADROOM_CONTRACT.md`.
 
+D-049 clarifies the offline/predicted-local fixed-tick boundary: explicit
+world-step observation advances adjacent history even when a transform is
+unchanged, settling arrival and collision stops. Per-render sampling is
+read-only for an already-current transform. Timestamped online non-local
+tracks continue to bypass this history. See
+`STATIONARY_PRESENTATION_SETTLEMENT_CONTRACT.md`.
+
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use
 `roomBoundarySegments`; the camera reads `worldObstructionT`. These imports
