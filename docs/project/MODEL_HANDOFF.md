@@ -213,8 +213,8 @@ Blender 5.2.x LTS, metre/axis/origin rules, stable IDs, LOD/collider extras,
 provenance, and source/runtime repository ownership are locked. The editable
 Falkmoor tower/wall/arch source repeatably exports three validated GLBs
 at 2,360/116, 1,320/12, and 792/132 LOD0/LOD1 triangles. A1 subsequently
-activates runtime loading; Blender placement round-tripping and terrain
-editing remain A2/A4 work. Exact A0 boundaries are in
+activates runtime loading and A2 adds placement round-tripping; authored
+terrain authority remains later work. Exact A0 boundaries are in
 `BLENDER_ASSET_AUTHORING_CONTRACT.md`.
 
 Asset Phase A1 implements D-052. The three Falkmoor pilots now replace the
@@ -222,9 +222,19 @@ matching tower, both wall, and arch procedural visuals after lazy runtime
 validation. The catalog coalesces requests, shares immutable resources, uses
 authored LOD0/LOD1, supports Meshopt and KTX2/Basis, exposes a cache-busted
 reload hook, and retains the procedural visual on every failure. Existing
-content transforms and `CollisionIndex` remain authoritative; A2 placement
-round-tripping and later terrain work are still out of scope. Exact boundaries
-are in `ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
+content transforms and `CollisionIndex` remain authoritative. A2 subsequently
+adds proposal-only placement round-tripping; live migration and terrain work
+remain out of the A1 boundary. Exact rules are in
+`ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
+
+Asset Phase A2 implements D-053. `claurim_world.blend` contains the imported
+five-space world and a read-only D-005 terrain reference. The installed
+Claurim sidebar imports current content, exposes approved collection assets,
+places/snaps instances, validates world metadata and asset budgets, and
+exports a deterministic proposal. All 88 initial records survive save/reopen/
+export without drift. TypeScript remains live authority until a later
+location/terrain migration is explicitly locked. Exact boundaries are in
+`BLENDER_WORLD_BRIDGE_CONTRACT.md`.
 
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
@@ -396,7 +406,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-052), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-053), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

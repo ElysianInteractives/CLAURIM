@@ -10,8 +10,10 @@ tower/wall/arch source, repeatable validated exports, and visual evidence
 exist. Asset Phase A1 is locked and implemented by D-052: a cached,
 Meshopt/KTX2-ready runtime catalog activates those pilots with LOD, hot reload,
 and procedural fallbacks while content retains placement/collision authority.
-The Blender placement bridge, authored terrain, and location migration remain
-the later proposed phases below.
+Asset Phase A2 is locked and implemented by D-053: a no-code Blender sidebar,
+manifest palette, current-world import, validators, deterministic proposal
+export, and committed editable scene now exist. Authored terrain and live
+location migration remain the later proposed phases below.
 
 ## Honest current state
 
@@ -19,10 +21,10 @@ the later proposed phases below.
   the three Falkmoor environment pilots, while D-046 can validate registered
   character GLB/glTF assets; there is not yet a commissioned model catalog or
   a visually authored whole-world scene.
-- Buildings, terrain shape, roads, doors, and deterministic vegetation are
-  still authored through repository data/functions. Blender assets can be
-  created now, but visual placement/sculpting will not appear in the game
-  until the bridge below is implemented.
+- Buildings, terrain shape, roads, doors, and deterministic vegetation still
+  take live authority from repository data/functions. Blender placement
+  proposals can now be authored visually, but they will not appear in the game
+  until a later migration explicitly adopts and tests them.
 
 ## Recommended free authoring stack
 
@@ -59,7 +61,7 @@ not the only copy of the work.
   `asset_id`, `collider`, `door_id`, `container_id`, `spawner_id`, and
   `landmark_id`. Visual meshes never silently become gameplay collision.
 
-## The Claurim Blender bridge to build
+## The implemented Claurim Blender bridge
 
 The add-on provides one **Claurim** panel rather than requiring code edits:
 
@@ -94,8 +96,9 @@ The add-on provides one **Claurim** panel rather than requiring code edits:
 1. **Asset foundation (A1, implemented by D-052):** manifest/licensing,
    runtime world/prop GLB registry, KTX2 + Meshopt support, fallbacks, budgets,
    and hot reload.
-2. **Blender round trip:** importer, asset palette, custom-property schema,
-   validation panel, placement export, and one test clearing.
+2. **Blender round trip (A2, implemented by D-053):** importer, asset palette,
+   custom-property schema, validation panel, placement export, and one test
+   clearing.
 3. **Authored terrain authority:** shared quantized height/splat data, server
    and client sampling, navigation/collision migration, deterministic tests.
 4. **World migration:** Falkmoor first, then Thornmere, Fenharrow, Weeping
@@ -103,6 +106,6 @@ The add-on provides one **Claurim** panel rather than requiring code edits:
    narrative, jitter, and performance gates before the next replaces code-
    native fallback geometry.
 
-The user can begin learning Blender and creating individual, correctly scaled
-GLBs now. Whole-world visual editing should wait for the phase 2 bridge so
-placement work can round-trip instead of being manually transcribed into code.
+The user can now open `art/blender/claurim_world.blend`, use the Claurim panel,
+and author placement proposals without transcribing code. Those proposals
+remain non-live until a later migration phase adopts and tests them.

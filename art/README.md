@@ -21,3 +21,20 @@ npm.cmd run validate:assets
 
 The executable path is machine-specific. Use any Blender 5.2.x LTS executable;
 do not commit a local installation path.
+
+Asset Phase A2 also commits `art/blender/claurim_world.blend`, the imported
+editable five-space world. Regenerate and validate it with:
+
+```powershell
+npm.cmd run export:blender-world
+& "F:\SteamLibrary\steamapps\common\Blender\blender.exe" `
+  --background --factory-startup `
+  --python scripts/blender/build_world_authoring_scene.py -- --repo-root "$PWD"
+& "F:\SteamLibrary\steamapps\common\Blender\blender.exe" `
+  --background art/blender/claurim_world.blend `
+  --python scripts/blender/qa_world_bridge.py -- --repo-root "$PWD"
+```
+
+The Blender **Claurim** sidebar is versioned under
+`tools/blender_addon/claurim_world_bridge/`. Its initial placement export is a
+proposal and is not consumed by runtime gameplay until a later migration lock.

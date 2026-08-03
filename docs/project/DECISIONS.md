@@ -508,3 +508,15 @@ load or validation failure leaves the procedural fallback live. Blender
 collider nodes remain non-rendered metadata, and simulation, placement,
 terrain, navigation, protocols, saves, and content are unchanged. Exact rules:
 `ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
+
+## D-053: No-code Blender world bridge with proposal-only export - LOCKED
+Asset Phase A2 imports the current five-space world into a committed editable
+Blender 5.2 scene with categorized terrain/room references, roads, 42 props,
+8 doors, 6 containers, 24 spawners, 8 landmarks, and the approved GLB palette.
+The Claurim sidebar imports, places collection assets, grounds selections,
+validates stable IDs/catalog licenses/transforms/anchors/materials/budgets/
+terrain contact, and exports deterministic placement metadata through the
+repository gate. The export remains explicitly proposal-only; TypeScript
+content, D-005 terrain, collision, navigation, rendering, quests, protocols,
+saves, and schedules retain authority until a separately locked migration.
+Exact rules: `BLENDER_WORLD_BRIDGE_CONTRACT.md`.

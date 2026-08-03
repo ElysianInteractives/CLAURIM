@@ -1,0 +1,1754 @@
+{
+  "schemaVersion": 1,
+  "sourceContentVersion": "0.5.0",
+  "exportedBy": "Claurim Blender Bridge 1.0.0",
+  "runtimeAuthority": "proposal",
+  "placements": [
+    {
+      "recordType": "container",
+      "id": "hadrin_pack",
+      "spaceId": "duskhollow_mine",
+      "kind": "container",
+      "transform": {
+        "x": 6,
+        "y": 0,
+        "z": 66,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Hadrin's Pack",
+        "loot_table": "journal_cache"
+      }
+    },
+    {
+      "recordType": "container",
+      "id": "mine_supply_cache",
+      "spaceId": "duskhollow_mine",
+      "kind": "container",
+      "transform": {
+        "x": -6,
+        "y": 0,
+        "z": 36,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Supply Cache",
+        "loot_table": "mine_cache"
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_mine_out",
+      "spaceId": "duskhollow_mine",
+      "kind": "door",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 0.8,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Kaldwyn Reach",
+        "target_space_id": "kaldwyn",
+        "target_x": 116,
+        "target_z": 334,
+        "target_yaw": 3.141592653589793,
+        "anchor_prop_id": null,
+        "anchor_local_x": 0,
+        "anchor_local_z": 0,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "prop",
+      "id": "boss_barrow",
+      "spaceId": "duskhollow_mine",
+      "kind": "barrow_slab",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 64,
+        "yaw": 0
+      },
+      "dimensions": [
+        3,
+        1,
+        2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "mine_pillar_a",
+      "spaceId": "duskhollow_mine",
+      "kind": "pillar",
+      "transform": {
+        "x": -4,
+        "y": 0,
+        "z": 32,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.5,
+        4,
+        1.5
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "mine_pillar_b",
+      "spaceId": "duskhollow_mine",
+      "kind": "pillar",
+      "transform": {
+        "x": 4,
+        "y": 0,
+        "z": 34,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.5,
+        4,
+        1.5
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_mine_boss",
+      "spaceId": "duskhollow_mine",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 60,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "barrow_wight",
+        "count": 1,
+        "radius": 2,
+        "encounter_id": "pale_vault",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_mine_matron",
+      "spaceId": "duskhollow_mine",
+      "kind": "spawner",
+      "transform": {
+        "x": -5,
+        "y": 0,
+        "z": 36,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "mire_matron",
+        "count": 1,
+        "radius": 2,
+        "encounter_id": "flooded_gallery",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_mine_rats",
+      "spaceId": "duskhollow_mine",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 33,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "marsh_rat",
+        "count": 5,
+        "radius": 6,
+        "encounter_id": "flooded_gallery",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_mine_sentinel",
+      "spaceId": "duskhollow_mine",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 47,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "barrow_sentinel",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": "deep_corridor",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_mine_thralls",
+      "spaceId": "duskhollow_mine",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 46,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "barrow_thrall",
+        "count": 2,
+        "radius": 3,
+        "encounter_id": "deep_corridor",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_inn_out",
+      "spaceId": "fenharrow_inn",
+      "kind": "door",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 0.8,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Fenharrow",
+        "target_space_id": "kaldwyn",
+        "target_x": 33,
+        "target_z": 144,
+        "target_yaw": 3.141592653589793,
+        "anchor_prop_id": null,
+        "anchor_local_x": 0,
+        "anchor_local_z": 0,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "prop",
+      "id": "inn_bar",
+      "spaceId": "fenharrow_inn",
+      "kind": "bar_counter",
+      "transform": {
+        "x": 4,
+        "y": 0,
+        "z": 2.5,
+        "yaw": 0
+      },
+      "dimensions": [
+        6,
+        1.1,
+        1.2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "inn_hearth",
+      "spaceId": "fenharrow_inn",
+      "kind": "hearth",
+      "transform": {
+        "x": -7,
+        "y": 0,
+        "z": 6,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.5,
+        2.5,
+        2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "inn_table_a",
+      "spaceId": "fenharrow_inn",
+      "kind": "table",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 8,
+        "yaw": 0
+      },
+      "dimensions": [
+        2,
+        1,
+        1.5
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "inn_table_b",
+      "spaceId": "fenharrow_inn",
+      "kind": "table",
+      "transform": {
+        "x": 5,
+        "y": 0,
+        "z": 9,
+        "yaw": 0
+      },
+      "dimensions": [
+        2,
+        1,
+        1.5
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_maera",
+      "spaceId": "fenharrow_inn",
+      "kind": "spawner",
+      "transform": {
+        "x": 4,
+        "y": 0,
+        "z": 4,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "maera",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": null,
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "container",
+      "id": "gloamroot_cache",
+      "spaceId": "gloamroot_hollow",
+      "kind": "container",
+      "transform": {
+        "x": 5.5,
+        "y": 0,
+        "z": 52,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Mossbound Satchel",
+        "loot_table": "gloamroot_cache"
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_gloamroot_out",
+      "spaceId": "gloamroot_hollow",
+      "kind": "door",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 0.8,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Kaldwyn Reach",
+        "target_space_id": "kaldwyn",
+        "target_x": -10,
+        "target_z": -112,
+        "target_yaw": 3.141592653589793,
+        "anchor_prop_id": null,
+        "anchor_local_x": 0,
+        "anchor_local_z": 0,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_caps_den",
+      "spaceId": "gloamroot_hollow",
+      "kind": "glowcaps",
+      "transform": {
+        "x": -7,
+        "y": 0,
+        "z": 30,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.8,
+        0.9,
+        1.8
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_caps_entry",
+      "spaceId": "gloamroot_hollow",
+      "kind": "glowcaps",
+      "transform": {
+        "x": 2.5,
+        "y": 0,
+        "z": 7,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.5,
+        0.8,
+        1.5
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_caps_heart",
+      "spaceId": "gloamroot_hollow",
+      "kind": "glowcaps",
+      "transform": {
+        "x": 4,
+        "y": 0,
+        "z": 50,
+        "yaw": 0
+      },
+      "dimensions": [
+        2,
+        1,
+        2
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_nest",
+      "spaceId": "gloamroot_hollow",
+      "kind": "nest",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 51,
+        "yaw": 0
+      },
+      "dimensions": [
+        4,
+        0.5,
+        3
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_root_a",
+      "spaceId": "gloamroot_hollow",
+      "kind": "root_column",
+      "transform": {
+        "x": -5,
+        "y": 0,
+        "z": 28,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.2,
+        4.2,
+        1.2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_root_b",
+      "spaceId": "gloamroot_hollow",
+      "kind": "root_column",
+      "transform": {
+        "x": 5,
+        "y": 0,
+        "z": 30,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.1,
+        4.2,
+        1.1
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_gloamroot_boars",
+      "spaceId": "gloamroot_hollow",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 28,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "briarboar",
+        "count": 4,
+        "radius": 6,
+        "encounter_id": "gloamroot_sounder",
+        "respawn_game_hours": 48
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_gloamroot_matriarch",
+      "spaceId": "gloamroot_hollow",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 50,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "briarboar_matriarch",
+        "count": 1,
+        "radius": 2,
+        "encounter_id": "gloamroot_heart",
+        "respawn_game_hours": 48
+      }
+    },
+    {
+      "recordType": "container",
+      "id": "ruin_chest",
+      "spaceId": "kaldwyn",
+      "kind": "container",
+      "transform": {
+        "x": 45,
+        "y": 22,
+        "z": -422,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Weathered Chest",
+        "loot_table": "mine_cache"
+      }
+    },
+    {
+      "recordType": "container",
+      "id": "weeping_offering",
+      "spaceId": "kaldwyn",
+      "kind": "container",
+      "transform": {
+        "x": 89,
+        "y": 11.835012,
+        "z": 273,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Stone Offering",
+        "loot_table": "stone_offering"
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_gloamroot_in",
+      "spaceId": "kaldwyn",
+      "kind": "door",
+      "transform": {
+        "x": -10,
+        "y": 12.466616,
+        "z": -107,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Gloamroot Hollow",
+        "target_space_id": "gloamroot_hollow",
+        "target_x": 0,
+        "target_z": 7,
+        "target_yaw": 0,
+        "anchor_prop_id": "gloamroot_arch",
+        "anchor_local_x": 0,
+        "anchor_local_z": -2,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_inn_in",
+      "spaceId": "kaldwyn",
+      "kind": "door",
+      "transform": {
+        "x": 33,
+        "y": 14,
+        "z": 146.5,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "The Fenharrow Hearth",
+        "target_space_id": "fenharrow_inn",
+        "target_x": 0,
+        "target_z": 1.5,
+        "target_yaw": 0,
+        "anchor_prop_id": "inn_shell",
+        "anchor_local_x": 0,
+        "anchor_local_z": -5.5,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_mine_in",
+      "spaceId": "kaldwyn",
+      "kind": "door",
+      "transform": {
+        "x": 118,
+        "y": 18.999998,
+        "z": 338,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Duskhollow Mine",
+        "target_space_id": "duskhollow_mine",
+        "target_x": 0,
+        "target_z": 2,
+        "target_yaw": 0,
+        "anchor_prop_id": "mine_arch",
+        "anchor_local_x": 0,
+        "anchor_local_z": -2,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_siltroot_in",
+      "spaceId": "kaldwyn",
+      "kind": "door",
+      "transform": {
+        "x": -30,
+        "y": 16.776636,
+        "z": 75,
+        "yaw": 1.570796
+      },
+      "grounded": true,
+      "data": {
+        "name": "Siltroot Burrow",
+        "target_space_id": "siltroot_burrow",
+        "target_x": 0,
+        "target_z": 2,
+        "target_yaw": 0,
+        "anchor_prop_id": "siltroot_arch",
+        "anchor_local_x": 0,
+        "anchor_local_z": 3,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "duskhollow",
+      "spaceId": "kaldwyn",
+      "kind": "mine",
+      "transform": {
+        "x": 118,
+        "y": 19,
+        "z": 338,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Duskhollow Mine"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "falkmoor",
+      "spaceId": "kaldwyn",
+      "kind": "ruin",
+      "transform": {
+        "x": 40,
+        "y": 22,
+        "z": -420,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Falkmoor Ruin"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "fenharrow",
+      "spaceId": "kaldwyn",
+      "kind": "town",
+      "transform": {
+        "x": 42,
+        "y": 14,
+        "z": 158,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Fenharrow"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "gloamroot",
+      "spaceId": "kaldwyn",
+      "kind": "cave",
+      "transform": {
+        "x": -10,
+        "y": 12.533636,
+        "z": -105,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Gloamroot Hollow"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "road-camp",
+      "spaceId": "kaldwyn",
+      "kind": "camp",
+      "transform": {
+        "x": 30,
+        "y": 10.181585,
+        "z": -300,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Redclaw Road Camp"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "siltroot",
+      "spaceId": "kaldwyn",
+      "kind": "cave",
+      "transform": {
+        "x": -30,
+        "y": 16.776636,
+        "z": 75,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Siltroot Burrow"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "thornmere",
+      "spaceId": "kaldwyn",
+      "kind": "town",
+      "transform": {
+        "x": -10,
+        "y": 10,
+        "z": -180,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Thornmere Crossing"
+      }
+    },
+    {
+      "recordType": "landmark",
+      "id": "weeping-stones",
+      "spaceId": "kaldwyn",
+      "kind": "ruin",
+      "transform": {
+        "x": 93,
+        "y": 11.29545,
+        "z": 274,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "name": "Weeping Stones"
+      }
+    },
+    {
+      "recordType": "prop",
+      "id": "camp_fire",
+      "spaceId": "kaldwyn",
+      "kind": "campfire",
+      "transform": {
+        "x": 30,
+        "y": 10.181585,
+        "z": -300,
+        "yaw": 0
+      },
+      "dimensions": [
+        1.5,
+        0.5,
+        1.5
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "camp_tent_a",
+      "spaceId": "kaldwyn",
+      "kind": "tent",
+      "transform": {
+        "x": 24,
+        "y": 10.583415,
+        "z": -296,
+        "yaw": 0.3
+      },
+      "dimensions": [
+        4,
+        2.5,
+        4
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "fenharrow_storehouse",
+      "spaceId": "kaldwyn",
+      "kind": "building_storehouse",
+      "transform": {
+        "x": 8,
+        "y": 14,
+        "z": 140,
+        "yaw": 0.12
+      },
+      "dimensions": [
+        10,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "fenharrow_watch",
+      "spaceId": "kaldwyn",
+      "kind": "building_watchtower",
+      "transform": {
+        "x": 72,
+        "y": 14.805111,
+        "z": 115,
+        "yaw": 0.32
+      },
+      "dimensions": [
+        6,
+        8,
+        6
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "forge",
+      "spaceId": "kaldwyn",
+      "kind": "forge",
+      "transform": {
+        "x": 64,
+        "y": 14,
+        "z": 133,
+        "yaw": 0
+      },
+      "dimensions": [
+        2.5,
+        1.2,
+        2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "gloamroot_arch",
+      "spaceId": "kaldwyn",
+      "kind": "mine_entrance",
+      "transform": {
+        "x": -10,
+        "y": 12.533636,
+        "z": -105,
+        "yaw": 0
+      },
+      "dimensions": [
+        5,
+        3.8,
+        2
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "house_a",
+      "spaceId": "kaldwyn",
+      "kind": "building_house",
+      "transform": {
+        "x": 22,
+        "y": 14,
+        "z": 168,
+        "yaw": -0.3
+      },
+      "dimensions": [
+        8,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "house_b",
+      "spaceId": "kaldwyn",
+      "kind": "building_house",
+      "transform": {
+        "x": 55,
+        "y": 14,
+        "z": 170,
+        "yaw": 0.2
+      },
+      "dimensions": [
+        7,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "house_c",
+      "spaceId": "kaldwyn",
+      "kind": "building_house",
+      "transform": {
+        "x": 75,
+        "y": 13.973344,
+        "z": 185,
+        "yaw": -0.25
+      },
+      "dimensions": [
+        8,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "inn_shell",
+      "spaceId": "kaldwyn",
+      "kind": "building_inn",
+      "transform": {
+        "x": 33,
+        "y": 14,
+        "z": 152,
+        "yaw": 0
+      },
+      "dimensions": [
+        14,
+        6,
+        10
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "mine_arch",
+      "spaceId": "kaldwyn",
+      "kind": "mine_entrance",
+      "transform": {
+        "x": 118,
+        "y": 19,
+        "z": 340,
+        "yaw": 0
+      },
+      "dimensions": [
+        6,
+        5,
+        3
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "mine_cart",
+      "spaceId": "kaldwyn",
+      "kind": "cart",
+      "transform": {
+        "x": 112,
+        "y": 18.094687,
+        "z": 332,
+        "yaw": 0.5
+      },
+      "dimensions": [
+        3,
+        1.5,
+        2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "ruin_arch",
+      "spaceId": "kaldwyn",
+      "kind": "ruin_arch",
+      "transform": {
+        "x": 40,
+        "y": 22,
+        "z": -404,
+        "yaw": 0
+      },
+      "dimensions": [
+        6,
+        5,
+        2
+      ],
+      "solid": false,
+      "assetId": "falkmoor_ruin_arch_a",
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "ruin_tower",
+      "spaceId": "kaldwyn",
+      "kind": "ruin_tower",
+      "transform": {
+        "x": 40,
+        "y": 22,
+        "z": -428,
+        "yaw": 0
+      },
+      "dimensions": [
+        8,
+        10,
+        8
+      ],
+      "solid": true,
+      "assetId": "falkmoor_ruin_tower_a",
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "ruin_wall_a",
+      "spaceId": "kaldwyn",
+      "kind": "ruin_wall",
+      "transform": {
+        "x": 28,
+        "y": 22,
+        "z": -418,
+        "yaw": 0.8
+      },
+      "dimensions": [
+        10,
+        3,
+        1.5
+      ],
+      "solid": true,
+      "assetId": "falkmoor_ruin_wall_a",
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "ruin_wall_b",
+      "spaceId": "kaldwyn",
+      "kind": "ruin_wall",
+      "transform": {
+        "x": 52,
+        "y": 22,
+        "z": -414,
+        "yaw": -0.5
+      },
+      "dimensions": [
+        8,
+        2.5,
+        1.5
+      ],
+      "solid": true,
+      "assetId": "falkmoor_ruin_wall_a",
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "siltroot_arch",
+      "spaceId": "kaldwyn",
+      "kind": "mine_entrance",
+      "transform": {
+        "x": -33,
+        "y": 16.651766,
+        "z": 75,
+        "yaw": 1.570796
+      },
+      "dimensions": [
+        5,
+        3.5,
+        2
+      ],
+      "solid": false,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "smithy_shell",
+      "spaceId": "kaldwyn",
+      "kind": "building_smithy",
+      "transform": {
+        "x": 62,
+        "y": 14,
+        "z": 136,
+        "yaw": 0.4
+      },
+      "dimensions": [
+        8,
+        4,
+        6
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "thornmere_granary",
+      "spaceId": "kaldwyn",
+      "kind": "building_storehouse",
+      "transform": {
+        "x": -28,
+        "y": 10,
+        "z": -152,
+        "yaw": -0.18
+      },
+      "dimensions": [
+        9,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "thornmere_house_a",
+      "spaceId": "kaldwyn",
+      "kind": "building_house",
+      "transform": {
+        "x": 12,
+        "y": 10,
+        "z": -190,
+        "yaw": -0.2
+      },
+      "dimensions": [
+        8,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "thornmere_house_b",
+      "spaceId": "kaldwyn",
+      "kind": "building_house",
+      "transform": {
+        "x": 15,
+        "y": 10,
+        "z": -155,
+        "yaw": 0.24
+      },
+      "dimensions": [
+        8,
+        5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "thornmere_lodge",
+      "spaceId": "kaldwyn",
+      "kind": "building_lodge",
+      "transform": {
+        "x": -32,
+        "y": 10,
+        "z": -184,
+        "yaw": 0.1
+      },
+      "dimensions": [
+        11,
+        5.5,
+        8
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "thornmere_stable",
+      "spaceId": "kaldwyn",
+      "kind": "building_stable",
+      "transform": {
+        "x": -8,
+        "y": 10,
+        "z": -213,
+        "yaw": 0.04
+      },
+      "dimensions": [
+        12,
+        4.5,
+        7
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "thornmere_well",
+      "spaceId": "kaldwyn",
+      "kind": "well",
+      "transform": {
+        "x": -3,
+        "y": 10,
+        "z": -168,
+        "yaw": 0
+      },
+      "dimensions": [
+        2,
+        1.5,
+        2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "weeping_basin",
+      "spaceId": "kaldwyn",
+      "kind": "shrine_basin",
+      "transform": {
+        "x": 93,
+        "y": 11.510803,
+        "z": 276,
+        "yaw": 0
+      },
+      "dimensions": [
+        2.2,
+        0.8,
+        2.2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "weeping_stone_a",
+      "spaceId": "kaldwyn",
+      "kind": "standing_stone",
+      "transform": {
+        "x": 92,
+        "y": 11.094059,
+        "z": 269,
+        "yaw": 0.2
+      },
+      "dimensions": [
+        1.8,
+        7,
+        1.5
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "weeping_stone_b",
+      "spaceId": "kaldwyn",
+      "kind": "standing_stone",
+      "transform": {
+        "x": 99,
+        "y": 10.804547,
+        "z": 274,
+        "yaw": -0.35
+      },
+      "dimensions": [
+        1.5,
+        5.5,
+        1.4
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "weeping_stone_c",
+      "spaceId": "kaldwyn",
+      "kind": "standing_stone",
+      "transform": {
+        "x": 87,
+        "y": 12.719926,
+        "z": 277,
+        "yaw": 0.55
+      },
+      "dimensions": [
+        1.4,
+        4.8,
+        1.3
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "prop",
+      "id": "well",
+      "spaceId": "kaldwyn",
+      "kind": "well",
+      "transform": {
+        "x": 42,
+        "y": 14,
+        "z": 158,
+        "yaw": 0
+      },
+      "dimensions": [
+        2,
+        1.5,
+        2
+      ],
+      "solid": true,
+      "grounded": true,
+      "data": {}
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_bronn",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 67,
+        "y": 14,
+        "z": 132,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "bronn",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": null,
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_camp_raider",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 28,
+        "y": 10.162556,
+        "z": -298,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "redclaw_raider",
+        "count": 1,
+        "radius": 6,
+        "encounter_id": "road_camp",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_corren",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 6,
+        "y": 10,
+        "z": -170,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "corren",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": null,
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_gate_archer",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 114,
+        "y": 16.916407,
+        "z": 328,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "redclaw_archer",
+        "count": 1,
+        "radius": 6,
+        "encounter_id": "mine_gate",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_gate_raiders",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 108,
+        "y": 13.784182,
+        "z": 324,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "redclaw_raider",
+        "count": 2,
+        "radius": 8,
+        "encounter_id": "mine_gate",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_gate_reaver",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 111,
+        "y": 15.506505,
+        "z": 327,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "redclaw_reaver",
+        "count": 1,
+        "radius": 3,
+        "encounter_id": "mine_gate",
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_harts_north",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 42,
+        "y": 11.620385,
+        "z": 255,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "ridge_hart",
+        "count": 2,
+        "radius": 6,
+        "encounter_id": null,
+        "respawn_game_hours": 24
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_harts_thornmere",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 24,
+        "y": 16.399017,
+        "z": -220,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "ridge_hart",
+        "count": 3,
+        "radius": 7,
+        "encounter_id": null,
+        "respawn_game_hours": 24
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_stones_boars",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 106,
+        "y": 10.846186,
+        "z": 276,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "briarboar",
+        "count": 2,
+        "radius": 5,
+        "encounter_id": "weeping_stones",
+        "respawn_game_hours": 48
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_tamsin",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": -20,
+        "y": 10,
+        "z": -175,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "tamsin",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": null,
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_vael",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": -2,
+        "y": 10,
+        "z": -202,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "vael",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": null,
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_wolves_alpha",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 4,
+        "y": 10.471276,
+        "z": 56,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "frostfang_alpha",
+        "count": 1,
+        "radius": 3,
+        "encounter_id": "road_wolves",
+        "respawn_game_hours": 48
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_wolves_road",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": -6,
+        "y": 10.282686,
+        "z": 52,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "frostfang_wolf",
+        "count": 2,
+        "radius": 12,
+        "encounter_id": "road_wolves",
+        "respawn_game_hours": 48
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_ysolde",
+      "spaceId": "kaldwyn",
+      "kind": "spawner",
+      "transform": {
+        "x": 12,
+        "y": 14.001997,
+        "z": 182,
+        "yaw": 0
+      },
+      "grounded": true,
+      "data": {
+        "actor_id": "ysolde",
+        "count": 1,
+        "radius": 1,
+        "encounter_id": null,
+        "respawn_game_hours": "never"
+      }
+    },
+    {
+      "recordType": "container",
+      "id": "siltroot_cache",
+      "spaceId": "siltroot_burrow",
+      "kind": "container",
+      "transform": {
+        "x": 6,
+        "y": 0,
+        "z": 52,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Rootbound Cache",
+        "loot_table": "burrow_cache"
+      }
+    },
+    {
+      "recordType": "door",
+      "id": "door_siltroot_out",
+      "spaceId": "siltroot_burrow",
+      "kind": "door",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 0.8,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "name": "Kaldwyn Reach",
+        "target_space_id": "kaldwyn",
+        "target_x": -28,
+        "target_z": 75,
+        "target_yaw": 3.141592653589793,
+        "anchor_prop_id": null,
+        "anchor_local_x": 0,
+        "anchor_local_z": 0,
+        "anchor_yaw_offset": 0
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_burrow_matron",
+      "spaceId": "siltroot_burrow",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 50,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "mire_matron",
+        "count": 1,
+        "radius": 3,
+        "encounter_id": "siltroot_brood",
+        "respawn_game_hours": 36
+      }
+    },
+    {
+      "recordType": "spawner",
+      "id": "sp_burrow_rats",
+      "spaceId": "siltroot_burrow",
+      "kind": "spawner",
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "z": 29,
+        "yaw": 0
+      },
+      "grounded": false,
+      "data": {
+        "actor_id": "marsh_rat",
+        "count": 3,
+        "radius": 5,
+        "encounter_id": "siltroot_feeding",
+        "respawn_game_hours": 36
+      }
+    }
+  ]
+}

@@ -92,12 +92,16 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   cache, lazy Meshopt/KTX2 delivery, runtime LOD/budget checks, development
   invalidation, and procedural fallback-first Falkmoor activation without
   changing content collision authority (D-052).
+- Blender current-world reference snapshot, five-space editable scene,
+  manifest-backed collection palette, stable custom-property schema,
+  selection/world validation, deterministic round trip, and proposal-only
+  placement export that cannot silently claim runtime authority (D-053).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,
 dragons/flight, multi-region streaming, radiant generation, commissioned model
-library/textures/authored skeletal animation,
-no-code Blender world bridge, authored terrain migration,
+library/textures/authored skeletal animation, authored terrain migration and
+live location adoption of Blender placement proposals,
 account recovery/MFA/operations, matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading, expanded spell
 kinds/hotbars, trainers/research, loadout presets, and drag-and-drop inventory.

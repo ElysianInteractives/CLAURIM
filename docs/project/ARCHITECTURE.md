@@ -102,6 +102,16 @@ The Falkmoor pilots are active visuals; exported collider nodes never replace
 content collision. See `BLENDER_ASSET_AUTHORING_CONTRACT.md` and
 `ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
 
+D-053 adds an offline authoring projection without adding a runtime import.
+`scripts/export_blender_world.ts` deterministically projects content, maps,
+roads, and a sampled D-005 reference surface into `art/world/current-world.json`.
+The Blender add-on imports that snapshot, preserves stable IDs in custom
+properties, and exports `blender-world-export.json` with
+`runtimeAuthority: proposal`. Build validation accepts approved visual prop
+additions but rejects stale snapshots, missing baseline records, unknown
+assets/spaces, invalid anchors, and any attempt to claim live authority. See
+`BLENDER_WORLD_BRIDGE_CONTRACT.md`.
+
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use
 `roomBoundarySegments`; the camera reads `worldObstructionT`. These imports

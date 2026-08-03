@@ -947,6 +947,23 @@ collision authority.
   production build, local browser inspection, and the complete gate provide
   the repeatable exit evidence.
 
+### Asset Phase A2 Blender-world-bridge exit
+
+Asset Phase A2 implements D-053 without changing runtime world authority.
+
+- Blender 5.2 imports five categorized spaces, an 8 m read-only Kaldwyn
+  terrain reference, interior rooms, the main road, 42 props, 8 doors,
+  6 containers, 24 spawners, 8 landmarks, and all three approved pilot assets.
+- The installed Claurim panel exposes import, palette placement, ground snap,
+  selection/world validation, repository validation, export, and optional QA
+  launch controls.
+- Headless validation reports zero world errors/warnings. Reopening the saved
+  `.blend` and exporting reports exact category counts and zero initial
+  proposal drift within the 1e-5 transform tolerance.
+- `tests/blender_world_bridge.test.ts`, `npm run validate:blender-world`, the
+  Blender build/reopen scripts, direct evidence inspection, and the complete
+  gate provide repeatable exit evidence.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -987,6 +1004,7 @@ collision authority.
 | QA-STATIONARY-SETTLEMENT | Stop gait and camera-anchor replay | `tests/presentation.test.ts`, `tests/character_rig.test.ts`, `tests/camera_stability.test.ts`; development-only `?qa=thornmere-wall&qaPerf=1&qaWalk=1`; follow a scheduled resident to arrival | equal tick produces `current -> current`; gait/bob settles; camera anchor stays fixed across alpha; held wall input and moving interpolation retain authority |
 | QA-ASSET-A0 | Blender source/export constitution and Falkmoor pilot | Blender 5.2.x headless `scripts/blender/build_falkmoor_pilot.py`; `npm run validate:assets`; `tests/asset_pipeline.test.ts`; `npm run gate`; inspect `docs/screenshots/asset_phase_a0_falkmoor_pilot.png` | editable `.blend`, three self-contained GLBs, stable roots/LOD/collider extras, ground-centred metre bounds, provenance, actual triangle/material/texture budgets, complete unobstructed pilot render |
 | QA-ASSET-A1 | Cached environment GLB activation with safe fallbacks | `tests/environment_assets.test.ts`; `npm run validate:assets`; `npm run gate`; offline browser inspect Falkmoor and `renderer.diagnostics()` | catalog parity, one load per stable ID, authored LOD-only visuals, collider exclusion, placement/scale preservation, KTX2/Meshopt readiness, zero failed assets, procedural failure fallback |
+| QA-ASSET-A2 | No-code current-world Blender round trip | `npm run export:blender-world`; Blender 5.2 `build_world_authoring_scene.py` and `qa_world_bridge.py`; `tests/blender_world_bridge.test.ts`; `npm run validate:blender-world`; `npm run gate`; inspect `asset_phase_a2_world_import.png` | installed Claurim panel, five spaces/88 placements/three palette assets, read-only terrain, stable IDs/anchors, clean asset/world validation, save/reopen/export parity, proposal-only runtime boundary |
 
 ## Browser visual-QA procedure
 
