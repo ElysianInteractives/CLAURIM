@@ -1,21 +1,24 @@
 # Visual asset and world-authoring proposal (UNLOCKED)
 
-This is a proposal only. It does not change D-005 terrain authority, content
-placement, collision, or the current runtime until the user and Codex lock a
-bounded implementation phase.
+The unimplemented phases in this document are proposals only. They do not
+change D-005 terrain authority, content placement, or collision until the user
+and Codex lock a bounded implementation phase.
 
-Asset Phase A0 is now locked and implemented by D-050: Blender 5.2 LTS
+Asset Phase A0 is locked and implemented by D-050: Blender 5.2 LTS
 conventions, an enforceable manifest/provenance/GLB gate, editable Falkmoor
 tower/wall/arch source, repeatable validated exports, and visual evidence
-exist. The
-runtime catalog, Blender placement bridge, authored terrain, and location
-migration remain the later phases proposed below.
+exist. Asset Phase A1 is locked and implemented by D-052: a cached,
+Meshopt/KTX2-ready runtime catalog activates those pilots with LOD, hot reload,
+and procedural fallbacks while content retains placement/collision authority.
+The Blender placement bridge, authored terrain, and location migration remain
+the later proposed phases below.
 
 ## Honest current state
 
-- Claurim renders code-native procedural geometry. D-046 can validate and
-  instantiate registered character GLB/glTF assets, but it does not yet load a
-  commissioned model catalog or a visually authored whole-world scene.
+- Most of Claurim still renders code-native procedural geometry. D-052 loads
+  the three Falkmoor environment pilots, while D-046 can validate registered
+  character GLB/glTF assets; there is not yet a commissioned model catalog or
+  a visually authored whole-world scene.
 - Buildings, terrain shape, roads, doors, and deterministic vegetation are
   still authored through repository data/functions. Blender assets can be
   created now, but visual placement/sculpting will not appear in the game
@@ -86,10 +89,11 @@ The add-on provides one **Claurim** panel rather than requiring code edits:
   content IDs so quests, schedules, maps, saves, and networking do not depend
   on Blender object order.
 
-## Remaining proposed locked phases
+## Implemented and remaining locked phases
 
-1. **Asset foundation:** manifest/licensing, runtime world/prop GLB registry,
-   KTX2 + Meshopt support, fallbacks, budgets, and hot reload.
+1. **Asset foundation (A1, implemented by D-052):** manifest/licensing,
+   runtime world/prop GLB registry, KTX2 + Meshopt support, fallbacks, budgets,
+   and hot reload.
 2. **Blender round trip:** importer, asset palette, custom-property schema,
    validation panel, placement export, and one test clearing.
 3. **Authored terrain authority:** shared quantized height/splat data, server
@@ -100,5 +104,5 @@ The add-on provides one **Claurim** panel rather than requiring code edits:
    native fallback geometry.
 
 The user can begin learning Blender and creating individual, correctly scaled
-GLBs now. Whole-world visual editing should wait for phases 1-2 so placement
-work can round-trip instead of being manually transcribed into code.
+GLBs now. Whole-world visual editing should wait for the phase 2 bridge so
+placement work can round-trip instead of being manually transcribed into code.

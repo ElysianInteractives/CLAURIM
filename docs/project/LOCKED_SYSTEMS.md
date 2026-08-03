@@ -88,11 +88,15 @@ Locked by the 2026-07-31 MMO pivot (each tested through the exemplar suite):
   conventions, manifest/provenance requirements, GLB/LOD/material/texture
   budgets, separate collider intent, Git/LFS ownership, and the editable
   Falkmoor pilot source/export gate (D-050).
+- Renderer-owned environment GLB catalog, manifest parity, request-coalesced
+  cache, lazy Meshopt/KTX2 delivery, runtime LOD/budget checks, development
+  invalidation, and procedural fallback-first Falkmoor activation without
+  changing content collision authority (D-052).
 
 Not locked (open design space): weather, final audio assets/spatial sources/
 production mixing, crafting, followers, crime,
-dragons/flight, multi-region streaming, radiant generation, runtime model
-catalog, commissioned model library/textures/authored skeletal animation,
+dragons/flight, multi-region streaming, radiant generation, commissioned model
+library/textures/authored skeletal animation,
 no-code Blender world bridge, authored terrain migration,
 account recovery/MFA/operations, matchmaking, dungeon
 instancing (current dungeon is shared-world), guilds/trading, expanded spell

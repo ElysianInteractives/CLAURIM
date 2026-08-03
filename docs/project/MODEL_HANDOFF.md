@@ -212,9 +212,19 @@ Asset Phase A0 implements D-050 after AV-009 verification unblocked art work.
 Blender 5.2.x LTS, metre/axis/origin rules, stable IDs, LOD/collider extras,
 provenance, and source/runtime repository ownership are locked. The editable
 Falkmoor tower/wall/arch source repeatably exports three validated GLBs
-at 2,360/116, 1,320/12, and 792/132 LOD0/LOD1 triangles. Runtime loading,
-visual placement, and terrain editing remain A1/A2/A4 work. Exact boundaries
-are in `BLENDER_ASSET_AUTHORING_CONTRACT.md`.
+at 2,360/116, 1,320/12, and 792/132 LOD0/LOD1 triangles. A1 subsequently
+activates runtime loading; Blender placement round-tripping and terrain
+editing remain A2/A4 work. Exact A0 boundaries are in
+`BLENDER_ASSET_AUTHORING_CONTRACT.md`.
+
+Asset Phase A1 implements D-052. The three Falkmoor pilots now replace the
+matching tower, both wall, and arch procedural visuals after lazy runtime
+validation. The catalog coalesces requests, shares immutable resources, uses
+authored LOD0/LOD1, supports Meshopt and KTX2/Basis, exposes a cache-busted
+reload hook, and retains the procedural visual on every failure. Existing
+content transforms and `CollisionIndex` remain authoritative; A2 placement
+round-tripping and later terrain work are still out of scope. Exact boundaries
+are in `ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
 
 ## State as of 2026-08-01 (Fable MMO-pivot session)
 Claurim is now a third-person, server-authoritative multiplayer action RPG.
@@ -386,7 +396,7 @@ session added and TESTED:
   production-only dependency advisory checks.
 
 ## How to continue
-1. Read CLAUDE.md, DECISIONS.md (D-001..D-050), INVARIANTS.md.
+1. Read CLAUDE.md, DECISIONS.md (D-001..D-052), INVARIANTS.md.
 2. Pick from OPUS_BACKLOG.md (OB-M* are the multiplayer-era tickets).
 3. Tests + `npm run gate` before done; never weaken a guard.
 

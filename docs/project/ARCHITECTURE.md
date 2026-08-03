@@ -95,8 +95,12 @@ D-050 adds a build-time art-source boundary outside simulation and renderer
 authority. `art/asset-manifest.json` describes Blender source, GLB exports,
 budgets, transforms, collider intent, and provenance;
 `scripts/validate_assets.ts` parses exported binaries during the normal gate.
-The Falkmoor pilot GLBs remain dormant until A1 adds a renderer-owned runtime
-catalog. See `BLENDER_ASSET_AUTHORING_CONTRACT.md`.
+D-052's renderer-owned runtime catalog mirrors only the browser-safe fields,
+lazy-loads validated GLBs with Meshopt/KTX2 support, coalesces and caches each
+stable asset ID, and leaves a procedural prop live until replacement succeeds.
+The Falkmoor pilots are active visuals; exported collider nodes never replace
+content collision. See `BLENDER_ASSET_AUTHORING_CONTRACT.md` and
+`ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
 
 Environmental geometry is the other permitted pure-data seam: renderer props
 use the same yaw/scale records as `CollisionIndex`; interior walls use

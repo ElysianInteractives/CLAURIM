@@ -929,6 +929,24 @@ Asset Phase A0 implements D-050 without replacing a live runtime model.
   tower, broken wall, and arch on one unobstructed ground plane. Runtime
   visuals, collision, placement, terrain, protocols, and saves are unchanged.
 
+### Asset Phase A1 environment-runtime exit
+
+Asset Phase A1 implements D-052 without changing gameplay placement or
+collision authority.
+
+- The runtime catalog is test-locked to all three D-050 manifest entries and
+  production URLs; GLTF, Meshopt, KTX2, and Basis code remains lazy.
+- Concurrent wall requests coalesce into one load. Distinct instances share
+  cached geometry, exclude collider metadata, and switch between authored
+  LOD0/LOD1 at the normal or D-048 pressure distance.
+- The existing Falkmoor tower, both walls, and arch retain content ID,
+  transform, ground height, declared dimensions, and `CollisionIndex` shape.
+  The procedural mesh remains until a runtime-validated asset is ready and is
+  retained permanently on failure.
+- `tests/environment_assets.test.ts`, asset validation, typecheck, full tests,
+  production build, local browser inspection, and the complete gate provide
+  the repeatable exit evidence.
+
 ## Repeatable scenario matrix
 
 | Scenario | Purpose | Procedure / automation | Evidence |
@@ -968,6 +986,7 @@ Asset Phase A0 implements D-050 without replacing a live runtime model.
 | QA-FIND7 | Recorded-frame cadence and close-model headroom | Decode Find7 at native timing; `tests/model_fidelity.test.ts`, `tests/frame_pacing.test.ts`, `npm run gate`; development-only `?qa=thornmere&qaPerf=1&qaWalk=1` | repeated/near-identical frame count, 2,000-3,000 triangles per close shell, 10,000-12,000 for five Thornmere shells, matrix-correct populated budgets, raster-first tier thresholds, local player high, telemetry at steady 60 fps with zero missed frames |
 | QA-STATIONARY-SETTLEMENT | Stop gait and camera-anchor replay | `tests/presentation.test.ts`, `tests/character_rig.test.ts`, `tests/camera_stability.test.ts`; development-only `?qa=thornmere-wall&qaPerf=1&qaWalk=1`; follow a scheduled resident to arrival | equal tick produces `current -> current`; gait/bob settles; camera anchor stays fixed across alpha; held wall input and moving interpolation retain authority |
 | QA-ASSET-A0 | Blender source/export constitution and Falkmoor pilot | Blender 5.2.x headless `scripts/blender/build_falkmoor_pilot.py`; `npm run validate:assets`; `tests/asset_pipeline.test.ts`; `npm run gate`; inspect `docs/screenshots/asset_phase_a0_falkmoor_pilot.png` | editable `.blend`, three self-contained GLBs, stable roots/LOD/collider extras, ground-centred metre bounds, provenance, actual triangle/material/texture budgets, complete unobstructed pilot render |
+| QA-ASSET-A1 | Cached environment GLB activation with safe fallbacks | `tests/environment_assets.test.ts`; `npm run validate:assets`; `npm run gate`; offline browser inspect Falkmoor and `renderer.diagnostics()` | catalog parity, one load per stable ID, authored LOD-only visuals, collider exclusion, placement/scale preservation, KTX2/Meshopt readiness, zero failed assets, procedural failure fallback |
 
 ## Browser visual-QA procedure
 

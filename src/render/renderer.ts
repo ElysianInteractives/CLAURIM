@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { ActorView, IWorld } from '../world_api';
 import { CONTENT } from '../sim/content';
+import type { PropDef } from '../sim/content/schema';
 import { CollisionIndex, worldObstructionT } from '../sim/world/collision';
 import { PALETTE } from './palette';
 import { TerrainStreamer, disposeGroup } from './terrain_mesh';
@@ -31,6 +32,14 @@ import {
   presentedCharacterDetail,
   type ModelDetail,
 } from './model_quality';
+import {
+  applyEnvironmentPropTransform,
+  createBrowserEnvironmentAssetRuntime,
+  environmentAssetForProp,
+  setEnvironmentPerformanceDetail,
+  type EnvironmentAssetId,
+  type EnvironmentAssetRuntime,
+} from './environment_assets';
 
 type TelegraphView = NonNullable<ActorView['telegraph']>;
 
@@ -111,8 +120,10 @@ export class Renderer {
   private cameraBoom = new CameraBoomSmoother();
   private resolution: AdaptivePixelRatio;
   private geometryDetail = new AdaptiveGeometryDetail();
+  private environmentAssets: EnvironmentAssetRuntime;
   private collision = new CollisionIndex(CONTENT);
   private builtSpace: string | null = null;
+  private spaceRevision = 0;
   private clock = 0;
   private firstPersonRig: THREE.Group;
 
@@ -130,6 +141,11 @@ export class Renderer {
     const nativeRatio = Math.min(2, globalThis.devicePixelRatio || 1);
     this.resolution = new AdaptivePixelRatio(nativeRatio);
     this.webgl.setPixelRatio(this.resolution.current());
+    this.environmentAssets = createBrowserEnvironmentAssetRuntime(this.webgl, {
+      onError: (assetId, error) => console.warn(
+        `[environment-assets] ${assetId} retained its procedural fallback: ${error.message}`,
+      ),
+    });
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, 900);
     this.firstPersonRig = buildFirstPersonRig();
     this.firstPersonRig.visible = false;
@@ -138,6 +154,13 @@ export class Renderer {
     this.sun.position.set(120, 180, 60);
     this.terrain = new TerrainStreamer(this.scene, world.seed());
     this.resize();
+  }
+
+  /** Development authoring hook. Vite reloads changed public GLBs normally;
+   * this also permits a cache-busted refresh from the offline debug handle. */
+  reloadEnvironmentAssets(): void {
+    this.environmentAssets.invalidate();
+    this.builtSpace = null;
   }
 
   resize(): void {
@@ -160,6 +183,7 @@ export class Renderer {
     textures: number;
     visibleMeshes: number;
     geometryDetail: 'high' | 'performance';
+    environmentAssets: { pending: number; ready: number; failed: number };
   } {
     let visibleMeshes = 0;
     this.scene.traverseVisible((object) => {
@@ -173,6 +197,7 @@ export class Renderer {
       textures: this.webgl.info.memory.textures,
       visibleMeshes,
       geometryDetail: this.geometryDetail.current(),
+      environmentAssets: this.environmentAssets.diagnostics(),
     };
   }
 
@@ -239,9 +264,11 @@ export class Renderer {
 
   private applyBuildingDetailTier(tier: 'high' | 'performance'): void {
     setBuildingPerformanceDetail(this.spaceGroup, tier === 'performance');
+    setEnvironmentPerformanceDetail(this.spaceGroup, tier === 'performance');
   }
 
   private rebuildSpace(space: string, exterior: boolean): void {
+    const revision = ++this.spaceRevision;
     // Drop previous space contents + actor meshes.
     for (const child of [...this.spaceGroup.children]) {
       this.spaceGroup.remove(child);
@@ -265,7 +292,13 @@ export class Renderer {
       if (layout) this.spaceGroup.add(buildInteriorShell(layout, cavern));
     }
     for (const p of CONTENT.props) {
-      if (p.spaceId === space) this.spaceGroup.add(buildProp(p, kind, seed));
+      if (p.spaceId !== space) continue;
+      const fallback = buildProp(p, kind, seed);
+      fallback.name = `procedural-prop:${p.id}`;
+      fallback.userData.propId = p.id;
+      this.spaceGroup.add(fallback);
+      const assetId = environmentAssetForProp(p);
+      if (assetId) void this.promoteEnvironmentProp(p, assetId, fallback, space, revision);
     }
     for (const d of CONTENT.doors) {
       if (d.spaceId === space) this.spaceGroup.add(buildDoorMarker(d, kind, seed));
@@ -275,6 +308,32 @@ export class Renderer {
     }
     this.applyBuildingDetailTier(this.geometryDetail.current());
     this.builtSpace = space;
+  }
+
+  private async promoteEnvironmentProp(
+    prop: PropDef,
+    assetId: EnvironmentAssetId,
+    fallback: THREE.Group,
+    space: string,
+    revision: number,
+  ): Promise<void> {
+    const instance = await this.environmentAssets.instantiate(assetId);
+    if (!instance) return;
+    if (
+      revision !== this.spaceRevision
+      || this.builtSpace !== space
+      || fallback.parent !== this.spaceGroup
+    ) return;
+    applyEnvironmentPropTransform(
+      instance,
+      prop,
+      this.environmentAssets.entry(assetId),
+      fallback.position.y,
+    );
+    setEnvironmentPerformanceDetail(instance, this.geometryDetail.current() === 'performance');
+    this.spaceGroup.remove(fallback);
+    disposeGroup(fallback);
+    this.spaceGroup.add(instance);
   }
 
   private updateLighting(exterior: boolean): void {

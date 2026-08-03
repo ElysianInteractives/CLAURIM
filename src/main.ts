@@ -286,12 +286,16 @@ function frame(now: number): void {
     qaPerfWorstMs = Math.max(qaPerfWorstMs, rawFrameMs);
     const elapsedMs = now - qaPerfWindowStart;
     if (elapsedMs >= 5_000) {
-      console.info('[qa-perf]', JSON.stringify({
+      const snapshot = {
         fps: (qaPerfFrames * 1_000) / elapsedMs,
         missedFramePercent: (qaPerfMissedFrames / Math.max(1, qaPerfFrames)) * 100,
         worstFrameMs: qaPerfWorstMs,
         ...renderer.diagnostics(),
-      }));
+      };
+      // Query-gated DOM evidence keeps browser QA observable without exposing
+      // the offline simulation/debug handle to automation sandboxes.
+      document.documentElement.dataset.claurimQaPerf = JSON.stringify(snapshot);
+      console.info('[qa-perf]', JSON.stringify(snapshot));
       qaPerfWindowStart = now;
       qaPerfFrames = 0;
       qaPerfMissedFrames = 0;

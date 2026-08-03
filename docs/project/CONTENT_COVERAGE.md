@@ -55,7 +55,7 @@ PARTIAL / NONE.
 |---|---|---|
 | UI surfaces | PARTIAL | HUD/dialogue/shop/loadout inventory with primer Study actions, discipline-grouped known spells, spell equip, journal/perks, current-space map/navigation, and audio settings exist; missing: full spellbook, broader settings, main menu |
 | Audio | SYSTEM | D-031 browser mixer, persistent controls, combat cues, and procedural interior/day/night beds exist; final assets, spatial sources, and production mix remain KL-5 |
-| Asset pipeline | SOURCE_READY | bounded high/medium code-native exemplars ship live; lazy character replacement validates rig nodes/budgets (D-011/D-041/D-046); D-050 adds the Blender 5.2 LTS constitution, manifest/provenance/GLB gate, and editable Falkmoor pilot source/exports; runtime environment catalog and commissioned library remain future A1+ work |
+| Asset pipeline | PILOT_LIVE | bounded high/medium code-native exemplars and the three Falkmoor GLB pilots ship live; lazy character replacement validates rig nodes/budgets (D-011/D-041/D-046); D-050 adds the Blender 5.2 LTS constitution, manifest/provenance/GLB gate, and editable source/exports; D-052 adds the cached Meshopt/KTX2-ready environment catalog, LOD, hot reload, and procedural failure fallback; the commissioned library and Blender placement bridge remain future work |
 | Accessibility | PARTIAL | semantic resource/audio controls exist; keybind remap, subtitles, colorblind palette, and broader settings remain |
 | Save/persistence | DONE | D-009 |
 | Mod/extensibility | PARTIAL | data-as-code registry IS the mod surface; external pack loading later |

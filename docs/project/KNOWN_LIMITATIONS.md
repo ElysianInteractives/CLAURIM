@@ -82,8 +82,9 @@
   geometry with bounded high/medium character, wildlife, structure, and
   vegetation tiers; adds hysteretic actor/building LOD and render culling;
   and provides a validated lazy Meshopt-capable GLB/glTF replacement seam.
-- KL-24 D-050 now supplies an editable, validated Blender Falkmoor pilot kit
-  and locked authoring/export conventions, but the three GLBs are deliberately
-  dormant until Asset Phase A1. The game still has no runtime environment
-  catalog, authored texture sets, skeletal animation clips, impostors, KTX2
-  delivery, or commissioned art library.
+- KL-24 PARTIALLY RESOLVED in Asset Phase A1: D-052 now loads the editable,
+  validated Falkmoor pilot kit through a cached Meshopt/KTX2-ready environment
+  catalog with LOD and procedural fallback. The game still has no Blender
+  placement bridge, authored texture sets, skeletal animation clips,
+  impostors, or commissioned art library; only the three pilot structures are
+  asset-backed.

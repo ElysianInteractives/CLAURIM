@@ -496,3 +496,15 @@ atomic. Three unique consumable references map to keys 3/4/5, retain their
 assignment at zero count, and share a server cooldown. World save schema v5,
 character schema v3, and protocol v8 carry the new state and validated intent.
 Exact rules: `UI_LOOT_QUICK_ACCESS_CONTRACT.md`.
+
+## D-052: Failure-safe environment asset runtime and Falkmoor activation - LOCKED
+Asset Phase A1 adds a renderer-owned world/prop GLB catalog synchronized with
+the D-050 manifest, request-coalesced caching, lazy Meshopt and KTX2/Basis
+delivery, runtime node/triangle checks, shared-resource LOD instances, and a
+cache-busted development reload hook. The Falkmoor tower, two walls, and arch
+retain their existing content transforms and gameplay colliders while their
+procedural visuals are replaced only after a validated GLB is ready; every
+load or validation failure leaves the procedural fallback live. Blender
+collider nodes remain non-rendered metadata, and simulation, placement,
+terrain, navigation, protocols, saves, and content are unchanged. Exact rules:
+`ENVIRONMENT_ASSET_RUNTIME_CONTRACT.md`.
